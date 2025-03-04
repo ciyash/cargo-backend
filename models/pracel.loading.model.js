@@ -6,7 +6,7 @@ const parcelSchema = new mongoose.Schema({
     fromBranch: { type:String, required: true },
     userName:{type:String,required:true},
     toBranch: { type: String, required: true},
-    unloadBranch:{type:String,required:true,default:""},
+    unloadBranch:{type:String,default:""},
     vehicalType: { type:String, required: true }, 
     vehicalNumber:{type:String,required:true},
     driverName: { type: String, required: true },
@@ -16,11 +16,11 @@ const parcelSchema = new mongoose.Schema({
     toBookingDate: { type: Date, required: true },
     fromCity: { type: String, required: true },
     toCity: { type: String, required: true },
-    remarks: { type: String, required: true },
+    remarks: { type: String},
     grnNo: [{ type: String, required: true}], 
     lrNumber:[{type:String,required:true}],
    
 });
 
-export default mongoose.model("ParcelLoading", parcelSchema);
+export default mongoose.model("ParcelLoading", parcelSchema);    
  
