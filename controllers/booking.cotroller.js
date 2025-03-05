@@ -150,7 +150,7 @@ const createBooking = async (req, res) => {
   }
 };
 
-
+//
 const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find().populate("bookedBy")
