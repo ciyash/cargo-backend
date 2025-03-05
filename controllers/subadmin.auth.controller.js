@@ -139,7 +139,7 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "Email/Phone and password are required" });
     }
 
-    const subadmin = await Subadmin.findOne({ $or: [{ email: identifier }, { phone: identifier }] });
+    const subadmin = await Subadmin.findOne({ $or: [{ email: identifier }, { phone: identifier },{ username: identifier }] });
 
     if (!subadmin) {
       return res.status(404).json({ message: "Subadmin not found" });
@@ -165,7 +165,8 @@ const login = async (req, res) => {
       role: subadmin.role,
       uniqueId: subadmin.subadminUniqueId,
       ipAddress,
-      branch:subadmin.branchName
+      branch:subadmin.branchName,
+      city:subadmin.location
     });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });

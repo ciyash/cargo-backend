@@ -43,33 +43,44 @@ const generateLrNumber = async (fromCity, location) => {
   }
 };
 
-
 const createBooking = async (req, res) => {
   try {
     const { 
-      fromCity, toCity, pickUpBranch, dropBranch,totalPrice, location, dispatchType, bookingType,
-      quantity, packageType,contains,vehicalNumber, senderName, senderMobile, senderAddress, unitPrice,
-      receiverName, receiverMobile, receiverAddress, serviceCharge = 0, 
-      hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
+      fromCity, toCity, pickUpBranch, dropBranch, totalPrice, location, dispatchType, bookingType,
+      packages, // Array of package objects
+      vehicalNumber, senderName, senderMobile, senderAddress, senderGst,
+      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGst,
+      serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
       bookingStatus, receiptNo, adminUniqueId, adminId, items, eWayBillNo, 
       ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
       cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
-      refundCharge = 0, refundAmount = 0,senderGst,receiverGst,parcelGst
+      refundCharge = 0, refundAmount = 0
     } = req.body;
 
-   
-    // const requiredFields = [
-    //   "fromCity", "toCity", "pickUpBranch", "dropBranch","totalPrice", "location", "dispatchType", "bookingType",
-    //   "quantity", "packageType","vehicalNumber" , "senderName", "senderMobile", "senderAddress", "unitPrice",
-    //   "receiverName", "receiverMobile", "receiverAddress", "adminUniqueId", "adminId",
-    //   "items", "eWayBillNo"
-    // ];
+    // ✅ Validate required fields
+    const requiredFields = [
+      "fromCity", "toCity", "pickUpBranch", "dropBranch", "totalPrice", "location", "dispatchType", "bookingType",
+      "packages", "vehicalNumber", "senderName", "senderMobile", "senderAddress",
+      "receiverName", "receiverMobile", "receiverAddress", "adminUniqueId", "adminId",
+      "items", "eWayBillNo"
+    ];
 
-    // for (const field of requiredFields) {
-    //   if (!req.body[field]) {
-    //     return res.status(400).json({ success: false, message: `${field} is required` });
-    //   }
-    // }
+    for (const field of requiredFields) {
+      if (!req.body[field] || (Array.isArray(req.body[field]) && req.body[field].length === 0)) {
+        return res.status(400).json({ success: false, message: `${field} is required` });
+      }
+    }
+
+    // ✅ Validate package details
+    if (!Array.isArray(packages) || packages.length === 0) {
+      return res.status(400).json({ success: false, message: "At least one package is required" });
+    }
+
+    for (const pkg of packages) {
+      if (!pkg.quantity || !pkg.packageType || !pkg.weight || !pkg.unitPrice) {
+        return res.status(400).json({ success: false, message: "Each package must have quantity, packageType, weight, and unitPrice" });
+      }
+    }
 
     // ✅ Generate GRN and LR numbers
     const grnNumber = await generateGrnNumber();
@@ -78,7 +89,11 @@ const createBooking = async (req, res) => {
     // Generate receiptNo if not provided
     const generatedReceiptNo = receiptNo || `REC-${Date.now()}`;
 
-    // Create new booking object
+    // ✅ Calculate Grand Total
+    let packageTotal = packages.reduce((sum, pkg) => sum + (pkg.unitPrice * pkg.quantity), 0);
+    let grandTotal = packageTotal + serviceCharge + hamaliCharge + doorDeliveryCharge + doorPickupCharge + valueOfGoods;
+
+    // ✅ Create new booking object
     const booking = new Booking({
       grnNumber,
       lrNumber,
@@ -88,21 +103,21 @@ const createBooking = async (req, res) => {
       pickUpBranch,
       dropBranch,
       dispatchType,
-      contains,
-      vehicalNumber,
       bookingType,
-      quantity,
-      packageType,  
+      packages,  // Array of package objects
+      vehicalNumber,
       senderName,
       senderMobile,
       senderAddress,
-      unitPrice,
+      senderGst,
       receiverName,
       receiverMobile,
       receiverAddress,
+      receiverGst,
+      parcelGst,
       receiptNo: generatedReceiptNo, 
       totalPrice,
-      grandTotal: (unitPrice * quantity) + serviceCharge + hamaliCharge + doorDeliveryCharge + doorPickupCharge + valueOfGoods,
+      grandTotal,
       serviceCharge,
       hamaliCharge,
       doorDeliveryCharge,
@@ -120,14 +135,11 @@ const createBooking = async (req, res) => {
       ltEmployee,
       deliveryEmployee,
       cancelByUser,
-      cancelDate: cancelDate ? new Date(cancelDate) : "",
+      cancelDate: cancelDate ? new Date(cancelDate) : null,
       cancelCity,
       cancelBranch,
       refundCharge,
-      refundAmount,
-      senderGst,
-      receiverGst,
-      parcelGst
+      refundAmount
     });
 
     await booking.save();
@@ -137,6 +149,7 @@ const createBooking = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 const getAllBookings = async (req, res) => {
   try {

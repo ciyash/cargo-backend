@@ -8,10 +8,11 @@ router.get("/",vehicleController.getAllVehicles)
 
 router.get("/:id",vehicleController.getVehicleById)
 
+router.get("/getVehicleNo/:vehicleNo",vehicleController.getVehicleNo)
+
 router.patch("/:id",vehicleController.updateVehicle)
 
 router.delete("/:id",vehicleController.deleteVehicle)
 
 export default router
 
-//fghj

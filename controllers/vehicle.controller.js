@@ -52,6 +52,20 @@ const getVehicleById = async (req, res) => {
     }
 };
 
+const getVehicleNo=async(req,res) => {
+    try{
+      const {vehicleNo}=req.params
+      const vehicle=await Vehicle.findOne({vehicleNo})
+      if(!vehicle){
+        return res.status(404).json({message:"No vehicle found !"})
+      }
+      res.status(200).json(vehicle)
+    }
+    catch(error){
+        res.status(500).json({error:error.message})
+    }
+}
+
 const updateVehicle = async (req, res) => {
     try {
         const { id } = req.params;
@@ -86,5 +100,6 @@ export default {
     getAllVehicles,
     getVehicleById,
     updateVehicle,
-    deleteVehicle
+    deleteVehicle,
+    getVehicleNo
 };

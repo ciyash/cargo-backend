@@ -8,7 +8,7 @@ const generateVocherNoUnique=()=>{
 const createParcel = async (req, res) => {
     try {
         const {
-            parcelType, fromBranch, toBranch,parcelStatus,userName, unloadBranch, vehicalType, vehicalNumber,
+            parcelType, fromBranch, toBranch,loadingDate,parcelStatus,userName, unloadBranch, vehicalType, vehicalNumber,
             driverName, driverNo, fromBookingDate, toBookingDate,
             fromCity, toCity, remarks, grnNo, lrNumber
         } = req.body;
@@ -29,6 +29,7 @@ const createParcel = async (req, res) => {
             vocherNoUnique,
             fromBranch,
             toBranch,
+            loadingDate,
             unloadBranch: unloadBranch || "",
             vehicalType,
             driverName,

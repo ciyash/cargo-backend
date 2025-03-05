@@ -1,47 +1,53 @@
 import mongoose from "mongoose";
-  
+
+const packageSchema = new mongoose.Schema({
+  quantity: { type: Number, required: true, default: 1 },
+  packageType: { type: String, required: true },
+  contains: { type: Number, default: 0 },
+  weight: { type: Number, required: true }, 
+  unitPrice: { type: Number, required: true },
+  totalPrice: { type: Number, default: 0 }
+});
+
 const bookingSchema = new mongoose.Schema(
   {  
-    grnNumber: { type: Number,  unique: true }, 
-    lrNumber: { type: String, },
+    grnNumber: { type: Number, unique: true }, 
+    lrNumber: { type: String },
     adminUniqueId: { type: Number },
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: "Subadmin"},
     fromCity: { type: String },
     toCity: { type: String },
     pickUpBranch: { type: String },
-    dropBranch: { type: String},
-    location: { type: String ,default:""},
-    dispatchType: { type: String}, 
-    bookingType: { type: String},
-    quantity: { type: Number},
-    packageType: { type: String}, 
-    contains: { type: Number, default: 0 },
-    vehicalNumber:{type:String},
-    weight: { type: Number },
-    actualWeight: { type: Number, default: 0 },
-    unitPrice: { type: Number},
-    totalPrice: { type: Number, default: 0 },
+    dropBranch: { type: String },
+    location: { type: String, default: "" },
+    dispatchType: { type: String }, 
+    bookingType: { type: String },
+
+    // Change these fields to an array of objects
+    packages: { type: [packageSchema], default: [] },  
+
+    vehicalNumber: { type: String },
     receiptNo: { type: String, default: "" }, 
     eWayBillNo: { type: String },
     remarks: { type: String },
-    
-    senderName: { type: String},
+
+    senderName: { type: String },
     senderMobile: { 
       type: Number,   
       validate: { validator: (v) => /^\d{10}$/.test(v), message: "Invalid mobile number" }
     },
-    senderAddress: { type: String},
-    senderGst: { type: String,default:"" },  
+    senderAddress: { type: String },
+    senderGst: { type: String, default: "" },  
 
-    receiverName: { type: String},
+    receiverName: { type: String },
     receiverMobile: { 
       type: Number, 
       validate: { validator: (v) => /^\d{10}$/.test(v), message: "Invalid mobile number" }
     },
-    receiverAddress: { type: String,},
-    receiverGst: { type: String,default:"" },
+    receiverAddress: { type: String },
+    receiverGst: { type: String, default: "" },
 
-    parcelGst: { type: String ,default:""},
+    parcelGst: { type: String, default: "" },
     grandTotal: { type: Number, default: 0 },
     serviceCharge: { type: Number, default: 0 },
     hamaliCharge: { type: Number, default: 0 },
@@ -51,19 +57,19 @@ const bookingSchema = new mongoose.Schema(
     bookingStatus: { type: Number, enum: [0, 1, 2, 3, 4, 5], default: 0 },
 
     items: { type: Number },
-    
+
     bookingDate: { type: Date, default: () => new Date() },
     ltDate: { type: Date, default: () => new Date() },
     ltCity: { type: String, default: "" }, 
     ltBranch: { type: String, default: "" },
     ltEmployee: { type: String, default: "" },
     deliveryEmployee: { type: String, default: "" },
-    
+
     cancelByUser: { type: String, default: "" },
     cancelDate: { type: Date, default: null }, 
     cancelCity: { type: String, default: "" },
     cancelBranch: { type: String, default: "" },
-    
+
     refundCharge: { type: Number, default: 0 }, 
     refundAmount: { type: Number, default: 0 }
   }, 
