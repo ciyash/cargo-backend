@@ -200,14 +200,18 @@ const changeSubadminPassword = async (req, res) => {
   }
 };
 
-const getAllSubadmins = async (req, res) => {
-  try {
-    const subadmins = await Subadmin.find();
-    res.status(200).json(subadmins);
-  } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+const getAllSubadmins=async(req,res) => {
+  try{
+   const subadmin=await Subadmin.find()
+   if(subadmin.length===0){
+    return res.status(404).json({message:"No subadmins in database"})
   }
-};
+  res.status(200).json(subadmin)
+  }
+  catch(error){
+    res.status(500).json({error:error.message})
+  }
+}
 
 const getSubadminById = async (req, res) => {
   try {

@@ -51,25 +51,25 @@ const createBooking = async (req, res) => {
       vehicalNumber, senderName, senderMobile, senderAddress, senderGst,
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGst,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
-      bookingStatus, receiptNo, adminUniqueId, adminId, items, eWayBillNo, 
+      bookingStatus, receiptNo, adminUniqueId, bookedBy, items, eWayBillNo, 
       ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
       cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
       refundCharge = 0, refundAmount = 0
     } = req.body;
 
-    // ✅ Validate required fields
-    const requiredFields = [
-      "fromCity", "toCity", "pickUpBranch", "dropBranch", "totalPrice", "location", "dispatchType", "bookingType",
-      "packages", "vehicalNumber", "senderName", "senderMobile", "senderAddress",
-      "receiverName", "receiverMobile", "receiverAddress", "adminUniqueId", "adminId",
-      "items", "eWayBillNo"
-    ];
+   
+    // const requiredFields = [
+    //   "fromCity", "toCity", "pickUpBranch", "dropBranch", "totalPrice", "location", "dispatchType", "bookingType",
+    //   "packages", "vehicalNumber", "senderName", "senderMobile", "senderAddress",
+    //   "receiverName", "receiverMobile", "receiverAddress", "adminUniqueId", "bookedBy",
+    //   "items", "eWayBillNo"
+    // ];
 
-    for (const field of requiredFields) {
-      if (!req.body[field] || (Array.isArray(req.body[field]) && req.body[field].length === 0)) {
-        return res.status(400).json({ success: false, message: `${field} is required` });
-      }
-    }
+    // for (const field of requiredFields) {
+    //   if (!req.body[field] || (Array.isArray(req.body[field]) && req.body[field].length === 0)) {
+    //     return res.status(400).json({ success: false, message: `${field} is required` });
+    //   }
+    // }
 
     // ✅ Validate package details
     if (!Array.isArray(packages) || packages.length === 0) {
@@ -125,7 +125,7 @@ const createBooking = async (req, res) => {
       valueOfGoods,
       bookingStatus,
       adminUniqueId,
-      adminId,
+      bookedBy,
       items,
       eWayBillNo,
       bookingDate: new Date(),
@@ -153,7 +153,7 @@ const createBooking = async (req, res) => {
 
 const getAllBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find().populate("adminId")
+    const bookings = await Booking.find().populate("bookedBy")
     if (bookings.length === 0) {
       return res.status(404).json({ success: false, message: "No bookings found" });
     }
@@ -186,7 +186,7 @@ const getAllBookings = async (req, res) => {
   const getBookingadminUniqueId=async(req,res) => {
     try{
      const {adminUniqueId}=req.params
-     const booking=await Booking.find({adminUniqueId}).populate("adminId",'name email role  username phone branchName branchId ')
+     const booking=await Booking.find({adminUniqueId}).populate("bookedBy",'name email role  username phone branchName branchId ')
      if(!booking){
       return res.status(404).json({message:"No adminUniqueId bookings !"})
      }
