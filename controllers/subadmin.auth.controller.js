@@ -244,6 +244,33 @@ const deleteSubadmin = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+const updateSubadmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    if (!id) {
+      return res.status(400).json({ message: "Subadmin ID is required" });
+    }
+
+    const subadmin = await Subadmin.findById(id);
+    if (!subadmin) {
+      return res.status(404).json({ message: "Subadmin not found" });
+    }
+
+    // Prevent updating sensitive fields like password directly
+    if (updateData.password) {
+      return res.status(400).json({ message: "Use change password feature to update password" });
+    }
+
+    const updatedSubadmin = await Subadmin.findByIdAndUpdate(id, updateData, { new: true });
+
+    res.status(200).json({ message: "Subadmin updated successfully", subadmin: updatedSubadmin });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
 
 export default {
   signup,
@@ -254,5 +281,6 @@ export default {
   getAllSubadmins,
   getSubadminById,
   deleteSubadmin,
+  updateSubadmin
 };
  
