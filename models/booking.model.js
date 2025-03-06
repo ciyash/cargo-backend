@@ -73,7 +73,7 @@ const bookingSchema = new mongoose.Schema(
     refundCharge: { type: Number, default: 0 }, 
     refundAmount: { type: Number, default: 0 }
   }, 
-  { timestamps: true }
+  { timestamps: true } 
 );
 
 bookingSchema.index({ grnNumber: 1, adminUniqueId: 1, bookingStatus: 1 });

@@ -1,6 +1,6 @@
 import Booking from "../models/booking.model.js";
 import moment from "moment";
- 
+   
 const generateGrnNumber = async () => {
   const lastBooking = await Booking.findOne().sort({ createdAt: -1 });
   return lastBooking ? lastBooking.grnNumber + 1 : 1000; 
@@ -43,6 +43,33 @@ const generateLrNumber = async (fromCity, location) => {
   }
 };
 
+const generateEWayBillNo = async () => {
+  try {
+    const today = moment().format("DDMMYYYY"); // Today's date in "06032025" format
+
+    // Find the last booking for today
+    const lastBooking = await Booking.findOne({
+      eWayBillNo: new RegExp(`^EWB\\d{2}${today}$`) // Match today's eWayBillNo
+    }).sort({ createdAt: -1 });
+
+    let sequenceNumber = 1; // Start with 01 if no previous booking today
+
+    if (lastBooking) {
+      const lastEWayBillNo = lastBooking.eWayBillNo;
+      const lastSequence = parseInt(lastEWayBillNo.substring(3, 5), 10); // Extract "01" from "EWB0106032025"
+      sequenceNumber = lastSequence + 1;
+    }
+
+    // Format sequence (01, 02, 03...)
+    const formattedSequence = String(sequenceNumber).padStart(2, "0");
+
+    return `EWB${formattedSequence}${today}`;
+  } catch (error) {
+    throw new Error("Failed to generate eWayBillNo");
+  }
+};
+
+
 const createBooking = async (req, res) => {
   try {
     const { 
@@ -51,7 +78,7 @@ const createBooking = async (req, res) => {
       vehicalNumber, senderName, senderMobile, senderAddress, senderGst,
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGst,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
-      bookingStatus, receiptNo, adminUniqueId, bookedBy, items, eWayBillNo, 
+      bookingStatus, receiptNo, adminUniqueId, bookedBy, items,
       ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
       cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
       refundCharge = 0, refundAmount = 0
@@ -85,9 +112,12 @@ const createBooking = async (req, res) => {
     // ✅ Generate GRN and LR numbers
     const grnNumber = await generateGrnNumber();
     const lrNumber = await generateLrNumber(fromCity, location);
+    const eWayBillNo = await generateEWayBillNo();
 
     // Generate receiptNo if not provided
     const generatedReceiptNo = receiptNo || `REC-${Date.now()}`;
+
+   
 
     // ✅ Calculate Grand Total
     let packageTotal = packages.reduce((sum, pkg) => sum + (pkg.unitPrice * pkg.quantity), 0);
@@ -104,7 +134,7 @@ const createBooking = async (req, res) => {
       dropBranch,
       dispatchType,
       bookingType,
-      packages,  // Array of package objects
+      packages,  
       vehicalNumber,
       senderName,
       senderMobile,

@@ -17,10 +17,9 @@ router.post("/change-password",subAdminAuthController.changeSubadminPassword)
 
 router.post("/reset-password",subAdminAuthController.resetPassword)
 
-router.post("/forgot-password",subAdminAuthController.forgotPassword)
+router.post("/forgot-password",subAdminAuthController.forgotPassword) 
 
-router.delete("/:id",subAdminAuthController.deleteSubadmin)
-
+router.delete("/:id",subAdminAuthController.deleteSubadmin)  
 
 
 export default router
