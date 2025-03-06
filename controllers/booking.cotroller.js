@@ -69,6 +69,13 @@ const generateEWayBillNo = async () => {
   }
 };
 
+const generateReceiptNumber = async () => {
+  const lastBooking = await Booking.findOne().sort({ receiptNo: -1 }).lean();
+  return (lastBooking?.receiptNo || 0) + 1; // If no booking exists, start from 1
+};
+
+
+
 
 const createBooking = async (req, res) => {
   try {
@@ -114,10 +121,9 @@ const createBooking = async (req, res) => {
     const lrNumber = await generateLrNumber(fromCity, location);
     const eWayBillNo = await generateEWayBillNo();
 
-    // Generate receiptNo if not provided
-    const generatedReceiptNo = receiptNo || `REC-${Date.now()}`;
-
    
+    const generatedReceiptNo =await generateReceiptNumber()
+  
 
     // ✅ Calculate Grand Total
     let packageTotal = packages.reduce((sum, pkg) => sum + (pkg.unitPrice * pkg.quantity), 0);

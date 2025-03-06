@@ -27,7 +27,7 @@ const bookingSchema = new mongoose.Schema(
     packages: { type: [packageSchema], default: [] },  
 
     vehicalNumber: { type: String },
-    receiptNo: { type: String, default: "" }, 
+    receiptNo: { type: Number, default: "" }, 
     eWayBillNo: { type: String },
     remarks: { type: String },
 
