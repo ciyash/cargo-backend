@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import Subadmin from '../models/subadmin.auth.model.js';
 import nodemailer from "nodemailer";
 import dotenv from "dotenv"; 
-import req from "express/lib/request.js";
+
 
 dotenv.config();
 
@@ -131,50 +131,6 @@ const signup = async (req, res) => {
   }
 };
 
-// const login = async (req, res) => {
-//   try {
-//     const { identifier, password } = req.body; 
-
-//     if (!identifier || !password) {
-//       return res.status(400).json({ message: "Email/Phone and password are required" });
-//     }
-
-//     const subadmin = await Subadmin.findOne({ $or: [{ email: identifier }, { phone: identifier },{ username: identifier }] });
-
-//     if (!subadmin) {
-//       return res.status(404).json({ message: "Subadmin not found" });
-//     }
-
-//     const isMatch = await bcrypt.compare(password, subadmin.password);
-//     if (!isMatch) {
-//       return res.status(401).json({ message: "Invalid credentials" });
-//     }
-
-//     const ipAddress = req.headers["x-forwarded-for"]
-//       ? req.headers["x-forwarded-for"].split(",")[0].trim()
-//       : req.socket?.remoteAddress || req.connection?.remoteAddress;
-
-//     await Subadmin.findByIdAndUpdate(subadmin._id, { ipAddress });
-
-//     const token = jwt.sign({ id: subadmin._id, role: subadmin.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
-
-//     res.status(200).json({
-//       message: "Login successful",
-//       token,
-//       id: subadmin._id,
-//       role: subadmin.role,
-//       uniqueId: subadmin.subadminUniqueId,
-//       ipAddress,
-//       branch:subadmin.branchName,
-//       city:subadmin.location,
-//       branchId:subadmin.branchId
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: "Server Error", error: error.message });
-//   }
-// };
-
-
 const login = async (req, res) => {
   try {
     const { identifier, password } = req.body;  
@@ -219,7 +175,7 @@ const login = async (req, res) => {
       ipAddress
     };
 
-    console.log("Token Payload:", tokenPayload);
+    // console.log("Token Payload:", tokenPayload);
 
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
  
