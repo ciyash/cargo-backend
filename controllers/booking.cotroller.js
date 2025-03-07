@@ -103,7 +103,7 @@ const createBooking = async (req, res) => {
     const location = req.user.branchLocation; 
     const bookedBy=req.user.id
 
-    // ✅ Generate GRN and LR numbers
+    // ✅ Generate GRN and LR numbers  
     const grnNumber = await generateGrnNumber();
     const lrNumber = await generateLrNumber(fromCity, location);
     const eWayBillNo = await generateEWayBillNo();
@@ -146,7 +146,7 @@ const createBooking = async (req, res) => {
       doorDeliveryCharge,
       doorPickupCharge,
       valueOfGoods,
-      bookingStatus,
+      bookingStatus,  
       adminUniqueId,
       bookedBy,
       items,

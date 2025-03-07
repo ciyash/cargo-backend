@@ -100,7 +100,7 @@ const resetPassword = async (req, res) => {
 
 const signup = async (req, res) => {
   try {
-    const { name, username, phone, email, password, branchId, branchName, location, documents, role } = req.body;
+    const { name, username, phone, email, password, branchId, location, documents, role } = req.body;
 
     const existingSubadmin = await Subadmin.findOne({ $or: [{ email }, { phone }] });
     if (existingSubadmin) {
@@ -118,7 +118,6 @@ const signup = async (req, res) => {
       email,
       password: hashedPassword,
       branchId,
-      branchName,
       location,
       documents,
       role,
@@ -177,7 +176,7 @@ const signup = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const { identifier, password } = req.body;  
 
     if (!identifier || !password) {
       return res.status(400).json({ message: "Email, Phone, or Username and password are required" });
