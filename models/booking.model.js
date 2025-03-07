@@ -47,7 +47,7 @@ const bookingSchema = new mongoose.Schema(
     receiverAddress: { type: String },
     receiverGst: { type: String, default: "" },
 
-    parcelGst: { type: String, default: "" },
+    parcelGstAmount: { type: Number, default:0 },
     grandTotal: { type: Number, default: 0 },
     serviceCharge: { type: Number, default: 0 },
     hamaliCharge: { type: Number, default: 0 },
@@ -60,7 +60,7 @@ const bookingSchema = new mongoose.Schema(
     ltDate: { type: Date, default: () => new Date() },
     ltCity: { type: String, default: "" }, 
     ltBranch: { type: String, default: "" },
-    ltEmployee: { type: String, default: "" },
+    ltEmployee: { type: String, default: "" }, 
     deliveryEmployee: { type: String, default: "" },
 
     cancelByUser: { type: String, default: "" },

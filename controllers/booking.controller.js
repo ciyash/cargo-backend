@@ -67,7 +67,7 @@ const generateEWayBillNo = async () => {
   } catch (error) {
     throw new Error("Failed to generate eWayBillNo");
   }
-};
+};  
 
 const generateReceiptNumber = async () => {
   const lastBooking = await Booking.findOne().sort({ receiptNo: -1 }).lean();
@@ -80,7 +80,7 @@ const createBooking = async (req, res) => {
       fromCity, toCity, pickUpBranch, dropBranch, totalPrice,  dispatchType, bookingType,
       packages, // Array of package objects
       vehicalNumber, senderName, senderMobile, senderAddress, senderGst,
-      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGst,
+      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
       bookingStatus, items,
       ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
@@ -131,14 +131,14 @@ const createBooking = async (req, res) => {
       packages,  
       vehicalNumber,
       senderName,
-      senderMobile,
+      senderMobile,  
       senderAddress,
       senderGst,
       receiverName,
       receiverMobile,
       receiverAddress,
       receiverGst,
-      parcelGst,
+      parcelGstAmount,
       receiptNo: generatedReceiptNo, 
       totalPrice,
       grandTotal,
@@ -169,6 +169,7 @@ const createBooking = async (req, res) => {
 
     res.status(201).json({ success: true, message: "Booking created successfully", data: booking });
   } catch (error) {
+    console.log(error.message)
     res.status(500).json({error: error.message });
   }
 };
@@ -185,6 +186,47 @@ const getAllBookings = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+const getAllBookingsPages = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1; // Default: Page 1
+    const limit = parseInt(req.query.limit) || 10; // Default: 10 records per page
+    const skip = (page - 1) * limit; // Calculate records to skip
+ 
+    const totalBookings = await Booking.countDocuments();
+    const totalPages = Math.ceil(totalBookings / limit);
+ 
+    const bookings = await Booking.find()
+      .populate("bookedBy")
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+ 
+    if (bookings.length === 0) {
+      return res.status(404).json({ success: false, message: "No bookings found" });
+    }
+ 
+    // ✅ Calculate next & previous pages
+    const nextPage = page < totalPages ? page + 1 : null;
+    const prevPage = page > 1 ? page - 1 : null;
+ 
+    // ✅ Send response with pagination metadata
+    res.status(200).json({
+      success: true,
+      page,
+      limit,
+      totalPages,
+      totalBookings,
+      nextPage,
+      prevPage,
+      bookings
+    });
+ 
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+ 
 
   const getBookingByGrnNo = async (req, res) => {
     try {
@@ -219,109 +261,8 @@ const getAllBookings = async (req, res) => {
       res.status(500).json({error:error.message})
     }
   }
-  const getBookingsByTimeRange = async (req, res) => {
-    try {
-      let { fromTime, toTime } = req.params;
+
   
-      // Convert times to numbers for comparison
-      const [fromHours, fromMinutes, fromSeconds] = fromTime.split(":").map(Number); 
-      const [toHours, toMinutes, toSeconds] = toTime.split(":").map(Number);
-  
-      const bookings = await Booking.aggregate([
-        {
-          $addFields: {
-            bookingTime: {
-              $dateToString: { format: "%H:%M:%S", date: "$bookingDate" }
-            }
-          }
-        },
-        {
-          $match: {
-            bookingTime: {
-              $gte: `${String(fromHours).padStart(2, "0")}:${String(fromMinutes).padStart(2, "0")}:${String(fromSeconds).padStart(2, "0")}`,
-              $lte: `${String(toHours).padStart(2, "0")}:${String(toMinutes).padStart(2, "0")}:${String(toSeconds).padStart(2, "0")}`
-            }
-          }
-        }
-      ]);
-  
-      res.json({ success: true, data: bookings });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  };
-  
-  const getBookingBysenderMobile = async(req,res) => {
-    try{
-      const {senderMobile}=req.params
-      const booking=await Booking.find({senderMobile})
-
-      if(!booking){
-        return res.status(404).json({message:"No bookings found!"})
-      }
-      res.status(200).json(booking)
-    }
-    catch(error){
-    res.status(500).json({message:error.message})
-    }
-  }
-
-  const getBookingbyreceiverMobile=async(req,res) => {
-    try{
-      const {receiverMobile}=req.params
-      const booking=await Booking.find({receiverMobile})
-      if(!booking){
-        return res.status(404).json({message:"No receiverMobile "})
-      }
-      res.status(200).json(booking)
-    }
-    catch(error){
-     res.status(500).json({message:error.message})
-    }
-  }
-
-  const getBookingsenderName=async(req,res) =>{
-    try{
-    const {senderName} =req.params
-    const booking= await Booking.find({senderName})
-    if(!booking){
-      return res.status(404).json({message:"senderName not found in bookings"})
-    }
-    res.status(200).json(booking)
-    }
-    catch(error){
-      res.status(500).json({message:error.message})
-    }
-  }
-
-  const getBookingsreceiverName=async(req,res) =>{
-    try{
-    const {receiverName} =req.params
-    const booking= await Booking.find({receiverName})
-    if(!booking){
-      return res.status(404).json({message:"ReceiverName not found in bookings"})
-    }
-    res.status(200).json(booking)
-    }
-    catch(error){
-      res.status(500).json({message:error.message})
-    }
-  }
-
-  const getBookingPickUpBranch=async(req,res) => {
-    try{
-      const {pickUpBranch} =req.params
-      const booking= await Booking.find({pickUpBranch})
-      if(!booking){
-        return res.status(404).json({message:"pickUpBranch not found in bookings"})
-      }
-      res.status(200).json(booking)
-      }
-      catch(error){
-        res.status(500).json({message:error.message})
-      }
-  }
-
   const getBookinglrNumber = async (req, res) => {
     try {
       const { lrNumber } = req.body;
@@ -433,34 +374,6 @@ const getAllBookings = async (req, res) => {
     }
 };
 
-const getBookingsByGstParams = async (req, res) => {
-  try {
-      const { senderGst, receiverGst, parcelGst } = req.params;
-
-      // Build dynamic query based on available parameters
-      let query = {};
-      if (senderGst) query.senderGst = senderGst;
-      if (receiverGst) query.receiverGst = receiverGst;
-      if (parcelGst) query.parcelGst = parcelGst;
-
-      // Ensure at least one GST parameter is provided
-      if (Object.keys(query).length === 0) {
-          return res.status(400).json({ success: false, message: "At least one GST parameter (senderGst, receiverGst, or parcelGst) is required" });
-      }
-
-      // Fetch matching bookings
-      const bookings = await Booking.find(query);
-
-      if (bookings.length === 0) {
-          return res.status(404).json({ success: false, message: "No bookings found for the given GST details" });
-      }
-
-      res.status(200).json({ success: true, data: bookings });
-  } catch (error) {
-      res.status(500).json({ success: false, message: "Server error", error: error.message });
-  }
-};
-
 const getBookingsfromCityTotoCity=async(req,res) => {
   try{
    const {fromCity,toCity,vehicalNumber}=req.params
@@ -517,6 +430,33 @@ const getBookingsBetweenDates = async (req, res) => {
 };
 
 
+const getBookingsByAnyField = async (req, res) => {
+  try {
+    const { query } = req.query; // Use 'query' as the search input
+
+    if (!query) {
+      return res.status(400).json({ success: false, message: "Query parameter is required" });
+    }
+
+    const searchRegex = new RegExp(query, "i"); // Case-insensitive search
+
+    const bookings = await Booking.find({
+      $or: [
+        { senderName: searchRegex },
+        { receiverName: searchRegex },
+        { pickUpBranch: searchRegex },
+        {senderGst:searchRegex},
+        {receiverGst:searchRegex},
+        { senderMobile: isNaN(query) ? null : Number(query) },
+        { receiverMobile: isNaN(query) ? null : Number(query) }
+      ]
+    });
+
+    res.status(200).json({ success: true, data: bookings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 export default {createBooking,
@@ -524,17 +464,12 @@ export default {createBooking,
   getBookingByGrnNo,
   deleteBookings,
   updateBookings,
-  getBookingBysenderMobile,
-  getBookingbyreceiverMobile,
-  getBookingsenderName,
-  getBookingsreceiverName,
   getBookingadminUniqueId,
-  getBookingPickUpBranch,
   updateGRNBookings,
   getBookinglrNumber,
   updateAllGrnNumbers,
-  getBookingsByGstParams,
   getBookingsfromCityTotoCity,
   getBookingsBetweenDates,
-  getBookingsByTimeRange
+  getAllBookingsPages,
+  getBookingsByAnyField
 }

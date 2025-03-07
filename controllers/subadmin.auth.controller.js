@@ -194,8 +194,7 @@ const login = async (req, res) => {
       return res.status(404).json({ message: "Invalid credentials" });
     }
 
-    // Log subadmin details to verify subadminUniqueId
-    console.log("Subadmin Details:", subadmin);
+  
 
     const isMatch = await bcrypt.compare(password, subadmin.password);
     if (!isMatch) {

@@ -1,6 +1,6 @@
 import express from 'express'
 import auth from '../config/auth.middleware.js'
-import bookingCotroller from '../controllers/booking.cotroller.js'
+import bookingCotroller from '../controllers/booking.controller.js'
 
 const router=express.Router()  
 
@@ -12,19 +12,10 @@ router.get("/grnNumber/:grnNumber",bookingCotroller.getBookingByGrnNo)
 
 router.get("/adminUniqueId/:adminUniqueId",bookingCotroller.getBookingadminUniqueId)
 
-router.get("/senderMobile/:senderMobile",bookingCotroller.getBookingBysenderMobile)
+router.get("/search/:query", bookingCotroller.getBookingsByAnyField);
 
-router.get("/receiverMobile/:receiverMobile",bookingCotroller.getBookingbyreceiverMobile)
+router.get("/pages",bookingCotroller.getAllBookingsPages)
 
-router.get("/senderName/:senderName",bookingCotroller.getBookingsenderName)
-
-router.get("/receiverName/:receiverName",bookingCotroller.getBookingsreceiverName)
-
-router.get("/pickUpBranch/:pickUpBranch",bookingCotroller.getBookingPickUpBranch)
-
-router.get("/time/:fromTime/:toTime",bookingCotroller.getBookingsByTimeRange)
-
-router.get("/gst/:senderGst?/:receiverGst?/:parcelGst?", bookingCotroller.getBookingsByGstParams);
 
 router.get("/fromCity/:fromCity/toCity/:toCity/vehicalNumber/:vehicalNumber",bookingCotroller.getBookingsfromCityTotoCity)
 
