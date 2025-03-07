@@ -187,50 +187,52 @@ const login = async (req, res) => {
       $or: [{ email: identifier }, { phone: identifier }, { username: identifier }]
     }).populate({
       path: "branchId",
-      select: "location name" // Assuming Branch schema has 'location' and 'name' fields
+      select: "location name" 
     });
 
     if (!subadmin) {
       return res.status(404).json({ message: "Invalid credentials" });
     }
 
-    // Check password
+    // Log subadmin details to verify subadminUniqueId
+    console.log("Subadmin Details:", subadmin);
+
     const isMatch = await bcrypt.compare(password, subadmin.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Get IP Address
     const ipAddress = req.headers["x-forwarded-for"]?.split(",")[0].trim() || 
                       req.socket?.remoteAddress || 
                       req.connection?.remoteAddress;
 
-    // Update IP Address in Database
     await Subadmin.findByIdAndUpdate(subadmin._id, { ipAddress });
 
-    // Generate JWT Token (Including Branch Details)
-    const token = jwt.sign(
-      {
-        id: subadmin._id,
-        role: subadmin.role,
-        branchId: subadmin.branchId?._id || null,
-        branchLocation: subadmin.branchId?.location || null,
-        branchName: subadmin.branchId?.name || null,
-        ipAddress
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    // Log the token payload before signing
+    const tokenPayload = {
+      subadminUniqueId: subadmin.subadminUniqueId, 
+      id: subadmin._id,
+      role: subadmin.role,
+      branchId: subadmin.branchId?._id || null,
+      branchLocation: subadmin.branchId?.location || null,
+      branchName: subadmin.branchId?.name || null,
+      ipAddress
+    };
 
-    // Send response
+    console.log("Token Payload:", tokenPayload);
+
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
+
     res.status(200).json({
       message: "Login successful",
-      token
+      token,
+      id:subadmin._id
     });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 
 

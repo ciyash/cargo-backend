@@ -82,7 +82,7 @@ const createBooking = async (req, res) => {
       vehicalNumber, senderName, senderMobile, senderAddress, senderGst,
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGst,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
-      bookingStatus, receiptNo, adminUniqueId, items,
+      bookingStatus, items,
       ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
       cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
       refundCharge = 0, refundAmount = 0
@@ -101,8 +101,8 @@ const createBooking = async (req, res) => {
     }
 
     const location = req.user.branchLocation; 
-    const bookedBy=req.user.id
-
+    const bookedBy=req.user.id;
+    const adminUniqueId=req.user.subadminUniqueId
     // ✅ Generate GRN and LR numbers  
     const grnNumber = await generateGrnNumber();
     const lrNumber = await generateLrNumber(fromCity, location);
@@ -121,6 +121,7 @@ const createBooking = async (req, res) => {
       grnNumber,
       lrNumber,
       location,
+      adminUniqueId,
       fromCity,
       toCity,
       pickUpBranch,
@@ -146,8 +147,7 @@ const createBooking = async (req, res) => {
       doorDeliveryCharge,
       doorPickupCharge,
       valueOfGoods,
-      bookingStatus,  
-      adminUniqueId,
+      bookingStatus,
       bookedBy,
       items,
       eWayBillNo,

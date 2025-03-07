@@ -13,7 +13,7 @@ const bookingSchema = new mongoose.Schema(
   {  
     grnNumber: { type: Number, unique: true }, 
     lrNumber: { type: String },
-    adminUniqueId: { type: Number },
+    adminUniqueId: { type: Number,required:true},
     bookedBy: { type:mongoose.Schema.Types.ObjectId,ref:"Subadmin",required:true},  // employee or subadmin or accountant
     fromCity: { type: String },
     toCity: { type: String },
