@@ -16,7 +16,7 @@ const parcelSchema = new mongoose.Schema({
     driverName: { type: String, required: true },
     driverNo: { type: Number, required: true }, 
 
-    unloadBranch:{type:String,default:""},
+    unloadBranch:{type:String,default:""},    
     vehicalType: { type:String,default:"" }, 
     parcelStatus:{type:Number,default:0},
     remarks: { type: String,default:""},

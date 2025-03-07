@@ -219,7 +219,37 @@ const getAllBookings = async (req, res) => {
       res.status(500).json({error:error.message})
     }
   }
-
+  const getBookingsByTimeRange = async (req, res) => {
+    try {
+      let { fromTime, toTime } = req.params;
+  
+      // Convert times to numbers for comparison
+      const [fromHours, fromMinutes, fromSeconds] = fromTime.split(":").map(Number); 
+      const [toHours, toMinutes, toSeconds] = toTime.split(":").map(Number);
+  
+      const bookings = await Booking.aggregate([
+        {
+          $addFields: {
+            bookingTime: {
+              $dateToString: { format: "%H:%M:%S", date: "$bookingDate" }
+            }
+          }
+        },
+        {
+          $match: {
+            bookingTime: {
+              $gte: `${String(fromHours).padStart(2, "0")}:${String(fromMinutes).padStart(2, "0")}:${String(fromSeconds).padStart(2, "0")}`,
+              $lte: `${String(toHours).padStart(2, "0")}:${String(toMinutes).padStart(2, "0")}:${String(toSeconds).padStart(2, "0")}`
+            }
+          }
+        }
+      ]);
+  
+      res.json({ success: true, data: bookings });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
   
   const getBookingBysenderMobile = async(req,res) => {
     try{
@@ -505,5 +535,6 @@ export default {createBooking,
   updateAllGrnNumbers,
   getBookingsByGstParams,
   getBookingsfromCityTotoCity,
-  getBookingsBetweenDates
+  getBookingsBetweenDates,
+  getBookingsByTimeRange
 }

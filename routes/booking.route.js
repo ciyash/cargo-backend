@@ -22,6 +22,8 @@ router.get("/receiverName/:receiverName",bookingCotroller.getBookingsreceiverNam
 
 router.get("/pickUpBranch/:pickUpBranch",bookingCotroller.getBookingPickUpBranch)
 
+router.get("/time/:fromTime/:toTime",bookingCotroller.getBookingsByTimeRange)
+
 router.get("/gst/:senderGst?/:receiverGst?/:parcelGst?", bookingCotroller.getBookingsByGstParams);
 
 router.get("/fromCity/:fromCity/toCity/:toCity/vehicalNumber/:vehicalNumber",bookingCotroller.getBookingsfromCityTotoCity)
