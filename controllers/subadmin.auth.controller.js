@@ -222,12 +222,10 @@ const login = async (req, res) => {
     console.log("Token Payload:", tokenPayload);
 
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
-
+ 
     res.status(200).json({
       message: "Login successful",
-      token,
-      branchName: subadmin.branchId?.name || null,
-      branchCity: subadmin.branchId?.city || null
+      token
     });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
