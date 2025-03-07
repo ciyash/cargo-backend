@@ -188,7 +188,7 @@ const login = async (req, res) => {
       $or: [{ email: identifier }, { phone: identifier }, { username: identifier }]
     }).populate({
       path: "branchId",
-      select: "location name" 
+      select: "location name city" 
     });
 
     if (!subadmin) {
@@ -225,7 +225,9 @@ const login = async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
-      token
+      token,
+      branchName: subadmin.branchId?.name || null,
+      branchCity: subadmin.branchId?.city || null
     });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
