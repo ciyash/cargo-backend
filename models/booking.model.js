@@ -6,15 +6,15 @@ const packageSchema = new mongoose.Schema({
   contains: { type: Number, default: 0 },
   weight: { type: Number, required: true }, 
   unitPrice: { type: Number, required: true },
-  totalPrice: { type: Number, default: 0 }
+  totalPrice: { type: Number, required:true }
 });
 
 const bookingSchema = new mongoose.Schema(
   {  
-    grnNumber: { type: Number, unique: true }, 
-    lrNumber: { type: String },
-    adminUniqueId: { type: Number,required:true},
-    bookedBy: { type:mongoose.Schema.Types.ObjectId,ref:"Subadmin",required:true},  // employee or subadmin or accountant
+    grnNumber: { type: Number, unique: true },            //auto  generate
+    lrNumber: { type: String,required:true },             //auto  generate
+    adminUniqueId: { type: Number,required:true},         //auto entered
+    bookedBy: { type:mongoose.Schema.Types.ObjectId,ref:"Subadmin",required:true},  // auto entered  // employee or subadmin or accountant
     fromCity: { type: String },
     toCity: { type: String },
     pickUpBranch: { type: String },
