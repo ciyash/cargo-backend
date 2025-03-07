@@ -13,8 +13,8 @@ const createParcel = async (req, res) => {
             fromCity, toCity, remarks, grnNo, lrNumber
         } = req.body;
 
-        if (!parcelType || !fromBranch || !toBranch || !vehicalType || !vehicalNumber || !driverName || !driverNo ||
-            !fromBookingDate || !toBookingDate || !fromCity || !toCity || !remarks ||
+        if (!parcelType || !fromBranch   || !vehicalNumber || !driverName || !driverNo ||
+            !fromBookingDate || !toBookingDate || !fromCity || !toCity || 
             !Array.isArray(grnNo) || grnNo.length === 0 || !Array.isArray(lrNumber) || lrNumber.length === 0) {
             return res.status(400).json({ message: "All required fields must be provided" });
         }
@@ -165,26 +165,35 @@ const getParcelsByFilter = async (req, res) => {
 };
 
 
-    const branchToBranchLoading = async (req, res) => {
-        try {
-            const { fromBookingDate, toBookingDate, branch } = req.body;
-    
-            // Build the query object dynamically
-            let query = {};
-    
-            if (fromBookingDate) query.fromBookingDate = new Date(fromBookingDate);
-            if (toBookingDate) query.toBookingDate = new Date(toBookingDate);
-            if (branch) query.branchId = fromBranch; 
-    
-            const parcels = await ParcelLoading.find(query).populate("branch", "branchName");
-    
-            if (parcels.length === 0) return res.status(404).json({ message: "No parcels found" });
-    
-            res.status(200).json(parcels);
-        } catch (error) {
-            res.status(500).json({ message: error.message });
+const branchToBranchLoading = async (req, res) => {
+    try {
+        const { fromBookingDate, toBookingDate, fromBranch } = req.body;
+
+        // Build the query object dynamically
+        let query = {};
+
+        if (fromBookingDate && toBookingDate) {
+            query.fromBookingDate = { $gte: new Date(fromBookingDate), $lte: new Date(toBookingDate) };
+        } else if (fromBookingDate) {
+            query.fromBookingDate = { $gte: new Date(fromBookingDate) };
+        } else if (toBookingDate) {
+            query.toBookingDate = { $lte: new Date(toBookingDate) };
         }
+
+        if (fromBranch) query.fromBranch = fromBranch; // Fix field name
+
+        // Fetch parcels based on query
+        const parcels = await ParcelLoading.find(query);
+
+        if (!parcels.length) return res.status(404).json({ message: "No parcels found" });
+
+        res.status(200).json(parcels);
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
 };
+
+
 
  const updateAllGrnNumbers = async (req, res) => {
     try {
@@ -309,6 +318,30 @@ const getParcelLoadingBetweenDates = async (req, res) => {
     }
   };
   
+  const getParcelsByFilters = async (req, res) => {
+    try {
+        const { fromBranch, fromCity, toCity, fromBookingDate, toBookingDate } = req.body;
+
+        let query = {};
+
+        if (fromBranch) query.fromBranch = fromBranch;
+        if (fromCity) query.fromCity = fromCity;
+        if (toCity) query.toCity = toCity;
+        if (fromBookingDate) query.fromBookingDate = { $gte: new Date(fromBookingDate) };
+        if (toBookingDate) query.toBookingDate = { $lte: new Date(toBookingDate) };
+
+        const parcels = await ParcelLoading.find(query);
+
+        if (parcels.length === 0) {
+            return res.status(404).json({ message: "No parcels found" });
+        }
+
+        res.status(200).json(parcels);
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+
     
 export default { createParcel,
      getParcelById,
@@ -323,6 +356,7 @@ export default { createParcel,
       getParcelByLrNumber,
       getParcelByVehicalNumber,
       getParcelsByBranch,
-      getParcelLoadingBetweenDates
+      getParcelLoadingBetweenDates,
+      getParcelsByFilters
     };
  

@@ -31,4 +31,6 @@ router.post("/fromBookingDate/toBookingDate",parcelController.getParcelLoadingBe
 
 router.post("/fromBookingDate/toBookingDate/userName",parcelController.getParcelLoadingDates)
 
+router.post("/parcel-offline-report",parcelController.getParcelsByFilters)
+
 export default router

@@ -1,25 +1,26 @@
 import mongoose from "mongoose";
 
 const parcelSchema = new mongoose.Schema({  
-    parcelType:{type:String,enum:["loading","unloading"]},
+    parcelType:{type:String,required:true},  
     vocherNoUnique:{type:Number,required:true},   //auto generated
     fromBookingDate: { type: Date, required: true },
     toBookingDate: { type: Date, required: true },
     fromCity: { type: String, required: true },
     toCity: { type: String, required: true },
     fromBranch: { type:String, required: true },
-   
+    toBranch: { type: String, required: false},
     loadingDate:{type:Date,required:true},
-    userName:{type:String,required:true},
-    toBranch: { type: String, required: true},
-    unloadBranch:{type:String,default:""},
-    vehicalType: { type:String, required: true }, 
+    userName:{type:String,required:true},   //  loading employee
+    
     vehicalNumber:{type:String,required:true},
     driverName: { type: String, required: true },
+    driverNo: { type: Number, required: true }, 
+
+    unloadBranch:{type:String,default:""},
+    vehicalType: { type:String,default:"" }, 
     parcelStatus:{type:Number,default:0},
-    driverNo: { type: String, required: true }, 
-    remarks: { type: String},
-    grnNo: [{ type: String, required: true}], 
+    remarks: { type: String,default:""},
+    grnNo: [{ type: Number, required: true}], 
     lrNumber:[{type:String,required:true}],
    
 });
