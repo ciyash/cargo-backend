@@ -19,7 +19,7 @@ const bookingSchema = new mongoose.Schema(
     toCity: { type: String },
     pickUpBranch: { type: String },
     dropBranch: { type: String },
-    location: { type: String, default: "" },
+    location: { type: String,require:true, default: "" },
     dispatchType: { type: String }, 
     bookingType: { type: String },
 
