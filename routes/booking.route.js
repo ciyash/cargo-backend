@@ -1,9 +1,10 @@
 import express from 'express'
+import auth from '../config/auth.middleware.js'
 import bookingCotroller from '../controllers/booking.cotroller.js'
 
 const router=express.Router()  
 
-router.post("/",bookingCotroller.createBooking)
+router.post("/",auth,bookingCotroller.createBooking)
 
 router.get("/",bookingCotroller.getAllBookings)
 

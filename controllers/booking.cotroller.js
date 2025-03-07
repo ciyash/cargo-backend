@@ -74,36 +74,20 @@ const generateReceiptNumber = async () => {
   return (lastBooking?.receiptNo || 0) + 1; // If no booking exists, start from 1
 };
 
-
-
-
 const createBooking = async (req, res) => {
   try {
     const { 
-      fromCity, toCity, pickUpBranch, dropBranch, totalPrice, location, dispatchType, bookingType,
+      fromCity, toCity, pickUpBranch, dropBranch, totalPrice,  dispatchType, bookingType,
       packages, // Array of package objects
       vehicalNumber, senderName, senderMobile, senderAddress, senderGst,
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGst,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
-      bookingStatus, receiptNo, adminUniqueId, bookedBy, items,
+      bookingStatus, receiptNo, adminUniqueId, items,
       ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
       cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
       refundCharge = 0, refundAmount = 0
     } = req.body;
 
-   
-    // const requiredFields = [
-    //   "fromCity", "toCity", "pickUpBranch", "dropBranch", "totalPrice", "location", "dispatchType", "bookingType",
-    //   "packages", "vehicalNumber", "senderName", "senderMobile", "senderAddress",
-    //   "receiverName", "receiverMobile", "receiverAddress", "adminUniqueId", "bookedBy",
-    //   "items", "eWayBillNo"
-    // ];
-
-    // for (const field of requiredFields) {
-    //   if (!req.body[field] || (Array.isArray(req.body[field]) && req.body[field].length === 0)) {
-    //     return res.status(400).json({ success: false, message: `${field} is required` });
-    //   }
-    // }
 
     // ✅ Validate package details
     if (!Array.isArray(packages) || packages.length === 0) {
@@ -115,6 +99,9 @@ const createBooking = async (req, res) => {
         return res.status(400).json({ success: false, message: "Each package must have quantity, packageType, weight, and unitPrice" });
       }
     }
+
+    const location = req.user.branchLocation; 
+    const bookedBy=req.user.id
 
     // ✅ Generate GRN and LR numbers
     const grnNumber = await generateGrnNumber();

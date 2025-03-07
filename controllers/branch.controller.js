@@ -16,6 +16,7 @@ const createBranch = async (req, res) => {
       name,
       branchType,
       city,
+      location,
       branchDate,
       branchStatus,
       address,
@@ -34,6 +35,7 @@ const createBranch = async (req, res) => {
       !name ||
       !branchType ||
       !city ||
+      !location ||
       !address ||
       !phone ||
       !email ||
@@ -54,6 +56,7 @@ const createBranch = async (req, res) => {
       name,
       branchType,
       city,
+      location,
       branchDate,
       branchStatus,
       address,
