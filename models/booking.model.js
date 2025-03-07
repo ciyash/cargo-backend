@@ -55,9 +55,7 @@ const bookingSchema = new mongoose.Schema(
     doorPickupCharge: { type: Number, default: 0 },
     valueOfGoods: { type: Number, default: 0 },
     bookingStatus: { type: Number, enum: [0, 1, 2, 3, 4, 5], default: 0 },
-
     items: { type: Number },
-
     bookingDate: { type: Date, default: () => new Date() },
     ltDate: { type: Date, default: () => new Date() },
     ltCity: { type: String, default: "" }, 
