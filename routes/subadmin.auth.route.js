@@ -1,5 +1,6 @@
 import express from 'express'
 import subAdminAuthController from '../controllers/subadmin.auth.controller.js'
+import auth from '../config/auth.middleware.js'
 
 const router=express.Router()  
 
@@ -9,7 +10,7 @@ router.post("/login",subAdminAuthController.login)
 
 router.get("/subadmins",subAdminAuthController.getAllSubadmins)
 
-router.get("/:id",subAdminAuthController.getSubadminById)
+router.get("/profile",auth,subAdminAuthController.getSubadminById)
 
 router.patch("/:id",subAdminAuthController.updateSubadmin)
 
