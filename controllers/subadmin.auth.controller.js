@@ -148,14 +148,14 @@ const login = async (req, res) => {
     });
 
     if (!subadmin) {
-      return res.status(404).json({ message: "Invalid credentials" });
+      return res.status(404).json({ message: "subadmin not found !" });
     }
 
   
 
     const isMatch = await bcrypt.compare(password, subadmin.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Incorrect  password" });
     }
 
     const ipAddress = req.headers["x-forwarded-for"]?.split(",")[0].trim() || 
@@ -188,40 +188,51 @@ const login = async (req, res) => {
   }
 };
 
-
-
-
 const changeSubadminPassword = async (req, res) => {
   try {
-    const { subadminId, oldPassword, newPassword } = req.body;
-
-    if (!subadminId || !oldPassword || !newPassword) {
-      return res.status(400).json({ message: "All fields are required" });
+    const id = req.user?.id;
+    if (!id) {
+      return res.status(401).json({ success: false, message: "Unauthorized access" });
     }
 
-    const subadmin = await Subadmin.findById(subadminId);
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: "Old password and new password are required" });
+    }
+
+    const subadmin = await Subadmin.findById(id);
     if (!subadmin) {
-      return res.status(404).json({ message: "Subadmin not found" });
+      return res.status(404).json({ success: false, message: "Subadmin not found" });
     }
 
+    // Check old password
     const isMatch = await bcrypt.compare(oldPassword, subadmin.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Old password is incorrect" });
+      return res.status(400).json({ success: false, message: "Incorrect old password" });
     }
 
-    subadmin.password = await bcrypt.hash(newPassword, 10);
+    // Prevent setting the same password again (after hashing)
+    const isSamePassword = await bcrypt.compare(newPassword, subadmin.password);
+    if (isSamePassword) {
+      return res.status(400).json({ success: false, message: "New password must be different from old password" });
+    }
+
+    // Hash and save new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    subadmin.password = hashedPassword;
     await subadmin.save();
 
-    res.status(200).json({ message: "Password changed successfully" });
+    res.status(200).json({ success: true, message: "Password changed successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    console.error("Error changing password:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 };
 
+
 const getSubadminById = async (req, res) => {
   try {
-    console.log("req.user:", req.user); // Debug user object
-
+   
     const id = req.user?.id; // Ensure it's extracted correctly
     if (!id) {
       return res.status(400).json({ message: "Invalid or missing subadmin ID" });
@@ -254,7 +265,7 @@ const getAllSubadmins=async(req,res) => {
 
 const deleteSubadmin = async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.user?.id;
     const subadmin = await Subadmin.findById(id);
     
     if (!subadmin) {
@@ -269,8 +280,9 @@ const deleteSubadmin = async (req, res) => {
 };
 const updateSubadmin = async (req, res) => {
   try {
-    const { id } = req.params;
-    const updateData = req.body;
+
+    const id = req.user?.id;
+        const updateData = req.body;
 
     if (!id) {
       return res.status(400).json({ message: "Subadmin ID is required" });

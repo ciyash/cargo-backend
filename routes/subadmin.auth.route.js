@@ -12,15 +12,15 @@ router.get("/subadmins",subAdminAuthController.getAllSubadmins)
 
 router.get("/profile",auth,subAdminAuthController.getSubadminById)
 
-router.patch("/:id",subAdminAuthController.updateSubadmin)
+router.patch("/update-profile",auth,subAdminAuthController.updateSubadmin)
 
-router.post("/change-password",subAdminAuthController.changeSubadminPassword)
+router.post("/change-password",auth,subAdminAuthController.changeSubadminPassword)
 
 router.post("/reset-password",subAdminAuthController.resetPassword)
 
 router.post("/forgot-password",subAdminAuthController.forgotPassword) 
 
-router.delete("/:id",subAdminAuthController.deleteSubadmin)  
+router.delete("/delete-subadmin",auth,subAdminAuthController.deleteSubadmin)  
 
 
 export default router

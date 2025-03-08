@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const branchSchema = new mongoose.Schema({
     branchUniqueId:{type:String,required:true},  
-    createdBy: { type:String,required: true },
+    createdBy: { type:mongoose.Schema.Types.ObjectId,ref:'Subadmin'},
     branchType:{type:String,required:true},
     name:{type:String,required:true},
     city:{type:String,required:true},

@@ -101,6 +101,7 @@ const createBooking = async (req, res) => {
     }
 
     const location = req.user.branchLocation; 
+    console.log("location",location)
     const bookedBy=req.user.id;
     const adminUniqueId=req.user.subadminUniqueId
     // ✅ Generate GRN and LR numbers  
@@ -122,6 +123,7 @@ const createBooking = async (req, res) => {
       lrNumber,
       location,
       adminUniqueId,
+      bookingTime: Date.now(),
       fromCity,
       toCity,
       pickUpBranch,

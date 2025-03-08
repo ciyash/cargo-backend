@@ -15,6 +15,7 @@ const bookingSchema = new mongoose.Schema(
     lrNumber: { type: String,required:true },             //auto  generate
     adminUniqueId: { type: Number,required:true},         //auto entered
     bookedBy: { type:mongoose.Schema.Types.ObjectId,ref:"Subadmin",required:true},  // auto entered  // employee or subadmin or accountant
+    bookingTime: { type: Date, default: Date.now, required: true },
     fromCity: { type: String,required:true },
     toCity: { type: String,required:true },
     pickUpBranch: { type: String,required:true },
@@ -22,7 +23,7 @@ const bookingSchema = new mongoose.Schema(
     location: { type: String,require:true},
     dispatchType: { type: String }, 
     bookingType: { type: String },
-
+    
     // Change these fields to an array of objects
     packages: { type: [packageSchema], default: [] },  
 

@@ -12,7 +12,6 @@ const generateUniqueId = (city, name) => {
 const createBranch = async (req, res) => {
   try {
     const {
-      createdBy,
       name,
       branchType,
       city,
@@ -31,7 +30,7 @@ const createBranch = async (req, res) => {
 
     
     if (
-      !createdBy ||
+      
       !name ||
       !branchType ||
       !city ||
@@ -50,6 +49,8 @@ const createBranch = async (req, res) => {
 
     const branchUniqueId = generateUniqueId(city, name);
 
+    const createdBy=req.user.id;
+    
     const newBranch = new Branch({
       branchUniqueId,
       createdBy,
@@ -98,7 +99,7 @@ const getAllBranches = async (req, res) => {
 const getBranchByUniqueId = async (req, res) => {
   try {
     const { branchUniqueId } = req.params;
-    const branch = await Branch.findOne({branchUniqueId})
+    const branch = await Branch.findOne({branchUniqueId}).populate("createdBy",'name location')
 
     if (!branch) {
        return res.status(404).json({ success: false, message: "Branch not found" });
