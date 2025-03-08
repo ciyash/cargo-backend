@@ -6,6 +6,7 @@ const router = express.Router();
 router.post("/", auth,branchController.createBranch); 
 router.get("/", branchController.getAllBranches); 
 router.get("/branchUniqueId/:branchUniqueId", branchController.getBranchByUniqueId); 
+router.get("/subadminId/:subadminId",branchController.getBranchBySubadminUniqueId)
 router.post("/startDate/endDate",branchController.getBranchByDateRange)
 router.get("/:id",branchController.getbranchId)
 router.patch("/update/:id", branchController.updateBranch); 

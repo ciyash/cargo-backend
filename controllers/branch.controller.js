@@ -85,7 +85,7 @@ const createBranch = async (req, res) => {
 
 const getAllBranches = async (req, res) => {
   try {
-    const branches = await Branch.find()
+    const branches = await Branch.find().populate("createdBy")
     if(!branches){
       return res.status(404).json({message:"No data found in branches"})
     }
@@ -224,6 +224,35 @@ const getBranchByDateRange = async (req, res) => {
       res.status(500).json({ success: false, error: error.message });
   }
 };
+   
+const getBranchBySubadminUniqueId = async (req, res) => {
+  try {
+    const { subadminId } = req.params;
+
+    // Fetch all branches and populate `createdBy`
+    const branches = await Branch.find().populate("createdBy", "subadminUniqueId name");
+
+    console.log("subadminId from params:", subadminId);
+    console.log("Fetched branches:", branches);
+
+    // Filter branch where `createdBy.subadminUniqueId` matches `subadminId`
+    const matchedBranch = branches.find(branch => 
+      branch.createdBy && branch.createdBy.subadminUniqueId == subadminId
+    );
+
+    if (!matchedBranch) {
+      return res.status(404).json({ message: "Subadmin not found or no branch assigned!" });
+    }
+
+    console.log("Matched Branch:", matchedBranch);
+
+    res.status(200).json(matchedBranch);
+
+  } catch (error) {
+    console.error("Error fetching branch:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
 
 
 // Delete Branch
@@ -246,6 +275,7 @@ const deleteBranch = async (req, res) => {
   }
 };
 
+
 export default {
   createBranch,
   getAllBranches,
@@ -253,6 +283,6 @@ export default {
   getbranchId,
   updateBranch,
   deleteBranch,
-  getBranchByDateRange
-
+  getBranchByDateRange,
+  getBranchBySubadminUniqueId
 };

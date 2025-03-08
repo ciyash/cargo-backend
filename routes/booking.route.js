@@ -19,7 +19,7 @@ router.get("/pages",bookingCotroller.getAllBookingsPages)
 
 router.get("/fromCity/:fromCity/toCity/:toCity/vehicalNumber/:vehicalNumber",bookingCotroller.getBookingsfromCityTotoCity)
 
-router.post("/startDate/endDate/fromCity/toCity" ,bookingCotroller.getBookingsBetweenDates);
+router.post("/filterDates" ,bookingCotroller.getBookingsBetweenDates);
 
 router.post("/get-lrNumber",bookingCotroller.getBookinglrNumber)
 
