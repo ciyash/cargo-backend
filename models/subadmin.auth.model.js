@@ -20,4 +20,3 @@ const adminSchema = new mongoose.Schema(
 );
 
 export default mongoose.model("Subadmin", adminSchema);  
-  

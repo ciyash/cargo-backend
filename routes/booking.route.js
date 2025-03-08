@@ -1,35 +1,37 @@
 import express from 'express'
 import auth from '../config/auth.middleware.js'
-import bookingCotroller from '../controllers/booking.controller.js'
+
+import bookingController from '../controllers/booking.controller.js'
+
 
 const router=express.Router()  
 
-router.post("/",auth,bookingCotroller.createBooking)
+router.post("/",auth,bookingController.createBooking)
 
-router.get("/",bookingCotroller.getAllBookings)
+router.get("/",bookingController.getAllBookings)
 
-router.get("/grnNumber/:grnNumber",bookingCotroller.getBookingByGrnNo)
+router.get("/grnNumber/:grnNumber",bookingController.getBookingByGrnNo)
 
-router.get("/adminUniqueId/:adminUniqueId",bookingCotroller.getBookingadminUniqueId)
+router.get("/adminUniqueId/:adminUniqueId",bookingController.getBookingadminUniqueId)
 
-router.get("/search/:query", bookingCotroller.getBookingsByAnyField);
+router.get("/search/:query", bookingController.getBookingsByAnyField);
 
-router.get("/pages",bookingCotroller.getAllBookingsPages)
+router.get("/pages",bookingController.getAllBookingsPages)
 
 
-router.get("/fromCity/:fromCity/toCity/:toCity/vehicalNumber/:vehicalNumber",bookingCotroller.getBookingsfromCityTotoCity)
+router.get("/fromCity/:fromCity/toCity/:toCity/vehicalNumber/:vehicalNumber",bookingController.getBookingsfromCityTotoCity)
 
-router.post("/filterDates" ,bookingCotroller.getBookingsBetweenDates);
+router.post("/filterDates" ,bookingController.getBookingsBetweenDates);
 
-router.post("/get-lrNumber",bookingCotroller.getBookinglrNumber)
+router.post("/get-lrNumber",bookingController.getBookinglrNumber)
 
-router.delete("/:id",bookingCotroller.deleteBookings)
+router.delete("/:id",bookingController.deleteBookings)
 
-router.patch("/:id",bookingCotroller.updateBookings)
+router.patch("/:id",bookingController.updateBookings)
 
-router.patch("/grnNoUnique/:grnNoUnique",bookingCotroller.updateGRNBookings)
+router.patch("/grnNoUnique/:grnNoUnique",bookingController.updateGRNBookings)
 
-router.post("/updateAllGrnNumbers",bookingCotroller.updateAllGrnNumbers)
+router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
 
 
 
