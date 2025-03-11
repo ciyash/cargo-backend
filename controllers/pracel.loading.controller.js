@@ -8,9 +8,9 @@ const generateVocherNoUnique=()=>{
 const createParcel = async (req, res) => {
     try {
         const {
-            parcelType, fromBranch, toBranch,loadingDate,parcelStatus,userName, unloadBranch, vehicalType, vehicalNumber,
+            parcelType, fromBranch, toBranch,loadingDate,parcelStatus,userName,  vehicalType, vehicalNumber,
             driverName, driverNo, fromBookingDate, toBookingDate,
-            fromCity, toCity, remarks, grnNo, lrNumber
+            fromCity, toCity, remarks, grnNo, lrNumber  
         } = req.body;
 
         if (!parcelType || !fromBranch   || !vehicalNumber || !driverName || !driverNo ||
@@ -19,7 +19,7 @@ const createParcel = async (req, res) => {
             return res.status(400).json({ message: "All required fields must be provided" });
         }
 
-        const vocherNoUnique = generateVocherNoUnique();
+        const vocherNoUnique = generateVocherNoUnique();   
 
         const parcel = new ParcelLoading({
             parcelType,
@@ -30,7 +30,6 @@ const createParcel = async (req, res) => {
             fromBranch,
             toBranch,
             loadingDate,
-            unloadBranch: unloadBranch || "",
             vehicalType,
             driverName,
             driverNo,
@@ -194,7 +193,6 @@ const branchToBranchLoading = async (req, res) => {
 };
 
 
-
  const updateAllGrnNumbers = async (req, res) => {
     try {
         const { grnNumbers, updateFields } = req.body;
@@ -322,7 +320,7 @@ const getParcelLoadingBetweenDates = async (req, res) => {
     try {
         const { fromBranch, fromCity, toCity, fromBookingDate, toBookingDate } = req.body;
 
-        let query = {};
+        let query = {}; 
 
         if (fromBranch) query.fromBranch = fromBranch;
         if (fromCity) query.fromCity = fromCity;
@@ -342,6 +340,59 @@ const getParcelLoadingBetweenDates = async (req, res) => {
     }
 };
 
+
+const parcelStatusReport = async (req, res) => {
+    try {
+        const { startDate, endDate, fromCity, toCity, parcelStatus } = req.body;
+
+        if (!startDate || !endDate || !fromCity || !toCity || parcelStatus === undefined) {
+            return res.status(400).json({ success: false, message: "All fields are required" });
+        }
+
+        // Ensure date filtering works properly
+        const parcels = await ParcelLoading.find({
+            fromCity,
+            toCity,
+            parcelStatus,
+            fromBookingDate: { $gte: new Date(startDate) },
+            toBookingDate: { $lte: new Date(endDate) },
+        });
+
+        if (parcels.length === 0) {
+            return res.status(404).json({ message: "No parcels found" });
+        }
+
+        res.status(200).json(parcels);
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const parcelPendingReport = async (req, res) => {
+    try {
+        const { fromCity, toCity, fromBranch, toBranch } = req.body;
+
+        if (!fromCity || !toCity || !fromBranch || !toBranch) {
+            return res.status(400).json({ success: false, message: "All fields are required" });
+        }
+
+        const pendingParcels = await ParcelLoading.find({
+            fromCity,
+            toCity,
+            fromBranch,
+            toBranch,
+        });
+
+        if (pendingParcels.length === 0) {
+            return res.status(404).json({ success: false, message: "No pending parcels found" });
+        }
+
+        res.status(200).json(pendingParcels);
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
     
 export default { createParcel,
      getParcelById,
@@ -357,6 +408,8 @@ export default { createParcel,
       getParcelByVehicalNumber,
       getParcelsByBranch,
       getParcelLoadingBetweenDates,
-      getParcelsByFilters
+      getParcelsByFilters,
+      parcelStatusReport,
+      parcelPendingReport
     };
  

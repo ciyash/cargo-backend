@@ -12,11 +12,9 @@ const parcelSchema = new mongoose.Schema({
     loadingDate:{type:Date,required:true},
     userName:{type:String,required:true},   //  loading employee
     
-    vehicalNumber:{type:String,required:true},
+    vehicalNumber:{type:String,required:true},  
     driverName: { type: String, required: true },
     driverNo: { type: Number, required: true }, 
-
-    unloadBranch:{type:String,default:""},    
     vehicalType: { type:String,default:"" }, 
     parcelStatus:{type:Number,default:0},
     remarks: { type: String,default:""},

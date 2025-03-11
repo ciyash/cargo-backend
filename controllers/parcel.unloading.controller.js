@@ -1,12 +1,14 @@
 import ParcelUnloading from '../models/parcel.unloading.model.js'
 
-const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);
+const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);  
 
 
  const createParcelUnloading = async (req, res) => {
     try {
-        const { fromBookingDate, toBookingDate,unLoadingBy, fromCity, toCity, branch, vehicleNo, grnNo } = req.body;
-
+        const { fromBookingDate, toBookingDate, fromCity, toCity, branch, vehicleNo, grnNo,bookingType } = req.body;
+       
+        const unLoadingBy=req.user.id
+       
         const newParcel = new ParcelUnloading({
             unLoadingVoucher: generateUnloadingVoucher(),
             fromBookingDate,
@@ -16,7 +18,8 @@ const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000)
             toCity,
             branch,
             vehicleNo,
-            grnNo
+            grnNo,
+            bookingType
         });
 
         await newParcel.save();
@@ -25,7 +28,6 @@ const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000)
         res.status(500).json({ message: "Error creating parcel unloading", error: error.message });
     }
 };
-
 
  const getAllParcelUnloadings = async (req, res) => {
     try {
@@ -140,6 +142,35 @@ const getParcelUnloadingByVoucher = async (req, res) => {
     }
 };
 
+const getUnloadingReport = async (req, res) => {
+    try {
+        const { fromDate, toDate, fromCity, toCity, fromBranch, bookingType } = req.body;
+
+      
+        if (!fromDate || !toDate || !fromCity || !toCity || !fromBranch) {
+            return res.status(400).json({ success: false, message: "Missing required fields" });
+        }
+
+        const unloadingRecords = await ParcelUnloading.find({
+            fromBookingDate: { $gte: new Date(fromDate) },
+            toBookingDate: { $lte: new Date(toDate) },
+            fromCity,
+            toCity,
+            branch: fromBranch,
+            ...(bookingType && { bookingType }) 
+        });
+
+        if (unloadingRecords.length === 0) {
+            return res.status(404).json({ success: false, message: "No records found" });
+        }
+
+        res.status(200).json(unloadingRecords);
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
 export default {
     createParcelUnloading,
     getAllParcelUnloadings,
@@ -148,5 +179,6 @@ export default {
     updateParcelUnloading,
     getParcelunLoadingByGrnNumber,
     getParcelsByFilters,
-    getParcelUnloadingByVoucher
+    getParcelUnloadingByVoucher,
+    getUnloadingReport
 }

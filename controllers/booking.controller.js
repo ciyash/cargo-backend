@@ -78,8 +78,8 @@ const createBooking = async (req, res) => {
   try {
     const { 
       fromCity, toCity, pickUpBranch, dropBranch, totalPrice,  dispatchType, bookingType,
-      packages, // Array of package objects
-      vehicalNumber, senderName, senderMobile, senderAddress, senderGst,
+      packages, 
+      senderName, senderMobile, senderAddress, senderGst,
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
       bookingStatus, items,
@@ -131,7 +131,6 @@ const createBooking = async (req, res) => {
       dispatchType,
       bookingType,
       packages,  
-      vehicalNumber,
       senderName,
       senderMobile,  
       senderAddress,
@@ -188,6 +187,30 @@ const getAllBookings = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+const cityWiseBookings = async (req, res) => {
+  try {
+      const { startDate, endDate, fromCity, toCity } = req.body;
+
+      if (!startDate || !endDate || !fromCity || !toCity) {
+          return res.status(400).json({ success: false, message: "All fields are required" });
+      }
+
+      const bookings = await Booking.find({
+          fromCity,
+          toCity,
+          bookingDate: {
+              $gte: new Date(startDate),
+              $lte: new Date(endDate),
+          },
+      });
+
+      res.status(200).json(bookings);
+  } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 const getAllBookingsPages = async (req, res) => {
   try {
@@ -378,12 +401,12 @@ const getAllBookingsPages = async (req, res) => {
 
 const getBookingsfromCityTotoCity=async(req,res) => {
   try{
-   const {fromCity,toCity,vehicalNumber}=req.params
+   const {fromCity,toCity}=req.params
 
-   if(!fromCity || !toCity || !vehicalNumber){
+   if(!fromCity || !toCity ){
     return res.status(400).json({message:"Required fields are missing !"})
    }
-   const booking=await Booking.find({fromCity,toCity,vehicalNumber})
+   const booking=await Booking.find({fromCity,toCity})
    if(!booking){
     return res.status(404).json({message:"bookings not found !"})
    }
@@ -473,5 +496,6 @@ export default {createBooking,
   getBookingsfromCityTotoCity,
   getBookingsBetweenDates,
   getAllBookingsPages,
-  getBookingsByAnyField
+  getBookingsByAnyField,
+  cityWiseBookings
 }

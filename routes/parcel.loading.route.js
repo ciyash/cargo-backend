@@ -12,7 +12,7 @@ router.get("/:id",parcelController.getParcelById)
 router.get("/vocherNoUnique/:vocherNoUnique",parcelController.getParcelVocherNoUnique)
 
 router.patch("/:id",parcelController.updateParcel)
-
+  
 router.delete("/:id",parcelController.deleteParcel)
 
 router.post("/offline-report",parcelController.getParcelsByFilter)
@@ -33,4 +33,8 @@ router.post("/fromBookingDate/toBookingDate/userName",parcelController.getParcel
 
 router.post("/parcel-offline-report",parcelController.getParcelsByFilters)
 
-export default router
+router.post("/parcel-status-report",parcelController.parcelStatusReport)  //parcel status date difference report
+
+router.post("/parcel-pending-report",parcelController.parcelPendingReport)  // parcel pending delivery stockreport 
+
+export default router 

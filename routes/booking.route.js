@@ -1,6 +1,5 @@
 import express from 'express'
 import auth from '../config/auth.middleware.js'
-
 import bookingController from '../controllers/booking.controller.js'
 
 
@@ -18,8 +17,7 @@ router.get("/search/:query", bookingController.getBookingsByAnyField);
 
 router.get("/pages",bookingController.getAllBookingsPages)
 
-
-router.get("/fromCity/:fromCity/toCity/:toCity/vehicalNumber/:vehicalNumber",bookingController.getBookingsfromCityTotoCity)
+router.get("/fromCity/:fromCity/toCity/:toCity/:vehicalNumber",bookingController.getBookingsfromCityTotoCity)
 
 router.post("/filterDates" ,bookingController.getBookingsBetweenDates);
 
@@ -33,6 +31,7 @@ router.patch("/grnNoUnique/:grnNoUnique",bookingController.updateGRNBookings)
 
 router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
 
+router.post("/city-wise-booking",bookingController.cityWiseBookings)  // city wise booking 
 
 
 export default router

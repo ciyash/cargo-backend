@@ -1,5 +1,5 @@
 import { City } from '../models/multi.model.js'
-
+  
 // Create City
  const createCity = async (req, res) => {
     try {

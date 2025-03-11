@@ -25,7 +25,7 @@ const createBranch = async (req, res) => {
       state,
       country,
       alternateMobile,
-      status,
+     
     } = req.body;
 
     
@@ -67,7 +67,7 @@ const createBranch = async (req, res) => {
       state,
       country,
       alternateMobile,
-      status,
+     
     });
 
     await newBranch.save();
@@ -129,45 +129,9 @@ const getbranchId=async(req,res) => {
 const updateBranch = async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      branchUniqueId,
-      createdBy,
-      employeeId,
-      name,
-      branchType,
-      city,
-      branchDate,
-      branchStatus,
-      address,
-      phone,
-      email,
-      pincode,
-      state,
-      country,
-      alternateMobile,
-      status,
-    } = req.body;
-
+     
     const updatedBranch = await Branch.findByIdAndUpdate(
-      id,
-      {
-        branchUniqueId,
-        createdBy,
-        employeeId,
-        name,
-        branchType,
-        city,
-        branchDate,
-        branchStatus,
-        address,
-        phone,
-        email,
-        pincode,
-        state,
-        country,
-        alternateMobile,
-        status,
-      },
+      id,req.body,      
       { new: true }
     );
 
@@ -219,7 +183,7 @@ const getBranchByDateRange = async (req, res) => {
           return res.status(404).json({ success: false, message: "No branches found in this date range" });
       }
 
-      res.status(200).json({ success: true, data: branches });
+      res.status(200).json(branches);
   } catch (error) {
       res.status(500).json({ success: false, error: error.message });
   }
@@ -227,17 +191,17 @@ const getBranchByDateRange = async (req, res) => {
    
 const getBranchBySubadminUniqueId = async (req, res) => {
   try {
-    const { subadminId } = req.params;
+    const { subadminUniqueId } = req.params;
 
     // Fetch all branches and populate `createdBy`
     const branches = await Branch.find().populate("createdBy", "subadminUniqueId name");
 
-    console.log("subadminId from params:", subadminId);
+    console.log("subadminId from params:", subadminUniqueId);
     console.log("Fetched branches:", branches);
 
     // Filter branch where `createdBy.subadminUniqueId` matches `subadminId`
     const matchedBranch = branches.find(branch => 
-      branch.createdBy && branch.createdBy.subadminUniqueId == subadminId
+      branch.createdBy && branch.createdBy.subadminUniqueId == subadminUniqueId
     );
 
     if (!matchedBranch) {
@@ -247,7 +211,7 @@ const getBranchBySubadminUniqueId = async (req, res) => {
     console.log("Matched Branch:", matchedBranch);
 
     res.status(200).json(matchedBranch);
-
+  
   } catch (error) {
     console.error("Error fetching branch:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });

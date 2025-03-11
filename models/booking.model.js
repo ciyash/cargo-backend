@@ -21,13 +21,12 @@ const bookingSchema = new mongoose.Schema(
     pickUpBranch: { type: String,required:true },
     dropBranch: { type: String,required:true },
     location: { type: String,require:true},
-    dispatchType: { type: String }, 
+    dispatchType: { type: String },   
     bookingType: { type: String },
     
     // Change these fields to an array of objects
     packages: { type: [packageSchema], default: [] },  
 
-    vehicalNumber: { type: String },
     receiptNo: { type: Number, default: "" }, 
     eWayBillNo: { type: String },
     remarks: { type: String },
