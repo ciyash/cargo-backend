@@ -9,7 +9,7 @@ const vehicleSchema = new mongoose.Schema({
     polutionExpDate: { type: Date, required: true },
     fuelType: { type: String, required: true, trim: true, uppercase: true },
     branch: { type:String, required: true },
-    vehicleStatus:{type:String,enum:['active','inactive'],default:"active",required:true}
+    vehicleStatus:{type:String,enum:['active','inactive'],default:"active"}
 }, { timestamps: true });
 
 export default mongoose.model("Vehical", vehicleSchema);

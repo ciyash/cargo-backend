@@ -8,12 +8,12 @@ const generateVocherNoUnique=()=>{
 const createParcel = async (req, res) => {
     try {
         const {
-            parcelType, fromBranch, toBranch,loadingDate,parcelStatus,userName,  vehicalType, vehicalNumber,
+             fromBranch, toBranch,loadingDate,parcelStatus,userName,  vehicalType, vehicalNumber,
             driverName, driverNo, fromBookingDate, toBookingDate,
             fromCity, toCity, remarks, grnNo, lrNumber  
         } = req.body;
 
-        if (!parcelType || !fromBranch   || !vehicalNumber || !driverName || !driverNo ||
+        if (!fromBranch   || !vehicalNumber || !driverName || !driverNo ||
             !fromBookingDate || !toBookingDate || !fromCity || !toCity || 
             !Array.isArray(grnNo) || grnNo.length === 0 || !Array.isArray(lrNumber) || lrNumber.length === 0) {
             return res.status(400).json({ message: "All required fields must be provided" });
@@ -22,7 +22,7 @@ const createParcel = async (req, res) => {
         const vocherNoUnique = generateVocherNoUnique();   
 
         const parcel = new ParcelLoading({
-            parcelType,
+            parcelType:"loading",
             vehicalNumber,
             parcelStatus,
             userName,
