@@ -8,7 +8,7 @@ const generateVocherNoUnique=()=>{
 const createParcel = async (req, res) => {
     try {
         const {
-             fromBranch, toBranch,loadingDate,parcelStatus,userName,  vehicalType, vehicalNumber,
+             fromBranch, toBranch,loadingDate,parcelStatus,  vehicalType, vehicalNumber,
             driverName, driverNo, fromBookingDate, toBookingDate,
             fromCity, toCity, remarks, grnNo, lrNumber  
         } = req.body;
@@ -20,12 +20,12 @@ const createParcel = async (req, res) => {
         }
 
         const vocherNoUnique = generateVocherNoUnique();   
-
+        const loadingBy=req.user.id;
         const parcel = new ParcelLoading({
             parcelType:"loading",
             vehicalNumber,
             parcelStatus,
-            userName,
+            loadingBy,
             vocherNoUnique,
             fromBranch,
             toBranch,

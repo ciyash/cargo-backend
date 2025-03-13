@@ -10,7 +10,7 @@ const parcelSchema = new mongoose.Schema({
     fromBranch: { type:String, required: true },
     toBranch: { type: String, required: false},
     loadingDate:{type:Date,required:true},
-    userName:{type:String,required:true},   //  loading employee
+    loadingBy:{type:mongoose.Schema.Types.ObjectId,ref:"Subadmin",required:true},   //  loading employee
     
     vehicalNumber:{type:String,required:true},  
     driverName: { type: String, required: true },

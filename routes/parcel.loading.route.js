@@ -1,9 +1,10 @@
 import express from 'express'
 import parcelController from '../controllers/pracel.loading.controller.js'
+import auth from '../config/auth.middleware.js'
 
 const router=express.Router()
 
-router.post("/",parcelController.createParcel)
+router.post("/",auth,parcelController.createParcel)
 
 router.get("/",parcelController.getAllParcels)
 
