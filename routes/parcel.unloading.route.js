@@ -13,7 +13,7 @@ router.get("/:id",parcelUnloadingController.getParcelUnloadingById)
 
 router.get("/voucher/:voucher",parcelUnloadingController.getParcelUnloadingByVoucher)
 
-router.post("/fromDate/toDate/fromCity/toCity/branch/vehicleNo",parcelUnloadingController.getParcelsByFilters)
+router.post("/filter",parcelUnloadingController.getParcelsByFilters)
 
 router.patch("/:id",parcelUnloadingController.updateParcelUnloading)
 
