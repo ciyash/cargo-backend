@@ -437,10 +437,15 @@ const getBookingsBetweenDates = async (req, res) => {
     let filter = { bookingDate: { $gte: start, $lte: end } };
 
     if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
-    if (toCity) filter.toCity = new RegExp(`^${toCity}$`, "i");
-    if (pickUpBranch) filter.pickUpBranch = new RegExp(`^${pickUpBranch}$`, "i");
+    
+    // Handle `toCity` as an array
+    if (Array.isArray(toCity) && toCity.length > 0) {
+      filter.toCity = { $in: toCity.map(city => new RegExp(`^${city}$`, "i")) };
+    } else if (toCity) {
+      filter.toCity = new RegExp(`^${toCity}$`, "i");
+    }
 
-   
+    if (pickUpBranch) filter.pickUpBranch = new RegExp(`^${pickUpBranch}$`, "i");
 
     const bookings = await Booking.find(filter);
 
