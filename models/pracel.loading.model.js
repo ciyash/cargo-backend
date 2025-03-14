@@ -6,7 +6,7 @@ const parcelSchema = new mongoose.Schema({
     fromBookingDate: { type: Date, required: true },
     toBookingDate: { type: Date, required: true },
     fromCity: { type: String, required: true },
-    toCity: { type: String, required: true },
+    toCity: [{ type: String, required: true }],
     fromBranch: { type:String, required: true },
     toBranch: { type: String, required: false},
     loadingDate:{type:Date,required:true},
