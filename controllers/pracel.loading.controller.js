@@ -427,6 +427,10 @@ const getParcelsInUnloading = async (req, res) => {
         // Fetch parcels from MongoDB
         const parcels = await ParcelLoading.find(filter);
 
+        if(parcels.length===0){
+            return res.status(404).json({message:"No parcels found !"})
+        }
+
         res.status(200).json(parcels);
     } catch (error) {
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
