@@ -5,7 +5,7 @@ const unloadingSchema=new mongoose.Schema({
     unLoadingVoucher:{type:Number,required:true},  // auto generated
     fromBookingDate:{type:Date,required:true},
     toBookingDate:{type:Date,required:true},
-    fromCity:{type:String,required:true},
+    fromCity:[{type:String,required:true}],
     toCity:{type:String,required:true},
     branch:{type:String,required:true},
     bookingType:{type:String,default:""},
