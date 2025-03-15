@@ -2,7 +2,7 @@ import express from 'express'
 import parcelController from '../controllers/pracel.loading.controller.js'
 import auth from '../config/auth.middleware.js'
 
-const router=express.Router()
+const router=express.Router()   
 
 router.post("/",auth,parcelController.createParcel)
 
@@ -37,5 +37,7 @@ router.post("/parcel-offline-report",parcelController.getParcelsByFilters)
 router.post("/parcel-status-report",parcelController.parcelStatusReport)  //parcel status date difference report
 
 router.post("/parcel-pending-report",parcelController.parcelPendingReport)  // parcel pending delivery stockreport 
+
+router.post("/parcel-filter-Unloading",parcelController.getParcelsInUnloading)
 
 export default router 

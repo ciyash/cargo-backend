@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const parcelSchema = new mongoose.Schema({  
-    parcelType:{type:String,required:true},  
+    parcelType:{type:String,required:true},    // auto filled
     vocherNoUnique:{type:Number,required:true},   //auto generated
     fromBookingDate: { type: Date, required: true },
     toBookingDate: { type: Date, required: true },

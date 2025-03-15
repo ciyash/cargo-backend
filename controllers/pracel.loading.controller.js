@@ -339,7 +339,7 @@ const getParcelLoadingBetweenDates = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
-
+  
 
 const parcelStatusReport = async (req, res) => {
     try {
@@ -393,6 +393,45 @@ const parcelPendingReport = async (req, res) => {
     }
 };
 
+const getParcelsInUnloading = async (req, res) => {
+    try {
+        const { fromDate, toDate, fromCity, toCity, vehicalNumber, branch } = req.body;
+
+        let filter = {};
+
+        // Filter by date range
+        if (fromDate && toDate) {
+            filter.fromBookingDate = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+        }
+
+        // Filter by fromCity (array)
+        if (fromCity && Array.isArray(fromCity) && fromCity.length > 0) {
+            filter.fromCity = { $in: fromCity };
+        }
+
+        // Filter by toCity (single value)
+        if (toCity) {
+            filter.toCity = toCity;
+        }
+
+        // Filter by vehicalNumber
+        if (vehicalNumber) {
+            filter.vehicalNumber = vehicalNumber;
+        }
+
+        // Filter by branch (matching either fromBranch or toBranch)
+        if (branch) {
+            filter.$or = [{ fromBranch: branch }, { toBranch: branch }];
+        }
+
+        // Fetch parcels from MongoDB
+        const parcels = await ParcelLoading.find(filter);
+
+        res.status(200).json(parcels);
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+};
     
 export default { createParcel,
      getParcelById,
@@ -410,6 +449,7 @@ export default { createParcel,
       getParcelLoadingBetweenDates,
       getParcelsByFilters,
       parcelStatusReport,
-      parcelPendingReport
+      parcelPendingReport,
+      getParcelsInUnloading
     };
  

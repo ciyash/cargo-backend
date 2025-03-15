@@ -1,6 +1,6 @@
 import mongoose from "mongoose";  
 
-const unloadingSchema=new mongoose.Schema({
+const unloadingSchema=new mongoose.Schema({  
     unLoadingBy:{type:mongoose.Schema.Types.ObjectId,ref:"Subadmin",required:true},  //auto fill
     unLoadingVoucher:{type:Number,required:true},  // auto generated
     fromBookingDate:{type:Date,required:true},
