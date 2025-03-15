@@ -394,41 +394,30 @@ const parcelPendingReport = async (req, res) => {
 };
 
 const getParcelsInUnloading = async (req, res) => {
-    try {
-        const { fromDate, toDate, fromCity, toCity, vehicalNumber, branch } = req.body;
+    try {    
+        const { fromDate } = req.body;
 
-        let filter = {};
-
-        // Filter by date range
-        if (fromDate && toDate) {
-            filter.fromBookingDate = { $gte: new Date(fromDate), $lte: new Date(toDate) };
+        if (!fromDate) {
+            return res.status(400).json({ message: "fromDate is required" });
         }
 
-        // Filter by fromCity (array)
-        if (fromCity && Array.isArray(fromCity) && fromCity.length > 0) {
-            filter.fromCity = { $in: fromCity };
-        }
+        // Convert fromDate to a date range for the entire day (00:00:00 - 23:59:59)
+        const startOfDay = new Date(fromDate);
+        startOfDay.setUTCHours(0, 0, 0, 0);
 
-        // Filter by toCity (single value)
-        if (toCity) {
-            filter.toCity = toCity;
-        }
+        const endOfDay = new Date(fromDate);
+        endOfDay.setUTCHours(23, 59, 59, 999);
 
-        // Filter by vehicalNumber
-        if (vehicalNumber) {
-            filter.vehicalNumber = vehicalNumber;
-        }
+        // Filter only by date
+        const filter = {
+            fromBookingDate: { $gte: startOfDay, $lte: endOfDay }
+        };
 
-        // Filter by branch (matching either fromBranch or toBranch)
-        if (branch) {
-            filter.$or = [{ fromBranch: branch }, { toBranch: branch }];
-        }
-
-        // Fetch parcels from MongoDB
+        // Fetch parcels
         const parcels = await ParcelLoading.find(filter);
 
-        if(parcels.length===0){
-            return res.status(404).json({message:"No parcels found !"})
+        if (parcels.length === 0) {
+            return res.status(404).json({ message: "No parcels found!" });
         }
 
         res.status(200).json(parcels);
@@ -436,6 +425,7 @@ const getParcelsInUnloading = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 };
+
     
 export default { createParcel,
      getParcelById,
