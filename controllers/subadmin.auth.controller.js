@@ -101,7 +101,7 @@ const resetPassword = async (req, res) => {
 
 const signup = async (req, res) => {
   try {
-    const { name, username, phone, email, password, branchId, location, documents, role } = req.body;
+    const { name, username,companyName, address, phone, email, password, branchId, location, documents, role } = req.body;
 
     const existingSubadmin = await Subadmin.findOne({ $or: [{ email }, { phone }] });
     if (existingSubadmin) {
@@ -115,6 +115,8 @@ const signup = async (req, res) => {
       subadminUniqueId,
       name,
       username,
+      companyName,
+      address,
       phone,
       email,
       password: hashedPassword,
@@ -133,29 +135,27 @@ const signup = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const { identifier, password } = req.body;  
+    const { identifier, password } = req.body;
 
     if (!identifier || !password) {
-      return res.status(400).json({ message: "Email, Phone, or Username and password are required" });
+      return res.status(400).json({ message: "Email, Phone, or Username, and password are required" });
     }
 
     // Find the subadmin and populate branch details
-    const subadmin = await Subadmin.findOne({ 
+    const subadmin = await Subadmin.findOne({
       $or: [{ email: identifier }, { phone: identifier }, { username: identifier }]
     }).populate({
       path: "branchId",
-      select: "location name city" 
+      select: "location name city"
     });
 
     if (!subadmin) {
-      return res.status(404).json({ message: "subadmin not found !" });
+      return res.status(404).json({ message: "Subadmin not found!" });
     }
-
-  
 
     const isMatch = await bcrypt.compare(password, subadmin.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Incorrect  password" });
+      return res.status(401).json({ message: "Incorrect password" });
     }
 
     const ipAddress = req.headers["x-forwarded-for"]?.split(",")[0].trim() || 
@@ -164,21 +164,26 @@ const login = async (req, res) => {
 
     await Subadmin.findByIdAndUpdate(subadmin._id, { ipAddress });
 
-    // Log the token payload before signing
+    // Ensure `branchId` and its properties exist
+    const branchId = subadmin.branchId ? subadmin.branchId._id : null;
+    const branchLocation = subadmin.branchId ? subadmin.branchId.location : "Not Assigned";
+    const branchName = subadmin.branchId ? subadmin.branchId.name : "Not Assigned";
+
     const tokenPayload = {
-      subadminUniqueId: subadmin.subadminUniqueId, 
+      subadminUniqueId: subadmin.subadminUniqueId,
       id: subadmin._id,
       role: subadmin.role,
-      branchId: subadmin.branchId?._id || null,
-      branchLocation: subadmin.branchId?.location || null,
-      branchName: subadmin.branchId?.name || null,
+      location:subadmin.location,
+      branchId,
+      branchLocation,
+      branchName,
       ipAddress
     };
 
-    // console.log("Token Payload:", tokenPayload);
+    console.log("Token Payload:", tokenPayload);
 
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
- 
+
     res.status(200).json({
       message: "Login successful",
       token
@@ -188,6 +193,7 @@ const login = async (req, res) => {
   }
 };
 
+  
 const changeSubadminPassword = async (req, res) => {
   try {
     const id = req.user?.id;

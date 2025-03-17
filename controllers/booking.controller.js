@@ -77,7 +77,7 @@ const generateReceiptNumber = async () => {
 const createBooking = async (req, res) => {
   try {
     const { 
-      fromCity, toCity, pickUpBranch, dropBranch, totalPrice,  dispatchType, bookingType,
+      fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
       packages, 
       senderName, senderMobile, senderAddress, senderGst,
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
@@ -87,7 +87,6 @@ const createBooking = async (req, res) => {
       cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
       refundCharge = 0, refundAmount = 0
     } = req.body;
-
 
     // ✅ Validate package details
     if (!Array.isArray(packages) || packages.length === 0) {
@@ -100,18 +99,19 @@ const createBooking = async (req, res) => {
       }
     }
 
-    const location = req.user.branchLocation; 
-    console.log("location",location)
-    const bookedBy=req.user.id;
-    const adminUniqueId=req.user.subadminUniqueId
-    // ✅ Generate GRN and LR numbers  
+    const location = req.user.location; 
+    console.log("location", location);
+    const bookedBy = req.user.id;
+    const adminUniqueId = req.user.subadminUniqueId;
+
+    // ✅ Generate unique numbers
     const grnNumber = await generateGrnNumber();
     const lrNumber = await generateLrNumber(fromCity, location);
     const eWayBillNo = await generateEWayBillNo();
+    const generatedReceiptNo = await generateReceiptNumber();
 
-   
-    const generatedReceiptNo =await generateReceiptNumber()
-  
+    // ✅ Calculate `totalQuantity` from `packages`
+    const totalQuantity = packages.reduce((sum, pkg) => sum + pkg.quantity, 0);
 
     // ✅ Calculate Grand Total
     let packageTotal = packages.reduce((sum, pkg) => sum + (pkg.unitPrice * pkg.quantity), 0);
@@ -131,6 +131,7 @@ const createBooking = async (req, res) => {
       dispatchType,
       bookingType,
       packages,  
+      totalQuantity,  // Auto-filled field ✅
       senderName,
       senderMobile,  
       senderAddress,
@@ -170,15 +171,16 @@ const createBooking = async (req, res) => {
 
     res.status(201).json({ success: true, message: "Booking created successfully", data: booking });
   } catch (error) {
-    console.log(error.message)
-    res.status(500).json({error: error.message });
+    console.log(error.message);
+    res.status(500).json({ error: error.message });
   }
 };
 
-//
+
+
 const getAllBookings = async (req, res) => {
-  try {
-    const bookings = await Booking.find().populate("bookedBy")
+  try {  
+    const bookings = await Booking.find()
     if (bookings.length === 0) {
       return res.status(404).json({ success: false, message: "No bookings found" });
     }
@@ -427,7 +429,7 @@ const getBookingsBetweenDates = async (req, res) => {
 
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {  
       return res.status(400).json({ message: "Invalid date format!" });
     }
@@ -437,10 +439,10 @@ const getBookingsBetweenDates = async (req, res) => {
     let filter = { bookingDate: { $gte: start, $lte: end } };
 
     if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
-    
-    // Handle `toCity` as an array
+
+    // Modify toCity logic to check if at least one city matches
     if (Array.isArray(toCity) && toCity.length > 0) {
-      filter.toCity = { $in: toCity.map(city => new RegExp(`^${city}$`, "i")) };
+      filter.$or = toCity.map(city => ({ toCity: new RegExp(`^${city}$`, "i") }));
     } else if (toCity) {
       filter.toCity = new RegExp(`^${toCity}$`, "i");
     }
@@ -455,9 +457,11 @@ const getBookingsBetweenDates = async (req, res) => {
 
     res.status(200).json(bookings);
   } catch (error) {
+    console.error("Error fetching bookings:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 
 
 const getBookingsByAnyField = async (req, res) => {
