@@ -21,4 +21,4 @@ const adminSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Subadmin", adminSchema);  
+export default mongoose.model("Subadmin", adminSchema);     

@@ -176,8 +176,6 @@ const createBooking = async (req, res) => {
   }
 };
 
-
-
 const getAllBookings = async (req, res) => {
   try {  
     const bookings = await Booking.find()
@@ -192,26 +190,32 @@ const getAllBookings = async (req, res) => {
 
 const cityWiseBookings = async (req, res) => {
   try {
-      const { startDate, endDate, fromCity, toCity } = req.body;
+    const {fromCity,toCity, startDate, endDate } = req.body;
 
-      if (!startDate || !endDate || !fromCity || !toCity) {
-          return res.status(400).json({ success: false, message: "All fields are required" });
-      }
+    if (!fromCity || !toCity || !startDate || !endDate) {
+      return res.status(400).json({ success: false, message: "fromCity toCity start date and end date are required" });
+    }
 
-      const bookings = await Booking.find({
-          fromCity,
-          toCity,
-          bookingDate: {
-              $gte: new Date(startDate),
-              $lte: new Date(endDate),
-          },
-      });
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Ensure full day is included
 
-      res.status(200).json(bookings);
+    const bookings = await Booking.find({
+      bookingDate: { $gte: start, $lte: end },
+      fromCity,
+      toCity
+    });
+
+    if (bookings.length === 0) {
+      return res.status(404).json({ success: false, message: "No bookings found" });
+    }
+
+    res.status(200).json(bookings);
   } catch (error) {
-      res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
-};
+};  
+
 
 
 const getAllBookingsPages = async (req, res) => {

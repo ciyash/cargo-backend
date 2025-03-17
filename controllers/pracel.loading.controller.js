@@ -1,5 +1,5 @@
 import ParcelLoading from "../models/pracel.loading.model.js";
-import Booking from '../models/booking.model.js'
+
 
 const generateVocherNoUnique=()=>{
     return Math.floor(100000+Math.random()*900000)
@@ -8,7 +8,7 @@ const generateVocherNoUnique=()=>{
 const createParcel = async (req, res) => {
     try {
         const {
-             fromBranch, toBranch,loadingDate,parcelStatus,  vehicalType, vehicalNumber,
+             fromBranch, toBranch,loadingDate,parcelStatus, vehicalNumber,
             driverName, driverNo, fromBookingDate, toBookingDate,
             fromCity, toCity, remarks, grnNo, lrNumber  
         } = req.body;
@@ -29,8 +29,7 @@ const createParcel = async (req, res) => {
             vocherNoUnique,
             fromBranch,
             toBranch,
-            loadingDate,
-            vehicalType,
+            loadingDate,   
             driverName,
             driverNo,
             fromBookingDate,
@@ -142,26 +141,44 @@ const deleteParcel = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 const getParcelsByFilter = async (req, res) => {
     try {
-        const { fromBookingDate, fromCity, toBookingDate, toCity } = req.body;
+        const { fromBookingDate, toBookingDate, fromCity, toCity } = req.body;
 
-        let query = {};
+        if (!fromBookingDate || !toBookingDate || !fromCity || !toCity) {
+            return res.status(400).json({ success: false, message: "Required fields are missing" });
+        }
 
-        if (fromBookingDate) query.fromBookingDate = new Date(fromBookingDate);
-        if (toBookingDate) query.toBookingDate = new Date(toBookingDate);
-        if (fromCity) query.fromCity = fromCity;
-        if (toCity) query.toCity = toCity;
+        const start = new Date(fromBookingDate);
+        const end = new Date(toBookingDate);
+        end.setHours(23, 59, 59, 999); // Ensure the full day is included
+
+        let query = {
+            fromBookingDate: { $gte: start },
+            toBookingDate: { $lte: end },
+            fromCity
+        };
+
+        // If toCity is an array, use $in to match at least one city
+        if (Array.isArray(toCity) && toCity.length > 0) {
+            query.toCity = { $in: toCity };
+        } else {
+            query.toCity = toCity; // Single city case
+        }
 
         const parcels = await ParcelLoading.find(query);
 
-        if (parcels.length === 0) return res.status(404).json({ message: "No parcels found" });
+        if (parcels.length === 0) {
+            return res.status(404).json({ success: false, message: "No parcels found" });
+        }
 
         res.status(200).json(parcels);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
+
 
 
 const branchToBranchLoading = async (req, res) => {
