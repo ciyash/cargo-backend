@@ -1,4 +1,5 @@
 import ParcelLoading from "../models/pracel.loading.model.js";
+import Booking from '../models/booking.model.js'
 
 
 const generateVocherNoUnique=()=>{
@@ -249,8 +250,7 @@ const branchToBranchLoading = async (req, res) => {
     }
 };
 
-
- const getParcelByLrNumber = async (req, res) => {
+const getParcelByLrNumber = async (req, res) => {
     try {
         const { lrNumber } = req.body;
 
@@ -258,20 +258,47 @@ const branchToBranchLoading = async (req, res) => {
             return res.status(400).json({ message: "lrNumber is required" });
         }
 
-        const parcel = await ParcelLoading.find({ lrNumber: { $in: [lrNumber] } })
-            .populate("bookingId",'')  
-            
-            .populate("vehicalId","vehicleNo vehicleType"); 
+        // Fetch parcels where lrNumber matches
+        const parcels = await ParcelLoading.find({ lrNumber: { $in: lrNumber } });
 
-        if (!parcel) {
-            return res.status(404).json({ message: "Parcel not found" });
+        // Fetch booking data separately
+        const bookings = await Booking.find({ lrNumber: { $in: lrNumber } });
+
+        if (parcels.length === 0 && bookings.length === 0) {
+            return res.status(404).json({ message: "No matching data found" });
         }
 
-        res.status(200).json(parcel);
+        res.status(200).json({ parcels, bookings });
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
+const getParcelByGrnNo = async (req, res) => {
+    try {
+        const { grnNo } = req.body;
+
+        if (!grnNo) {
+            return res.status(400).json({ message: "grnNo is required" });
+        }
+
+        // Fetch parcel where grnNo matches
+        const parcel = await ParcelLoading.findOne({ grnNo: grnNo });
+
+        // Fetch booking data separately
+        const booking = await Booking.findOne({ grnNo: grnNo });
+
+        if (!parcel && !booking) {
+            return res.status(404).json({ message: "No matching data found" });
+        }
+
+        res.status(200).json({ parcel, booking });
+    } catch (error) {
+        res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+      
+
 
 const getParcelByVehicalNumber = async (req, res) => {
     try {
@@ -461,6 +488,7 @@ export default { createParcel,
       getParcelsByFilters,
       parcelStatusReport,
       parcelPendingReport,
-      getParcelsInUnloading
+      getParcelsInUnloading,
+      getParcelByGrnNo
     };
  

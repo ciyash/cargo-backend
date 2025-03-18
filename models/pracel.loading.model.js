@@ -16,12 +16,10 @@ const parcelSchema = new mongoose.Schema({
     driverNo: { type: Number, required: true }, 
     grnNo: [{ type: Number, required: true}], 
     lrNumber:[{type:String,required:true}],
+    // lrNumber: [{ type: mongoose.Schema.Types.ObjectId, ref: "Booking" }],
 
     parcelStatus:{type:Number,default:0},
     remarks: { type: String,default:""},
-
-// branch to branch
-    
    
 });
 
