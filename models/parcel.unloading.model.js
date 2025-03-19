@@ -10,6 +10,7 @@ const unloadingSchema=new mongoose.Schema({
     branch:{type:String,required:true},
     bookingType:{type:String,default:""},
     vehicleNo:{type:String,required:true},  
+    lrNumber:[{type:String,required:true}],
     grnNo:[{type:Number,required:true}]
 })
  

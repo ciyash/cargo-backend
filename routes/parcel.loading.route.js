@@ -28,9 +28,7 @@ router.post("/grnNo",parcelController.getParcelByGrnNo)
 
 router.get("/vehicalNumber/:vehicalNumber",parcelController.getParcelByVehicalNumber)
 
-router.post("/fromBookingDate/toBookingDate",parcelController.getParcelLoadingBetweenDates)
-
-router.post("/fromBookingDate/toBookingDate/userName",parcelController.getParcelLoadingDates)
+router.post("/between-dates",parcelController.getParcelLoadingBetweenDates)
 
 router.post("/parcel-offline-report",parcelController.getParcelsByFilters)
 

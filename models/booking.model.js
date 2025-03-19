@@ -55,7 +55,7 @@ const bookingSchema = new mongoose.Schema(
     doorDeliveryCharge: { type: Number, default: 0 },
     doorPickupCharge: { type: Number, default: 0 },
     valueOfGoods: { type: Number, default: 0 },
-    bookingStatus: { type: Number, enum: [0, 1, 2, 3, 4, 5], default: 0 },
+  
     items: { type: Number },
     bookingDate: { type: Date, default: () => new Date() },
     ltDate: { type: Date, default: () => new Date() },
@@ -63,7 +63,12 @@ const bookingSchema = new mongoose.Schema(
     ltBranch: { type: String, default: "" },
     ltEmployee: { type: String, default: "" }, 
     deliveryEmployee: { type: String, default: "" },
-
+    
+    bookingStatus: { type: Number, enum: [0, 1, 2, 3, 4, 5], default: 0 },
+    loadingDate:{type:Date,default:""},
+    unloadingDate:{type:Date,default:""},
+    deliveryDate:{type:Date,default:""},
+    
     cancelByUser: { type: String, default: "" },
     cancelDate: { type: Date, default: null }, 
     cancelCity: { type: String, default: "" },

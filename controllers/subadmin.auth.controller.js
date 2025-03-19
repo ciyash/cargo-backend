@@ -32,7 +32,7 @@ const sendForgotPasswordOTP = async (email, otp) => {
     // console.error("Error sending OTP:", error);
   }
 };
-
+  
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -209,16 +209,14 @@ const changeSubadminPassword = async (req, res) => {
 
     const subadmin = await Subadmin.findById(id);
     if (!subadmin) {
-      return res.status(404).json({ success: false, message: "Subadmin not found" });
+      return res.status(404).json({ message: "Subadmin not found" });
     }
 
-   
     const isMatch = await bcrypt.compare(oldPassword, subadmin.password);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Incorrect old password" });    
+      return res.status(400).json({ success: false, message: "Incorrect old password" });
     }
 
-   
     const isSamePassword = await bcrypt.compare(newPassword, subadmin.password);
     if (isSamePassword) {
       return res.status(400).json({ success: false, message: "New password must be different from old password" });
@@ -227,12 +225,13 @@ const changeSubadminPassword = async (req, res) => {
     // Hash and save new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     subadmin.password = hashedPassword;
-    await subadmin.save();
 
-    res.status(200).json({ success: true, message: "Password changed successfully" });
+    // **Ensure all required fields are preserved before saving**
+    await subadmin.save({ validateBeforeSave: false });
+
+    res.status(200).json({message: "Password changed successfully" });
   } catch (error) {
-    // console.error("Error changing password:", error);
-    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 

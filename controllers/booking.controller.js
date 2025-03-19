@@ -83,6 +83,7 @@ const createBooking = async (req, res) => {
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
       bookingStatus, items,
+      loadingDate="",unloadingDate="",deliveryDate="",
       ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
       cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
       refundCharge = 0, refundAmount = 0
@@ -164,7 +165,10 @@ const createBooking = async (req, res) => {
       cancelCity,
       cancelBranch,
       refundCharge,
-      refundAmount
+      refundAmount,
+      loadingDate,
+      unloadingDate,
+      deliveryDate
     });
 
     await booking.save();

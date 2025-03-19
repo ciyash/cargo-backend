@@ -5,7 +5,7 @@ const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000)
 
  const createParcelUnloading = async (req, res) => {
     try {
-        const { fromBookingDate, toBookingDate, fromCity, toCity, branch, vehicleNo, grnNo,bookingType } = req.body;
+        const { fromBookingDate, toBookingDate, fromCity, toCity, branch, vehicleNo,lrNumber, grnNo,bookingType } = req.body;
        
         const unLoadingBy=req.user.id
        
@@ -18,6 +18,7 @@ const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000)
             toCity,
             branch,
             vehicleNo,
+            lrNumber,
             grnNo,
             bookingType
         });
