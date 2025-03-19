@@ -78,7 +78,7 @@ const createParcel = async (req, res) => {
         }
 
         //  Ensure that GRN numbers exist in Booking collection before proceeding
-        const existingBookings = await Booking.find({ grnNumber: { $in: grnNo } }).session(session);
+        const existingBookings = await Booking.find({ grnNo: { $in: grnNo } }).session(session);
         if (existingBookings.length === 0) {
             throw new Error("No matching GRN numbers found in Booking collection.");
         }
@@ -109,7 +109,7 @@ const createParcel = async (req, res) => {
 
         //  Update all bookings in a single query
         const updateResult = await Booking.updateMany(
-            { grnNumber: { $in: grnNo } }, 
+            { grnNo: { $in: grnNo } }, 
             { 
                 $set: { 
                     bookingStatus: "1",
