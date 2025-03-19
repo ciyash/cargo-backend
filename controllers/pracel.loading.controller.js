@@ -50,6 +50,30 @@ const createParcel = async (req, res) => {
     }
 };  
 
+const addBranchTransfer = async (req, res) => {
+    try {
+        const { parcelId } = req.params; // Get Parcel ID from URL params
+        const branchTransfer = req.body; // Expecting a single object, not an array
+
+        // Find the parcel by ID
+        const parcel = await ParcelLoading.findById(parcelId);
+
+        if (!parcel) {
+            return res.status(404).json({ message: "Parcel not found" });
+        }
+
+        // Update the branchTobranch field (single object)
+        parcel.branchTobranch = branchTransfer;
+
+        // Save the updated parcel
+        await parcel.save();
+
+        res.status(200).json({ message: "Branch transfer updated successfully", parcel });
+    } catch (error) {
+        console.error("Error updating branch transfer:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
 
 const getAllParcels = async (req, res) => {
     try {
@@ -62,7 +86,6 @@ const getAllParcels = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-
 
   const getParcelLoadingDates = async (req, res) => {
     try {
@@ -86,8 +109,6 @@ const getAllParcels = async (req, res) => {
     }
   };
   
-
-
 const getParcelVocherNoUnique=async(req,res) => {
     try{
       const {vocherNoUnique}=req.params
@@ -286,20 +307,18 @@ const getParcelByGrnNo = async (req, res) => {
         const parcel = await ParcelLoading.findOne({ grnNo: grnNo });
 
         // Fetch booking data separately
-        const booking = await Booking.findOne({ grnNo: grnNo });
-
+        const booking = await Booking.findOne({ grnNumber: grnNo});
+    
         if (!parcel && !booking) {
             return res.status(404).json({ message: "No matching data found" });
         }
 
         res.status(200).json({ parcel, booking });
     } catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
+        res.status(500).json({error: error.message });
     }
 };
       
-
-
 const getParcelByVehicalNumber = async (req, res) => {
     try {
         const { vehicalNumber } = req.params;
@@ -311,7 +330,6 @@ const getParcelByVehicalNumber = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
-
 
  const getParcelsByBranch = async (req, res) => {
     try {
@@ -470,6 +488,7 @@ const getParcelsInUnloading = async (req, res) => {
     }
 };
 
+
     
 export default { createParcel,
      getParcelById,
@@ -489,6 +508,7 @@ export default { createParcel,
       parcelStatusReport,
       parcelPendingReport,
       getParcelsInUnloading,
-      getParcelByGrnNo
+      getParcelByGrnNo,
+      addBranchTransfer
     };
  

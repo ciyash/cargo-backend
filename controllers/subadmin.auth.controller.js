@@ -27,9 +27,9 @@ const sendForgotPasswordOTP = async (email, otp) => {
       subject: "Forgot Password OTP",
       text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
     });
-    console.log("OTP sent successfully");
+    // console.log("OTP sent successfully");
   } catch (error) {
-    console.error("Error sending OTP:", error);
+    // console.error("Error sending OTP:", error);
   }
 };
 
@@ -180,7 +180,7 @@ const login = async (req, res) => {
       ipAddress
     };
 
-    console.log("Token Payload:", tokenPayload);
+    // console.log("Token Payload:", tokenPayload);
 
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
@@ -215,7 +215,7 @@ const changeSubadminPassword = async (req, res) => {
     // Check old password
     const isMatch = await bcrypt.compare(oldPassword, subadmin.password);
     if (!isMatch) {
-      return res.status(400).json({ success: false, message: "Incorrect old password" });
+      return res.status(400).json({ success: false, message: "Incorrect old password" });    
     }
 
     // Prevent setting the same password again (after hashing)
@@ -231,7 +231,7 @@ const changeSubadminPassword = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Password changed successfully" });
   } catch (error) {
-    console.error("Error changing password:", error);
+    // console.error("Error changing password:", error);
     res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 };
