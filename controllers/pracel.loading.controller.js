@@ -325,28 +325,11 @@ const getParcelByVehicalNumber = async (req, res) => {
 
         const parcel = await ParcelLoading.find({vehicalNumber})
 
+        if(parcel.length===0){
+            return res.status(400).json({message:"parcel not found !"})
+        }
+
         res.status(200).json(parcel);
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
-    }
-};
-
- const getParcelsByBranch = async (req, res) => {
-    try {
-        const { fromBranch, toBranch } = req.params
-
-        if (!fromBranch || !toBranch) {
-            return res.status(400).json({ message: "Both fromBranch and toBranch are required." });
-        }
-
-        // Find parcels matching fromBranch and toBranch
-        const parcels = await ParcelLoading.find({ fromBranch, toBranch });
-
-        if (!parcels.length) {
-            return res.status(404).json({ message: "No parcels found for the given branches." });
-        }
-
-        res.status(200).json(parcels);
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
     }
@@ -359,17 +342,23 @@ const getParcelLoadingBetweenDates = async (req, res) => {
       if (!fromBookingDate || !toBookingDate) {
         return res.status(400).json({ message: "fromBookingDate and toBookingDate are required!" });
       }
-      const parcels = await ParcelLoading.find({
-        fromBookingDate: new Date(fromBookingDate),
-        toBookingDate: new Date(toBookingDate),
-      }); 
-
-      if (!parcels.length) {
-        return res.status(404).json({ message: "No parcels found!" });
+  
+      const startDate = new Date(fromBookingDate);
+      const endDate = new Date(toBookingDate);
+  
+      if (isNaN(startDate) || isNaN(endDate)) {
+        return res.status(400).json({ message: "Invalid date format!" });
       }
+  
      
-      if (parcels.length === 0) {
-        return res.status(404).json({ message: "No Parcel dates found in the given date range!" });
+      endDate.setHours(23, 59, 59, 999);
+  
+      const parcels = await ParcelLoading.find({
+        fromBookingDate: { $gte: startDate, $lte: endDate },
+      });
+  
+      if (!parcels.length) {
+        return res.status(404).json({ message: "No parcels found in the given date range!" });
       }
   
       res.status(200).json(parcels);
@@ -502,7 +491,6 @@ export default { createParcel,
       updateAllGrnNumbers,
       getParcelByLrNumber,
       getParcelByVehicalNumber,
-      getParcelsByBranch,
       getParcelLoadingBetweenDates,
       getParcelsByFilters,
       parcelStatusReport,

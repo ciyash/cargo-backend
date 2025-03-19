@@ -212,13 +212,13 @@ const changeSubadminPassword = async (req, res) => {
       return res.status(404).json({ success: false, message: "Subadmin not found" });
     }
 
-    // Check old password
+   
     const isMatch = await bcrypt.compare(oldPassword, subadmin.password);
     if (!isMatch) {
       return res.status(400).json({ success: false, message: "Incorrect old password" });    
     }
 
-    // Prevent setting the same password again (after hashing)
+   
     const isSamePassword = await bcrypt.compare(newPassword, subadmin.password);
     if (isSamePassword) {
       return res.status(400).json({ success: false, message: "New password must be different from old password" });
