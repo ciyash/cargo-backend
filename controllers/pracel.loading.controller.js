@@ -6,58 +6,6 @@ const generateVocherNoUnique=()=>{
     return Math.floor(100000+Math.random()*900000)
 }
 
-// const createParcel = async (req, res) => {  
-//     try {
-//         const {
-//             fromBranch, toBranch, parcelStatus, vehicalNumber,
-//             driverName, driverNo, fromBookingDate, toBookingDate,
-//             fromCity, toCity, remarks, grnNo, lrNumber  
-//         } = req.body;
-
-//         if (!fromBranch || !vehicalNumber || !driverName || !driverNo ||
-//             !fromBookingDate || !toBookingDate || !fromCity || !toCity || 
-//             !Array.isArray(grnNo) || grnNo.length === 0 || !Array.isArray(lrNumber) || lrNumber.length === 0) {
-//             return res.status(400).json({ message: "All required fields must be provided" });
-//         }
-
-//         const currentDate = new Date();
-//         const loadingBy = req.user.id;
-//         const vocherNoUnique = generateVocherNoUnique();
-
-//         // Update booking status and loading date for each GRN number
-//         await Booking.updateMany(
-//             { grnNumber: { $in: grnNo } },
-//             { $set: { bookingStatus: 1, loadingDate: currentDate } }
-//         );
-
-//         // Create new parcel entry
-//         const parcel = new ParcelLoading({
-//             parcelType: "loading",
-//             vehicalNumber,
-//             parcelStatus,
-//             loadingBy,
-//             vocherNoUnique,
-//             fromBranch,
-//             toBranch,
-//             driverName,
-//             driverNo,
-//             fromBookingDate,
-//             toBookingDate,
-//             fromCity,
-//             toCity,
-//             remarks,
-//             grnNo,
-//             lrNumber
-//         });
-
-//         await parcel.save();
-
-//         res.status(201).json({ message: "Parcel created successfully", parcel });
-//     } catch (error) {
-//         console.error("Error creating parcel:", error);
-//         res.status(500).json({ message: "Internal Server Error", error: error.message });
-//     }
-// };
 
 const createParcel = async (req, res) => {
     const session = await ParcelLoading.startSession(); // Start a transaction session
@@ -88,7 +36,7 @@ const createParcel = async (req, res) => {
 
         // Create the parcel record
         const parcel = await new ParcelLoading({
-            parcelType: "loading",
+            parcelType,
             vehicalNumber,
             parcelStatus,
             loadingBy,
@@ -134,31 +82,6 @@ const createParcel = async (req, res) => {
     }
 };
 
-
-const addBranchTransfer = async (req, res) => {
-    try {
-        const { parcelId } = req.params; // Get Parcel ID from URL params
-        const branchTransfer = req.body; // Expecting a single object, not an array
-
-        // Find the parcel by ID
-        const parcel = await ParcelLoading.findById(parcelId);
-
-        if (!parcel) {
-            return res.status(404).json({ message: "Parcel not found" });
-        }
-
-        // Update the branchTobranch field (single object)
-        parcel.branchTobranch = branchTransfer;
-
-        // Save the updated parcel
-        await parcel.save();
-
-        res.status(200).json({ message: "Branch transfer updated successfully", parcel });
-    } catch (error) {
-        console.error("Error updating branch transfer:", error);
-        res.status(500).json({ error: error.message });
-    }
-};
 
 const getAllParcels = async (req, res) => {
     try {
@@ -561,6 +484,5 @@ export default { createParcel,
       parcelPendingReport,
       getParcelsInUnloading,
       getParcelByGrnNo,
-      addBranchTransfer
     };
  

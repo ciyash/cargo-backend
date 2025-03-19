@@ -38,6 +38,5 @@ router.post("/parcel-pending-report",parcelController.parcelPendingReport)  // p
 
 router.post("/parcel-filter-Unloading",parcelController.getParcelsInUnloading)
 
-router.patch("/branch-transfer/:parcelId", parcelController.addBranchTransfer);
 
 export default router    
