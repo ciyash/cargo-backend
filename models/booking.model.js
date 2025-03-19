@@ -11,7 +11,7 @@ const packageSchema = new mongoose.Schema({
 
 const bookingSchema = new mongoose.Schema(
   {  
-    grnNumber: { type: Number, unique: true },            //auto  generate
+    grnNo: { type: Number, unique: true },            //auto  generate
     lrNumber: { type: String,required:true },             //auto  generate
     adminUniqueId: { type: Number,required:true},         //auto entered
     bookedBy: { type:mongoose.Schema.Types.ObjectId,ref:"Subadmin",required:true},  // auto entered  // employee or subadmin or accountant
@@ -55,25 +55,26 @@ const bookingSchema = new mongoose.Schema(
     doorDeliveryCharge: { type: Number, default: 0 },
     doorPickupCharge: { type: Number, default: 0 },
     valueOfGoods: { type: Number, default: 0 },
-  
+
+    bookingStatus: { type: Number, enum: [0, 1, 2, 3, 4, 5], default: 0 },
+    loadingDate:{type:Date,default:null},
+    unloadingDate:{type:Date,default:null},
+    deliveryDate:{type:Date,default:null},
+
     items: { type: Number },
     bookingDate: { type: Date, default: () => new Date() },
-    ltDate: { type: Date, default: () => new Date() },
-    ltCity: { type: String, default: "" }, 
-    ltBranch: { type: String, default: "" },
-    ltEmployee: { type: String, default: "" }, 
-    deliveryEmployee: { type: String, default: "" },
-    
-    bookingStatus: { type: Number, enum: [0, 1, 2, 3, 4, 5], default: 0 },
-    loadingDate:{type:Date,default:""},
-    unloadingDate:{type:Date,default:""},
-    deliveryDate:{type:Date,default:""},
-    
-    cancelByUser: { type: String, default: "" },
-    cancelDate: { type: Date, default: null }, 
-    cancelCity: { type: String, default: "" },
-    cancelBranch: { type: String, default: "" },
 
+
+    ltDate: { type: Date, default: () => new Date() },
+    ltCity: { type: String, default: null }, 
+    ltBranch: { type: String, default: null },
+    ltEmployee: { type: String, default: null }, 
+    deliveryEmployee: { type: String, default: null },
+
+    cancelByUser: { type: String, default: null },
+    cancelDate: { type: Date, default: null }, 
+    cancelCity: { type: String, default: null },
+    cancelBranch: { type: String, default: null },
     refundCharge: { type: Number, default: 0 }, 
     refundAmount: { type: Number, default: 0 }
   }, 

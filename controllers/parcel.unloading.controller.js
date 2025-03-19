@@ -1,14 +1,26 @@
 import ParcelUnloading from '../models/parcel.unloading.model.js'
-
+import Booking from '../models/booking.model.js'
 const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);  
 
 
- const createParcelUnloading = async (req, res) => {
+const createParcelUnloading = async (req, res) => {
     try {
-        const { fromBookingDate, toBookingDate, fromCity, toCity, branch, vehicleNo,lrNumber, grnNo,bookingType } = req.body;
-       
-        const unLoadingBy=req.user.id
-       
+        const { fromBookingDate, toBookingDate, fromCity, toCity, branch, vehicleNo, lrNumber, grnNo, bookingType } = req.body;
+
+        if (!grnNo || !Array.isArray(grnNo) || grnNo.length === 0) {
+            return res.status(400).json({ message: "GRN numbers are required and should be an array" });
+        }
+
+        const unLoadingBy = req.user.id;
+        const currentDate = new Date();
+
+        // Update unloading date and status for all matching GRN numbers
+        await Booking.updateMany(
+            { grnNumber: { $in: grnNo } },
+            { $set: { bookingStatus: 2, unloadingDate: currentDate } }
+        );
+
+        // Create a new parcel unloading entry
         const newParcel = new ParcelUnloading({
             unLoadingVoucher: generateUnloadingVoucher(),
             fromBookingDate,
@@ -26,6 +38,7 @@ const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000)
         await newParcel.save();
         res.status(201).json({ message: "Parcel unloading created successfully", data: newParcel });
     } catch (error) {
+        console.error("Error creating parcel unloading:", error);
         res.status(500).json({ message: "Error creating parcel unloading", error: error.message });
     }
 };

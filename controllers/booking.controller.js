@@ -3,7 +3,7 @@ import moment from "moment";
    
 const generateGrnNumber = async () => {
   const lastBooking = await Booking.findOne().sort({ createdAt: -1 });
-  return lastBooking ? lastBooking.grnNumber + 1 : 1000; 
+  return lastBooking ? lastBooking.grnNo + 1 : 1000; 
 };
 
 const generateLrNumber = async (fromCity, location) => {
@@ -82,8 +82,7 @@ const createBooking = async (req, res) => {
       senderName, senderMobile, senderAddress, senderGst,
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
-      bookingStatus, items,
-      loadingDate="",unloadingDate="",deliveryDate="",
+      bookingStatus, items,loadingDate="",unloadingDate="",deliveryDate="",
       ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
       cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
       refundCharge = 0, refundAmount = 0
@@ -106,7 +105,7 @@ const createBooking = async (req, res) => {
     const adminUniqueId = req.user.subadminUniqueId;
 
     // ✅ Generate unique numbers
-    const grnNumber = await generateGrnNumber();
+    const grnNo = await generateGrnNumber();
     const lrNumber = await generateLrNumber(fromCity, location);
     const eWayBillNo = await generateEWayBillNo();
     const generatedReceiptNo = await generateReceiptNumber();
@@ -120,7 +119,7 @@ const createBooking = async (req, res) => {
 
     // ✅ Create new booking object
     const booking = new Booking({
-      grnNumber,
+      grnNo,
       lrNumber,
       location,
       adminUniqueId,

@@ -13,7 +13,6 @@ const parcelSchema = new mongoose.Schema({
     parcelType: { type: String, required: true }, // Auto-filled
     vocherNoUnique: { type: Number, required: true }, // Auto-generated
     loadingBy: { type: mongoose.Schema.Types.ObjectId, ref: "Subadmin", required: true }, // Loading employee
-    loadingDate: { type: Date, required: true }, // Auto-entered
     fromBookingDate: { type: Date, required: true },
     toBookingDate: { type: Date, required: true },
     fromCity: { type: String, required: true },

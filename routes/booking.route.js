@@ -9,7 +9,7 @@ router.post("/",auth,bookingController.createBooking)
 
 router.get("/",bookingController.getAllBookings)
 
-router.get("/grnNumber/:grnNumber",bookingController.getBookingByGrnNo)
+router.get("/grnNo/:grnNo",bookingController.getBookingByGrnNo)
 
 router.get("/adminUniqueId/:adminUniqueId",bookingController.getBookingadminUniqueId)
 
