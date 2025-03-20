@@ -266,13 +266,13 @@ const getAllBookingsPages = async (req, res) => {
 
   const getBookingByGrnNo = async (req, res) => {
     try {
-      const { grnNumber } = req.params;
+      const { grnNo } = req.params;
   
-      if (!grnNumber) {
+      if (!grnNo) {
         return res.status(400).json({ success: false, message: "grnNumber is required" });
       }
   
-      const booking = await Booking.findOne({ grnNumber });
+      const booking = await Booking.findOne({ grnNo });
   
       if (!booking) {
         return res.status(404).json({ success: false, message: "Booking not found" });

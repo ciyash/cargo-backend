@@ -121,6 +121,7 @@ const createParcel = async (req, res) => {
 const createBranchToBranch = async (req, res) => {
   try {
     const {
+      loadingType,
       fromBookingDate,
       toBookingDate,
       pickUpBranchUniqueId,
@@ -239,6 +240,8 @@ const createBranchToBranchold = async (req, res) => {
       dropBranchUniqueId,
       fromBranch,
       toBranch,
+      lrNumber,
+      grnNo,
       vehicalNumber,
       remarks,
     } = req.body;
@@ -247,12 +250,17 @@ const createBranchToBranchold = async (req, res) => {
     const loadingBy = req.user.id;
 
     const parcel = new ParcelLoading({
+      loadingType,
       vocherNoUnique,
       loadingBy,
       fromBookingDate,
       toBookingDate,
       fromBranch,
       toBranch,
+      pickUpBranchUniqueId,
+      dropBranchUniqueId,
+      lrNumber,
+      grnNo,
       vehicalNumber,
       remarks,
     });
