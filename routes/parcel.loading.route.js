@@ -36,9 +36,9 @@ router.post("/parcel-pending-report",parcelController.parcelPendingReport)  // p
 
 router.post("/parcel-filter-Unloading",parcelController.getParcelsInUnloading)
 
-router.post("/branch-to-branch",parcelController.getBookingsByDateAndBranch) //branch to branch loading
+router.post("/branch-to-branch-load",parcelController.getBookingsByDateAndBranch) //branch to branch loading
 
-router.post("/branch-to-branch",auth,parcelController.createBranchToBranch)  // branch to branch post
+router.post("/branch-to-branch-post",auth,parcelController.createBranchToBranch)  // branch to branch post
 
 
 

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 
 const parcelSchema = new mongoose.Schema({  
-    loadingType: { type: String,enum:["offload","branchload"], required: true }, // Auto-filled
+    loadingType: { type: String,enum:["offload","branchLoad"], required: true }, // Auto-filled
     vocherNoUnique: { type: Number, required: true }, // Auto-generated
     loadingBy: { type: mongoose.Schema.Types.ObjectId, ref: "Subadmin", required: true }, // Loading employee
     fromBookingDate: { type: Date, required: true },
