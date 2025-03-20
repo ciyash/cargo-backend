@@ -20,6 +20,8 @@ const bookingSchema = new mongoose.Schema(
     toCity: { type: String,required:true },
     pickUpBranch: { type: String,required:true },
     dropBranch: { type: String,required:true },
+    pickUpBranchUniqueId:{type:String,required:true},
+    dropBranchUniqueId:{type:String,required:true},
     location: { type: String,require:true},
     dispatchType: { type: String },   
     bookingType: { type: String,required:true },

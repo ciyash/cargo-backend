@@ -76,7 +76,7 @@ const updateVehicle = async (req, res) => {
 
         if (!updatedVehicle) return res.status(404).json({ message: "Vehicle not found" });
 
-        res.status(200).json(updatedVehicle);
+        res.status(200).json({message:"updated successfully vehicle",updatedVehicle});
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

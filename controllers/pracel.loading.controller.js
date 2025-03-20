@@ -13,6 +13,8 @@ const createParcel = async (req, res) => {
     const {
       fromBranch,
       toBranch,
+      pickUpBranchUniqueId,
+      dropBranchUniqueId,
       loadingDate,
       parcelStatus,
       vehicalNumber,
@@ -65,6 +67,8 @@ const createParcel = async (req, res) => {
       vocherNoUnique,
       fromBranch,
       toBranch,
+      pickUpBranchUniqueId,
+      dropBranchUniqueId,
       loadingDate,
       driverName,
       driverNo,
@@ -116,6 +120,8 @@ const createBranchToBranch = async (req, res) => {
     const {
       fromBookingDate,
       toBookingDate,
+      pickUpBranchUniqueId,
+      dropBranchUniqueId,
       fromBranch,
       toBranch,
       vehicalNumber,
@@ -528,6 +534,30 @@ const getParcelsInUnloading = async (req, res) => {
   }
 };
 
+const getBookingsByDateAndBranch = async (req, res) => {
+  try {
+    const { fromDate, toDate, pickUpBranch } = req.body;
+
+    if (!fromDate || !toDate || !pickUpBranch) {
+      return res.status(400).json({ message: "fromDate, toDate, and pickUpBranch are required" });
+    }
+
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    to.setHours(23, 59, 59, 999); // Extend to end of day
+
+    const bookings = await Booking.find({
+      bookingDate: { $gte: from, $lte: to },
+      pickUpBranch
+    }).sort({ bookingDate: -1 });
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
 export default {
   createParcel,
   getParcelById,
@@ -545,5 +575,7 @@ export default {
   parcelPendingReport,
   getParcelsInUnloading,
   getParcelByGrnNo,
-  createBranchToBranch
+  createBranchToBranch,
+  getBookingsByDateAndBranch
+  
 };

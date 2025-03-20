@@ -33,7 +33,7 @@ router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
 
 router.post("/city-wise-booking",bookingController.cityWiseBookings)  // city wise booking 
 
-router.post("/branch-to-branch",bookingController.getBookingsByDateAndBranch)
+
 
 
 export default router

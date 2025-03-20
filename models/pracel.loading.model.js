@@ -11,6 +11,8 @@ const parcelSchema = new mongoose.Schema({
     toCity: [{ type: String}],
     fromBranch: { type: String, required: true },
     toBranch: { type: String, required: true },
+    pickUpBranchUniqueId:{type:String,required:true},
+    dropBranchUniqueId:{type:String,required:true},
     vehicalNumber: { type: String, required: true },  
     driverName: { type: String,default:null },
     driverNo: { type: Number, default:null }, 
