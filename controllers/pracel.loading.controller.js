@@ -52,13 +52,14 @@ const createParcel = async (req, res) => {
     //  Ensure that GRN numbers exist in Booking collection before proceeding
     const existingBookings = await Booking.find({
       grnNo: { $in: grnNo },
-    }).session(session);
+    }).session(session);  
     if (existingBookings.length === 0) {
       throw new Error("No matching GRN numbers found in Booking collection.");
     }
 
     const vocherNoUnique = generateVocherNoUnique();
     const loadingBy = req.user.id;
+
 
     // Create the parcel record
     const parcel = await new ParcelLoading({
@@ -118,6 +119,118 @@ const createParcel = async (req, res) => {
 };
 
 const createBranchToBranch = async (req, res) => {
+  try {
+    const {
+      fromBookingDate,
+      toBookingDate,
+      pickUpBranchUniqueId,
+      dropBranchUniqueId,
+      vehicalNumber,
+      remarks,
+    } = req.body;
+
+    // Validate required fields
+    if (!fromBookingDate || !toBookingDate || !pickUpBranchUniqueId || !dropBranchUniqueId || !vehicalNumber) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Ensure valid date inputs
+    if (isNaN(new Date(fromBookingDate)) || isNaN(new Date(toBookingDate))) {
+      return res.status(400).json({ message: "Invalid date format" });
+    }
+
+    // Fetch branch details securely
+    const [fromBranchData, toBranchData] = await Promise.all([
+      Branch.findOne({ branchUniqueId: pickUpBranchUniqueId }).lean(),
+      Branch.findOne({ branchUniqueId: dropBranchUniqueId }).lean(),
+    ]);
+
+    if (!fromBranchData || !toBranchData) {
+      return res.status(404).json({ message: "Invalid branch unique IDs provided" });
+    }
+
+    const fromCity = fromBranchData.city;
+    const toCity = toBranchData.city;
+
+    // Generate unique voucher number securely
+    const vocherNoUnique = generateVocherNoUnique();
+    const loadingBy = req.user?.id; // Ensure user ID is available
+
+    // Create and save parcel loading entry
+    const parcel = new ParcelLoading({
+      vocherNoUnique,
+      loadingBy,
+      fromBookingDate: new Date(fromBookingDate), // Ensure valid date format
+      toBookingDate: new Date(toBookingDate),
+      fromBranch, // Store actual branch _id
+      fromCity,
+      toBranch, // Store actual branch _id
+      toCity,
+      pickUpBranchUniqueId,
+      dropBranchUniqueId,
+      vehicalNumber: vehicalNumber.trim(), // Trim spaces
+      remarks: remarks?.trim() || "", // Trim or default to empty string
+    });
+
+    await parcel.save();
+    res.status(201).json({ message: "Parcel loading successfully", parcel });
+  } catch (error) {
+    console.error("Error in createBranchToBranch:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+const createBranchToBranch32 = async (req, res) => {
+  try {
+    const {
+      fromBookingDate,
+      toBookingDate,
+      fromBranch,
+      toBranch,
+      pickUpBranchUniqueId,
+      dropBranchUniqueId,
+      vehicalNumber,
+      remarks,
+    } = req.body;
+
+    // Fetch branch details to get city names
+    const fromBranchData = await Branch.findOne({ branchUniqueId: pickUpBranchUniqueId });
+    const toBranchData = await Branch.findOne({ branchUniqueId: dropBranchUniqueId });
+
+
+    if (!fromBranchData || !toBranchData) {
+      return res.status(404).json({ message: "Invalid branch IDs provided" });
+    }
+
+    const fromCity = fromBranchData.city;
+    const toCity = toBranchData.city;
+
+    const vocherNoUnique = generateVocherNoUnique();
+    const loadingBy = req.user.id;
+
+    const parcel = new ParcelLoading({
+      vocherNoUnique,
+      loadingBy,
+      fromBookingDate,
+      toBookingDate,
+      fromBranch,
+      fromCity,
+      toBranch,
+      toCity,
+      pickUpBranchUniqueId,
+      dropBranchUniqueId,
+      vehicalNumber,
+      remarks,
+    });
+
+    await parcel.save();
+    res.status(201).json({ message: "Parcel loading successfully", parcel });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const createBranchToBranchold = async (req, res) => {
   try {
     const {
       fromBookingDate,
