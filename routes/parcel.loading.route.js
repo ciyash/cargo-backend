@@ -18,8 +18,6 @@ router.delete("/:id",parcelController.deleteParcel)
 
 router.post("/offline-report",parcelController.getParcelsByFilter)
 
-router.post("/branch-to-branch",parcelController.branchToBranchLoading)
-
 router.post("/updateGrnNumbers",parcelController.updateAllGrnNumbers)
 
 router.post("/get-lrNumber",parcelController.getParcelByLrNumber)
@@ -37,6 +35,8 @@ router.post("/parcel-status-report",parcelController.parcelStatusReport)  //parc
 router.post("/parcel-pending-report",parcelController.parcelPendingReport)  // parcel pending delivery stockreport 
 
 router.post("/parcel-filter-Unloading",parcelController.getParcelsInUnloading)
+
+router.post("/branch-to-branch",auth,parcelController.createBranchToBranch)  // branch to branch post
 
 
 export default router    

@@ -122,7 +122,12 @@ const createBranchToBranch = async (req, res) => {
       remarks,
     } = req.body;
 
+    const vocherNoUnique = generateVocherNoUnique();
+    const loadingBy = req.user.id;
+
     const parcel = new ParcelLoading({
+      vocherNoUnique,
+      loadingBy,
       fromBookingDate,
       toBookingDate,
       fromBranch,
@@ -130,6 +135,8 @@ const createBranchToBranch = async (req, res) => {
       vehicalNumber,
       remarks,
     });
+    await parcel.save()
+    res.status(201).json({message:"parcel loading successfully",parcel})
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -248,37 +255,6 @@ const getParcelsByFilter = async (req, res) => {
   }
 };
 
-const branchToBranchLoading = async (req, res) => {
-  try {
-    const { fromBookingDate, toBookingDate, fromBranch } = req.body;
-
-    // Build the query object dynamically
-    let query = {};
-
-    if (fromBookingDate && toBookingDate) {
-      query.fromBookingDate = {
-        $gte: new Date(fromBookingDate),
-        $lte: new Date(toBookingDate),
-      };
-    } else if (fromBookingDate) {
-      query.fromBookingDate = { $gte: new Date(fromBookingDate) };
-    } else if (toBookingDate) {
-      query.toBookingDate = { $lte: new Date(toBookingDate) };
-    }
-
-    if (fromBranch) query.fromBranch = fromBranch; // Fix field name
-
-    // Fetch parcels based on query
-    const parcels = await ParcelLoading.find(query);
-
-    if (!parcels.length)
-      return res.status(404).json({ message: "No parcels found" });
-
-    res.status(200).json(parcels);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
 
 const updateAllGrnNumbers = async (req, res) => {
   try {
@@ -560,7 +536,6 @@ export default {
   updateParcel,
   deleteParcel,
   getParcelsByFilter,
-  branchToBranchLoading,
   updateAllGrnNumbers,
   getParcelByLrNumber,
   getParcelByVehicalNumber,
@@ -570,4 +545,5 @@ export default {
   parcelPendingReport,
   getParcelsInUnloading,
   getParcelByGrnNo,
+  createBranchToBranch
 };

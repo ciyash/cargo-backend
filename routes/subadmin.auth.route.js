@@ -22,5 +22,7 @@ router.post("/forgot-password",subAdminAuthController.forgotPassword)
 
 router.delete("/delete-subadmin",auth,subAdminAuthController.deleteSubadmin)  
 
+router.post("/branch-wise",subAdminAuthController.getSubadminsByBranchName)
+
 
 export default router

@@ -271,6 +271,35 @@ const getAllSubadmins = async (req, res) => {
 };
 
 
+const getSubadminsByBranchName = async (req, res) => {
+  try {
+    const { branchName } = req.body; // Get branch name from request body
+
+    if (!branchName) {
+      return res.status(400).json({ message: "Branch name is required" });
+    }
+
+    // Find subadmins and populate branchId with only 'name' field
+    const subadmins = await Subadmin.find().populate({
+      path: "branchId",
+      select: "name",
+    });
+
+    // Filter subadmins where branchId.name matches the given name
+    const filteredSubadmins = subadmins.filter(
+      (subadmin) => subadmin.branchId?.name === branchName
+    );
+
+    if (filteredSubadmins.length === 0) {
+      return res.status(404).json({ message: "No subadmins found for this branch" });
+    }
+
+    res.status(200).json(filteredSubadmins);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
 
 const deleteSubadmin = async (req, res) => {
@@ -326,6 +355,7 @@ export default {
   getAllSubadmins,
   getSubadminById,
   deleteSubadmin,
-  updateSubadmin
+  updateSubadmin,
+  getSubadminsByBranchName
 };
  
