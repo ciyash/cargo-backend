@@ -77,7 +77,7 @@ const generateReceiptNumber = async () => {
 const createBooking = async (req, res) => {
   try {
     const { 
-      fromCity, toCity, pickUpBranch, dropBranch,pickUpBranchUniqueId,dropBranchUniqueId, totalPrice, dispatchType, bookingType,
+      fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
       packages, 
       senderName, senderMobile, senderAddress, senderGst,
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
@@ -128,8 +128,6 @@ const createBooking = async (req, res) => {
       toCity,
       pickUpBranch,
       dropBranch,
-      pickUpBranchUniqueId,
-      dropBranchUniqueId,
       dispatchType,
       bookingType,
       packages,  

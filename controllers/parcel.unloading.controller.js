@@ -25,8 +25,6 @@ const createParcelUnloading = async (req, res) => {
             unLoadingVoucher: generateUnloadingVoucher(),
             fromBookingDate,
             toBookingDate,
-            pickUpBranchUniqueId,
-            dropBranchUniqueId,
             unLoadingBy,
             fromCity,
             toCity,
