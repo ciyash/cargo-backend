@@ -14,7 +14,6 @@ const createParcel = async (req, res) => {
       loadingType,
       fromBranch,
       toBranch,
-      loadingDate,
       parcelStatus,
       vehicalNumber,
       driverName,
@@ -57,6 +56,7 @@ const createParcel = async (req, res) => {
 
     const vocherNoUnique = generateVocherNoUnique();
     const loadingBy = req.user.id;
+    const loadingDate = new Date();
 
     // Create the parcel record
     const parcel = await new ParcelLoading({
@@ -84,7 +84,7 @@ const createParcel = async (req, res) => {
       { grnNo: { $in: grnNo } },
       {
         $set: {
-          bookingStatus: "1",
+          bookingStatus: 1,
           loadingDate: loadingDate,
         },
       },
@@ -415,35 +415,30 @@ const getParcelsByFilters = async (req, res) => {
   try {
     const { fromBranch, fromCity, toCity, fromBookingDate, toBookingDate } = req.body;
 
+    // Construct query dynamically
     let query = {};
 
     if (fromBranch) query.fromBranch = fromBranch;
     if (fromCity) query.fromCity = fromCity;
-    if (toCity) query.toCity = toCity;
-
-    if (fromBookingDate || toBookingDate) {
-      query.fromBookingDate = {};
-
-      if (fromBookingDate) {
-        const startDate = new Date(fromBookingDate + "T00:00:00.000Z"); // Convert "YYYY-MM-DD" to start of day
-        query.fromBookingDate.$gte = startDate;
-      }
-
-      if (toBookingDate) {
-        const endDate = new Date(toBookingDate + "T23:59:59.999Z"); // Convert "YYYY-MM-DD" to end of day
-        query.fromBookingDate.$lte = endDate;
-      }
+    if (toCity) query.toCity = { $in: toCity }; // Match any city in the array
+    if (fromBookingDate) query.fromBookingDate = { $gte: new Date(fromBookingDate) };
+    if (toBookingDate) {
+      const toDate = new Date(toBookingDate);
+      toDate.setHours(23, 59, 59, 999); // Extend to end of day
+      query.toBookingDate = { $lte: toDate };
     }
 
-    const parcels = await ParcelLoading.find(query);
+    // Fetch parcels based on filters
+    const parcels = await ParcelLoading.find(query).sort({ fromBookingDate: -1 });
 
     if (parcels.length === 0) {
-      return res.status(404).json({ message: "No parcels found" });
+      return res.status(200).json({ success: true, message: "No parcels found", data: [] });
     }
 
-    res.status(200).json(parcels);
+    return res.status(200).json({ success: true, data: parcels });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error fetching parcels:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 

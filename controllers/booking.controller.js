@@ -430,36 +430,31 @@ const getBookingsBetweenDates = async (req, res) => {
   try {
     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
 
-    if (!startDate || !endDate) {  
+    if (!startDate || !endDate) {
       return res.status(400).json({ message: "Start date and end date are required!" });
     }
 
     const start = new Date(startDate);
     const end = new Date(endDate);
-
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {  
-      return res.status(400).json({ message: "Invalid date format!" });
-    }
-
+    start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
-    let filter = { bookingDate: { $gte: start, $lte: end } };
+    let filter = { bookingDate: { $gte: start, $lte: end }, bookingStatus: 0 };
 
     if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
 
-    // Modify toCity logic to check if at least one city matches
     if (Array.isArray(toCity) && toCity.length > 0) {
-      filter.$or = toCity.map(city => ({ toCity: new RegExp(`^${city}$`, "i") }));
+      filter.toCity = { $in: toCity.map(city => new RegExp(`^${city}$`, "i")) };
     } else if (toCity) {
       filter.toCity = new RegExp(`^${toCity}$`, "i");
     }
 
-    if (pickUpBranch) filter.pickUpBranch = new RegExp(`^${pickUpBranch}$`, "i");
+    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
 
     const bookings = await Booking.find(filter);
 
     if (bookings.length === 0) {
-      return res.status(404).json({ message: "No bookings found for the given filters!" });
+      return res.status(404).json({ message: "No bookings found for the given filters!", data: [] });
     }
 
     res.status(200).json(bookings);

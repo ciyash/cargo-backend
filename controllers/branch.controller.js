@@ -85,7 +85,8 @@ const createBranch = async (req, res) => {
 
 const getAllBranches = async (req, res) => {
   try {
-    const branches = await Branch.find().populate("createdBy")
+    const branches = await Branch.find()
+    // .populate("createdBy")
     if(!branches){
       return res.status(404).json({message:"No data found in branches"})
     }
