@@ -469,8 +469,6 @@ const getBookingsBetweenDates = async (req, res) => {
   }
 };
 
-
-
 const getBookingsByAnyField = async (req, res) => {
   try {
     const { query } = req.query; // Use 'query' as the search input
@@ -499,6 +497,29 @@ const getBookingsByAnyField = async (req, res) => {
   }
 };
 
+const getBookingsByDateAndBranch = async (req, res) => {
+  try {
+    const { fromDate, toDate, pickUpBranch } = req.body;
+
+    if (!fromDate || !toDate || !pickUpBranch) {
+      return res.status(400).json({ message: "fromDate, toDate, and pickUpBranch are required" });
+    }
+
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    to.setHours(23, 59, 59, 999); // Extend to end of day
+
+    const bookings = await Booking.find({
+      bookingDate: { $gte: from, $lte: to },
+      pickUpBranch
+    }).sort({ bookingDate: -1 });
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
 
 export default {createBooking,
   getAllBookings,
@@ -513,5 +534,6 @@ export default {createBooking,
   getBookingsBetweenDates,
   getAllBookingsPages,
   getBookingsByAnyField,
-  cityWiseBookings
+  cityWiseBookings,
+  getBookingsByDateAndBranch
 }
