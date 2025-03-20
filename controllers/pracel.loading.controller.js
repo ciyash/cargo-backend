@@ -413,17 +413,27 @@ const getParcelLoadingBetweenDates = async (req, res) => {
 
 const getParcelsByFilters = async (req, res) => {
   try {
-    const { fromBranch, fromCity, toCity, fromBookingDate, toBookingDate } =
-      req.body;
+    const { fromBranch, fromCity, toCity, fromBookingDate, toBookingDate } = req.body;
 
     let query = {};
 
     if (fromBranch) query.fromBranch = fromBranch;
     if (fromCity) query.fromCity = fromCity;
     if (toCity) query.toCity = toCity;
-    if (fromBookingDate)
-      query.fromBookingDate = { $gte: new Date(fromBookingDate) };
-    if (toBookingDate) query.toBookingDate = { $lte: new Date(toBookingDate) };
+
+    if (fromBookingDate || toBookingDate) {
+      query.fromBookingDate = {};
+
+      if (fromBookingDate) {
+        const startDate = new Date(fromBookingDate + "T00:00:00.000Z"); // Convert "YYYY-MM-DD" to start of day
+        query.fromBookingDate.$gte = startDate;
+      }
+
+      if (toBookingDate) {
+        const endDate = new Date(toBookingDate + "T23:59:59.999Z"); // Convert "YYYY-MM-DD" to end of day
+        query.fromBookingDate.$lte = endDate;
+      }
+    }
 
     const parcels = await ParcelLoading.find(query);
 
@@ -436,6 +446,7 @@ const getParcelsByFilters = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 const parcelStatusReport = async (req, res) => {
   try {
@@ -538,27 +549,32 @@ const getParcelsInUnloading = async (req, res) => {
 
 const getBookingsByDateAndBranch = async (req, res) => {
   try {
-    const { fromDate, toDate, pickUpBranch } = req.body;
+    const { fromBookingDate, toBookingDate, fromBranch } = req.body;
 
-    if (!fromDate || !toDate || !pickUpBranch) {
-      return res.status(400).json({ message: "fromDate, toDate, and pickUpBranch are required" });
+    if (!fromBookingDate || !toBookingDate || !fromBranch) {
+      return res.status(400).json({ message: "fromBookingDate, toBookingDate, and fromBranch are required" });
     }
 
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    to.setHours(23, 59, 59, 999); // Extend to end of day
+    const from = new Date(fromBookingDate);
+    const to = new Date(toBookingDate);
+    to.setHours(23, 59, 59, 999); // Extend to the end of the day
 
     const bookings = await Booking.find({
       bookingDate: { $gte: from, $lte: to },
-      pickUpBranch
+      pickUpBranch: fromBranch // Fixed: Ensure you're filtering by the correct field
     }).sort({ bookingDate: -1 });
 
-    res.status(200).json(bookings);
+    if (bookings.length === 0) {
+      return res.status(200).json({message: "No parcels available" });
+    }
+
+    return res.status(200).json(bookings);
   } catch (error) {
     console.error("Error fetching bookings:", error);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+
 
 export default {
   createParcel,
