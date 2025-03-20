@@ -16,8 +16,6 @@ router.patch("/:id",parcelController.updateParcel)
   
 router.delete("/:id",parcelController.deleteParcel)
 
-router.post("/offline-report",parcelController.getParcelsByFilter)
-
 router.post("/updateGrnNumbers",parcelController.updateAllGrnNumbers)
 
 router.post("/get-lrNumber",parcelController.getParcelByLrNumber)
@@ -28,7 +26,7 @@ router.get("/vehicalNumber/:vehicalNumber",parcelController.getParcelByVehicalNu
 
 router.post("/between-dates",parcelController.getParcelLoadingBetweenDates)
 
-router.post("/parcel-offline-report",parcelController.getParcelsByFilters)
+router.post("/parcel-offline-report",parcelController.getParcelsByFilter)
 
 router.post("/parcel-status-report",parcelController.parcelStatusReport)  //parcel status date difference report
 

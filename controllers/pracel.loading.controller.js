@@ -222,46 +222,58 @@ const deleteParcel = async (req, res) => {
   }
 };
 
+
 const getParcelsByFilter = async (req, res) => {
   try {
-    const { fromBookingDate, toBookingDate, fromCity, toCity } = req.body;
+    const { fromBranch, fromCity, toCity, fromBookingDate, toBookingDate } = req.body;
 
-    if (!fromBookingDate || !toBookingDate || !fromCity || !toCity) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Required fields are missing" });
+    // Construct query dynamically
+    let query = {};
+
+    if (fromBranch) query.fromBranch = fromBranch;
+    if (fromCity) query.fromCity = fromCity;
+    if (toCity) query.toCity = { $in: toCity }; // Match any city in the array
+    if (fromBookingDate) query.fromBookingDate = { $gte: new Date(fromBookingDate) };
+    if (toBookingDate) {
+      const toDate = new Date(toBookingDate);
+      toDate.setHours(23, 59, 59, 999); // Extend to end of day
+      query.toBookingDate = { $lte: toDate };
     }
 
-    const start = new Date(fromBookingDate);
-    const end = new Date(toBookingDate);
-    end.setHours(23, 59, 59, 999); // Ensure the full day is included
+    // Fetch parcels based on filters and select only necessary fields
+    const parcels = await ParcelLoading.find(query)
+      .select("grnNo vehicleNumber driverName")
+      .sort({ fromBookingDate: -1 });
 
-    let query = {
-      fromBookingDate: { $gte: start },
-      toBookingDate: { $lte: end },
-      fromCity,
-    };
-
-    // If toCity is an array, use $in to match at least one city
-    if (Array.isArray(toCity) && toCity.length > 0) {
-      query.toCity = { $in: toCity };
-    } else {
-      query.toCity = toCity; // Single city case
+    if (!parcels.length) {
+      return res.status(200).json({ success: true, message: "No parcels found", data: [] });
     }
 
-    const parcels = await ParcelLoading.find(query);
+    // Extract all grnNo values
+    const grnNos = parcels.flatMap(parcel => parcel.grnNo); // Flatten in case of nested arrays
 
-    if (parcels.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No parcels found" });
-    }
+    // Find corresponding booking records where grnNo matches
+    const bookings = await Booking.find({ grnNo: { $in: grnNos } })
+      .select("lrNumber totalQuantity remarks valueOfGoods totalPrice packages.contains") // Include contains from packages
+      .lean();
 
-    res.status(200).json(parcels);
+    // Ensure contains is extracted from packages array
+    const formattedBookings = bookings.map(booking => ({
+      ...booking,
+      contains: booking.packages?.map(pkg => pkg.contains) || []
+    }));
+
+    return res.status(200).json({ 
+        parcelLoadingDetails: parcels, 
+        bookingDetails: formattedBookings 
+      })
+    
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Error fetching parcels and bookings:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+
 
 
 const updateAllGrnNumbers = async (req, res) => {
@@ -411,38 +423,6 @@ const getParcelLoadingBetweenDates = async (req, res) => {
   }
 };
 
-const getParcelsByFilters = async (req, res) => {
-  try {
-    const { fromBranch, fromCity, toCity, fromBookingDate, toBookingDate } = req.body;
-
-    // Construct query dynamically
-    let query = {};
-
-    if (fromBranch) query.fromBranch = fromBranch;
-    if (fromCity) query.fromCity = fromCity;
-    if (toCity) query.toCity = { $in: toCity }; // Match any city in the array
-    if (fromBookingDate) query.fromBookingDate = { $gte: new Date(fromBookingDate) };
-    if (toBookingDate) {
-      const toDate = new Date(toBookingDate);
-      toDate.setHours(23, 59, 59, 999); // Extend to end of day
-      query.toBookingDate = { $lte: toDate };
-    }
-
-    // Fetch parcels based on filters
-    const parcels = await ParcelLoading.find(query).sort({ fromBookingDate: -1 });
-
-    if (parcels.length === 0) {
-      return res.status(200).json({ success: true, message: "No parcels found", data: [] });
-    }
-
-    return res.status(200).json({ success: true, data: parcels });
-  } catch (error) {
-    console.error("Error fetching parcels:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
-  }
-};
-
-
 const parcelStatusReport = async (req, res) => {
   try {
     const { startDate, endDate, fromCity, toCity, parcelStatus } = req.body;
@@ -583,7 +563,6 @@ export default {
   getParcelByLrNumber,
   getParcelByVehicalNumber,
   getParcelLoadingBetweenDates,
-  getParcelsByFilters,
   parcelStatusReport,
   parcelPendingReport,
   getParcelsInUnloading,
