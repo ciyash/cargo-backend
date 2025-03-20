@@ -11,6 +11,7 @@ const createParcel = async (req, res) => {
 
   try {
     const {
+      loadingType,
       fromBranch,
       toBranch,
       pickUpBranchUniqueId,
@@ -31,6 +32,7 @@ const createParcel = async (req, res) => {
 
     //  Validate required fields
     if (
+      
       !fromBranch ||
       !vehicalNumber ||
       !driverName ||
@@ -60,7 +62,7 @@ const createParcel = async (req, res) => {
 
     // Create the parcel record
     const parcel = await new ParcelLoading({
-      parcelType,
+      loadingType,
       vehicalNumber,
       parcelStatus,
       loadingBy,
