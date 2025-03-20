@@ -254,7 +254,7 @@ const getParcelsByFilter = async (req, res) => {
 
     // Find corresponding booking records where grnNo matches
     const bookings = await Booking.find({ grnNo: { $in: grnNos } })
-      .select("lrNumber totalQuantity remarks valueOfGoods totalPrice packages.contains") // Include contains from packages
+      .select("lrNumber totalQuantity remarks valueOfGoods grandTotal  packages.contains") // Include contains from packages
       .lean();
 
     // Ensure contains is extracted from packages array
