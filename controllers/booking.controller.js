@@ -75,119 +75,13 @@ const generateReceiptNumber = async () => {
 };
 
 
-// const createBooking = async (req, res) => {
-//   try {
-//     const { 
-//       fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
-//       packages, 
-//       senderName, senderMobile, senderAddress, senderGst,
-//       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
-//       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
-//       bookingStatus, items,loadingDate="",unloadingDate="",deliveryDate="",
-//       ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
-//       cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
-//       refundCharge = 0, refundAmount = 0
-//     } = req.body;
-
-//     // ✅ Validate package details
-//     if (!Array.isArray(packages) || packages.length === 0) {
-//       return res.status(400).json({ success: false, message: "At least one package is required" });
-//     }
-
-//     for (const pkg of packages) {
-//       if (!pkg.quantity || !pkg.packageType || !pkg.weight || !pkg.unitPrice) {
-//         return res.status(400).json({ success: false, message: "Each package must have quantity, packageType, weight, and unitPrice" });
-//       }
-//     }
-
-//     const location = req.user.location; 
-//     console.log("location", location);
-//     const bookedBy = req.user.id;
-//     const adminUniqueId = req.user.subadminUniqueId;
-
-//     // ✅ Generate unique numbers
-//     const grnNo = await generateGrnNumber();
-//     const lrNumber = await generateLrNumber(fromCity, location);
-//     const eWayBillNo = await generateEWayBillNo();
-//     const generatedReceiptNo = await generateReceiptNumber();
-
-//     // ✅ Calculate `totalQuantity` from `packages`
-//     const totalQuantity = packages.reduce((sum, pkg) => sum + pkg.quantity, 0);
-
-//     // ✅ Calculate Grand Total
-//     let packageTotal = packages.reduce((sum, pkg) => sum + (pkg.unitPrice * pkg.quantity), 0);
-//     let grandTotal = packageTotal + serviceCharge + hamaliCharge + doorDeliveryCharge + doorPickupCharge + valueOfGoods;
-
-//     // ✅ Create new booking object
-//     const booking = new Booking({
-//       grnNo,
-//       lrNumber,
-//       location,
-//       adminUniqueId,
-//       bookingTime: Date.now(),
-//       fromCity,
-//       toCity,
-//       pickUpBranch,
-//       dropBranch,
-//       dispatchType,
-//       bookingType,
-//       packages,  
-//       totalQuantity,  // Auto-filled field ✅
-//       senderName,
-//       senderMobile,  
-//       senderAddress,
-//       senderGst,
-//       receiverName,
-//       receiverMobile,
-//       receiverAddress,
-//       receiverGst,
-//       parcelGstAmount,
-//       receiptNo: generatedReceiptNo, 
-//       totalPrice,
-//       grandTotal,
-//       serviceCharge,
-//       hamaliCharge,
-//       doorDeliveryCharge,
-//       doorPickupCharge,
-//       valueOfGoods,
-//       bookingStatus,
-//       bookedBy,
-//       items,
-//       eWayBillNo,
-//       bookingDate: new Date(),
-//       ltDate: new Date(),
-//       ltCity,
-//       ltBranch,
-//       ltEmployee,
-//       deliveryEmployee,
-//       cancelByUser,
-//       cancelDate: cancelDate ? new Date(cancelDate) : null,
-//       cancelCity,
-//       cancelBranch,
-//       refundCharge,
-//       refundAmount,
-//       loadingDate,
-//       unloadingDate,
-//       deliveryDate
-//     });
-
-//     await booking.save();
-
-//     res.status(201).json({ success: true, message: "Booking created successfully", data: booking });
-//   } catch (error) {
-//     console.log(error.message);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-
 const createBooking = async (req, res) => {
   try {
     const { 
       fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
       packages, 
       senderName, senderMobile, senderAddress, senderGst,
-      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
+      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,grandTotal,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,items
     } = req.body;
 
@@ -224,8 +118,8 @@ const createBooking = async (req, res) => {
     const totalQuantity = packages.reduce((sum, pkg) => sum + pkg.quantity, 0);
 
     //  Calculate Grand Total
-    let packageTotal = packages.reduce((sum, pkg) => sum + (pkg.unitPrice * pkg.quantity), 0);
-    let grandTotal = packageTotal + serviceCharge + hamaliCharge + doorDeliveryCharge + doorPickupCharge + valueOfGoods;
+    // let packageTotal = packages.reduce((sum, pkg) => sum + (pkg.unitPrice * pkg.quantity), 0);
+    // let grandTotal = packageTotal + serviceCharge + hamaliCharge + doorDeliveryCharge + doorPickupCharge + valueOfGoods;
 
     //  Create new booking object
     const booking = new Booking({
