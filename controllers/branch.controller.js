@@ -220,33 +220,30 @@ const getBranchBySubadminUniqueId = async (req, res) => {
 };
 
 
-const getBranchById = async (req, res) => {
+const getBranchCity = async (req, res) => {
   try {
-    const { id } = req.params; // Get ID from URL params
+    const { city } = req.params;
 
-    // Find branch by ID
-    const branch = await Branch.findById(id);
+    // Case-insensitive search for city
+    const branches = await Branch.find({ city: { $regex: new RegExp(`^${city}$`, "i") } });
 
-    if (!branch) {
-      return res.status(404).json({ message: "Branch not found!" });
+    if (branches.length === 0) {
+      return res.status(404).json({ message: "City not found!" });
     }
 
-    // Extract only required fields
-    const responseData = {
-      id: branch._id, 
-      city: branch.city,
+    // Extract only name & branchType
+    const responseData = branches.map(branch => ({
+      city:branch.city,
       name: branch.name,
       branchType: branch.branchType,
-      branchUniqueId: branch.branchUniqueId
-    };
+      branchUniqueId:branch.branchUniqueId
+    }));
 
     res.status(200).json(responseData);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-};
-
-
+}; 
 
 // Delete Branch
 const deleteBranch = async (req, res) => {
@@ -279,5 +276,5 @@ export default {
   deleteBranch,
   getBranchByDateRange,
   getBranchBySubadminUniqueId,
-  getBranchById
+  getBranchCity
 };
