@@ -1,5 +1,4 @@
 import Booking from "../models/booking.model.js";
-import User from '../models/user.model.js'
 import moment from "moment";
    
 const generateGrnNumber = async () => {
@@ -74,8 +73,6 @@ const generateReceiptNumber = async () => {
   const lastBooking = await Booking.findOne().sort({ receiptNo: -1 }).lean();
   return (lastBooking?.receiptNo || 0) + 1; // If no booking exists, start from 1
 };
-
-
 
 
 const createBooking = async (req, res) => {

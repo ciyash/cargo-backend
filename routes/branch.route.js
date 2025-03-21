@@ -11,5 +11,6 @@ router.post("/dateRange",branchController.getBranchByDateRange)
 router.get("/:id",branchController.getbranchId)
 router.patch("/update/:id", branchController.updateBranch); 
 router.delete("/delete/:id", branchController.deleteBranch);
+router.get("/city/:city",branchController.getBranchCity)
 
 export default router;
