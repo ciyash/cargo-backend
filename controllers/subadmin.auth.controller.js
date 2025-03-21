@@ -273,7 +273,7 @@ const getAllSubadmins = async (req, res) => {
 
 const getSubadminsByBranchName = async (req, res) => {
   try {
-    const { branchName } = req.body; // Get branch name from request body
+    const { branchName } = req.params ; // Get branch name from request body
 
     if (!branchName) {
       return res.status(400).json({ message: "Branch name is required" });

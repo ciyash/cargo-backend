@@ -1,4 +1,5 @@
 import Booking from "../models/booking.model.js";
+import User from '../models/user.model.js'
 import moment from "moment";
    
 const generateGrnNumber = async () => {
@@ -73,6 +74,9 @@ const generateReceiptNumber = async () => {
   const lastBooking = await Booking.findOne().sort({ receiptNo: -1 }).lean();
   return (lastBooking?.receiptNo || 0) + 1; // If no booking exists, start from 1
 };
+
+
+
 
 const createBooking = async (req, res) => {
   try {
@@ -218,8 +222,6 @@ const cityWiseBookings = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };  
-
-
 
 const getAllBookingsPages = async (req, res) => {
   try {
@@ -494,7 +496,9 @@ const getBookingsByAnyField = async (req, res) => {
 
 
 
-export default {createBooking,
+
+export default {
+  createBooking,
   getAllBookings,
   getBookingByGrnNo,
   deleteBookings,
@@ -507,5 +511,6 @@ export default {createBooking,
   getBookingsBetweenDates,
   getAllBookingsPages,
   getBookingsByAnyField,
-  cityWiseBookings
+  cityWiseBookings,
+  
 }
