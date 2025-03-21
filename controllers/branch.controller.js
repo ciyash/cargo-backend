@@ -197,9 +197,6 @@ const getBranchBySubadminUniqueId = async (req, res) => {
     // Fetch all branches and populate `createdBy`
     const branches = await Branch.find().populate("createdBy", "subadminUniqueId name");
 
-    console.log("subadminId from params:", subadminUniqueId);
-    console.log("Fetched branches:", branches);
-
     // Filter branch where `createdBy.subadminUniqueId` matches `subadminId`
     const matchedBranch = branches.find(branch => 
       branch.createdBy && branch.createdBy.subadminUniqueId == subadminUniqueId

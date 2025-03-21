@@ -91,7 +91,6 @@ const createParcel = async (req, res) => {
       { session }
     );
 
-    console.log("Updated Bookings:", updateResult.modifiedCount);
 
     await session.commitTransaction(); //  Commit transaction
     res
@@ -254,7 +253,7 @@ const getParcelsByFilter = async (req, res) => {
 
     // Find corresponding booking records where grnNo matches
     const bookings = await Booking.find({ grnNo: { $in: grnNos } })
-      .select("lrNumber totalQuantity remarks valueOfGoods grandTotal  packages.contains") // Include contains from packages
+      .select("lrNumber totalQuantity remarks valueOfGoods grandTotal  packages.packageType") // Include contains from packages
       .lean();
 
     // Ensure contains is extracted from packages array
