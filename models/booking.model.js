@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const packageSchema = new mongoose.Schema({
   quantity: { type: Number, required: true, default: 1 },
   packageType: { type: String, required: true },
-  contains: { type: Number, default: 0 },
+  contains: { type: String, default: null },
   weight: { type: Number, required: true }, 
   unitPrice: { type: Number, required: true },
   totalPrice: { type: Number, required:true }
