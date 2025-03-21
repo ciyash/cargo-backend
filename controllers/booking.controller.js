@@ -192,7 +192,7 @@ const createBooking = async (req, res) => {
 
     res.status(201).json({ success: true, message: "Booking created successfully", data: booking });
   } catch (error) {
-    console.log(error.message);
+    // console.log(error.message);
     res.status(500).json({ error: error.message });
   }
 };
@@ -317,10 +317,10 @@ const getAllBookingsPages = async (req, res) => {
   const getBookinglrNumber = async (req, res) => {
     try {
       const { lrNumber } = req.body;
-      console.log("Received lrNumber:", lrNumber);
+      // console.log("Received lrNumber:", lrNumber);
   
       const booking = await Booking.findOne({ lrNumber });
-      console.log("Booking Found:", booking);
+      // console.log("Booking Found:", booking);
   
       if (!booking) {
         return res.status(404).json({ message: "No bookings found for this lrNumber!" });
@@ -328,7 +328,7 @@ const getAllBookingsPages = async (req, res) => {
   
       res.status(200).json(booking);
     } catch (error) {
-      console.error("Error fetching booking:", error);
+      // console.error("Error fetching booking:", error);
       res.status(500).json({ error: error.message });
     }
   };
@@ -420,7 +420,7 @@ const getAllBookingsPages = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error updating GRN numbers:", error);
+        // console.error("Error updating GRN numbers:", error);
         return res.status(500).json({ message: "Internal Server Error", error: error.message });
     }
 };

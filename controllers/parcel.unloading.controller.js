@@ -53,7 +53,7 @@ const getParcelsLoading = async (req, res) => {
         }
 
         // Log filter to debug
-        console.log("Generated Filter:", JSON.stringify(filter, null, 2));
+        // console.log("Generated Filter:", JSON.stringify(filter, null, 2));
 
         // Fetch parcels based on filters
         const parcels = await ParcelLoading.find(filter);
@@ -131,7 +131,7 @@ const createParcelUnloading = async (req, res) => {
 
         res.status(201).json({ message: "Parcel unloading created successfully", data: newParcel });
     } catch (error) {
-        console.error("Error creating parcel unloading:", error);
+        // console.error("Error creating parcel unloading:", error);
         res.status(500).json({ message: "Error creating parcel unloading", error: error.message });
     }
 };
@@ -181,8 +181,8 @@ const getParcelsByFilters = async (req, res) => {
 
         res.status(200).json(parcels);
     } catch (error) {
-        console.error("Error fetching parcels:", error);
-        res.status(500).json({ message: "Internal server error" });
+        // console.error("Error fetching parcels:", error);
+        res.status(500).json({ error:error.message});
     }
 };
 
