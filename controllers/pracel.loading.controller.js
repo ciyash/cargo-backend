@@ -1,5 +1,5 @@
 import ParcelLoading from "../models/pracel.loading.model.js";
-import Booking from "../models/booking.model.js";
+import {Booking} from "../models/booking.model.js";
 
 const generateVocherNoUnique = () => {
   return Math.floor(100000 + Math.random() * 900000);

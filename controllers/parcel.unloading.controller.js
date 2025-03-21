@@ -1,5 +1,5 @@
 import ParcelUnloading from '../models/parcel.unloading.model.js'
-import Booking from '../models/booking.model.js'
+import {Booking} from '../models/booking.model.js'
 import ParcelLoading from '../models/pracel.loading.model.js'
 
 
@@ -23,12 +23,12 @@ const getParcelsLoading = async (req, res) => {
         startOfDay.setUTCHours(0, 0, 0, 0);
         endOfDay.setUTCHours(23, 59, 59, 999);
 
-        // Base date filter
+        // Base filter with date range
         let filter = {
             fromBookingDate: { $gte: startOfDay, $lte: endOfDay },
         };
 
-        // Ensure at least one branch or one city matches
+        // Ensure at least one matching condition
         let orConditions = [];
 
         if (Array.isArray(fromCity) && fromCity.length > 0) {
@@ -47,14 +47,18 @@ const getParcelsLoading = async (req, res) => {
             filter.$or = orConditions;
         }
 
-        // Additional filters
-        if (vehicalNumber) {
-            filter.vehicalNumber = vehicalNumber;
+        // ✅ Check vehicle number
+        if (Array.isArray(vehicalNumber) && vehicalNumber.length > 0) {
+            filter.vehicalNumber = { $in: vehicalNumber };
         }
 
-        // Fetch parcels based on the filters
+        // Log filter to debug
+        console.log("Generated Filter:", JSON.stringify(filter, null, 2));
+
+        // Fetch parcels based on filters
         const parcels = await ParcelLoading.find(filter);
 
+        // If no parcels found, return 404
         if (parcels.length === 0) {
             return res.status(404).json({ message: "No parcels found!" });
         }
@@ -70,26 +74,44 @@ const getParcelsLoading = async (req, res) => {
 };
 
 
+
 const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);  
 
 const createParcelUnloading = async (req, res) => {
     try {
-        const { fromBookingDate, toBookingDate,fromCity, toCity, branch, vehicleNo, lrNumber, grnNo, bookingType } = req.body;
+        const { fromBookingDate, toBookingDate, fromCity, toCity, branch, vehicleNo, lrNumber, grnNo, bookingType } = req.body;
 
         if (!grnNo || !Array.isArray(grnNo) || grnNo.length === 0) {
             return res.status(400).json({ message: "GRN numbers are required and should be an array" });
         }
 
+        // Convert all GRN numbers to numbers (if they are strings)
+        const grnNumbers = grnNo.map(num => Number(num));
+
         const unLoadingBy = req.user.id;
         const currentDate = new Date();
 
-        // Update unloading date and status for all matching GRN numbers
+        // Check if all GRN numbers exist
+        const existingBookings = await Booking.find({ grnNo: { $in: grnNumbers } });
+        const existingGrnNumbers = existingBookings.map(booking => booking.grnNo);
+
+        // Identify missing GRNs
+        const missingGrnNumbers = grnNumbers.filter(grn => !existingGrnNumbers.includes(grn));
+
+        if (missingGrnNumbers.length > 0) {
+            return res.status(400).json({ 
+                message: "Some GRN numbers do not exist in the system",
+                missingGrnNumbers 
+            });
+        }
+
+        // Update booking status and unloading date
         await Booking.updateMany(
-            { grnNumber: { $in: grnNo } },
+            { grnNo: { $in: grnNumbers } },
             { $set: { bookingStatus: 2, unloadingDate: currentDate } }
         );
 
-        // Create a new parcel unloading entry
+        // Create a new Parcel Unloading entry
         const newParcel = new ParcelUnloading({
             unLoadingVoucher: generateUnloadingVoucher(),
             fromBookingDate,
@@ -100,11 +122,13 @@ const createParcelUnloading = async (req, res) => {
             branch,
             vehicleNo,
             lrNumber,
-            grnNo,
-            bookingType
+            grnNo: grnNumbers,
+            bookingType,
+            createdAt: currentDate,
         });
 
         await newParcel.save();
+
         res.status(201).json({ message: "Parcel unloading created successfully", data: newParcel });
     } catch (error) {
         console.error("Error creating parcel unloading:", error);

@@ -1,4 +1,4 @@
-import Booking from "../models/booking.model.js";
+import {User,Booking} from "../models/booking.model.js";
 import moment from "moment";
    
 const generateGrnNumber = async () => {
@@ -75,6 +75,112 @@ const generateReceiptNumber = async () => {
 };
 
 
+// const createBooking = async (req, res) => {
+//   try {
+//     const { 
+//       fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
+//       packages, 
+//       senderName, senderMobile, senderAddress, senderGst,
+//       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
+//       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
+//       bookingStatus, items,loadingDate="",unloadingDate="",deliveryDate="",
+//       ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
+//       cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
+//       refundCharge = 0, refundAmount = 0
+//     } = req.body;
+
+//     // ✅ Validate package details
+//     if (!Array.isArray(packages) || packages.length === 0) {
+//       return res.status(400).json({ success: false, message: "At least one package is required" });
+//     }
+
+//     for (const pkg of packages) {
+//       if (!pkg.quantity || !pkg.packageType || !pkg.weight || !pkg.unitPrice) {
+//         return res.status(400).json({ success: false, message: "Each package must have quantity, packageType, weight, and unitPrice" });
+//       }
+//     }
+
+//     const location = req.user.location; 
+//     console.log("location", location);
+//     const bookedBy = req.user.id;
+//     const adminUniqueId = req.user.subadminUniqueId;
+
+//     // ✅ Generate unique numbers
+//     const grnNo = await generateGrnNumber();
+//     const lrNumber = await generateLrNumber(fromCity, location);
+//     const eWayBillNo = await generateEWayBillNo();
+//     const generatedReceiptNo = await generateReceiptNumber();
+
+//     // ✅ Calculate `totalQuantity` from `packages`
+//     const totalQuantity = packages.reduce((sum, pkg) => sum + pkg.quantity, 0);
+
+//     // ✅ Calculate Grand Total
+//     let packageTotal = packages.reduce((sum, pkg) => sum + (pkg.unitPrice * pkg.quantity), 0);
+//     let grandTotal = packageTotal + serviceCharge + hamaliCharge + doorDeliveryCharge + doorPickupCharge + valueOfGoods;
+
+//     // ✅ Create new booking object
+//     const booking = new Booking({
+//       grnNo,
+//       lrNumber,
+//       location,
+//       adminUniqueId,
+//       bookingTime: Date.now(),
+//       fromCity,
+//       toCity,
+//       pickUpBranch,
+//       dropBranch,
+//       dispatchType,
+//       bookingType,
+//       packages,  
+//       totalQuantity,  // Auto-filled field ✅
+//       senderName,
+//       senderMobile,  
+//       senderAddress,
+//       senderGst,
+//       receiverName,
+//       receiverMobile,
+//       receiverAddress,
+//       receiverGst,
+//       parcelGstAmount,
+//       receiptNo: generatedReceiptNo, 
+//       totalPrice,
+//       grandTotal,
+//       serviceCharge,
+//       hamaliCharge,
+//       doorDeliveryCharge,
+//       doorPickupCharge,
+//       valueOfGoods,
+//       bookingStatus,
+//       bookedBy,
+//       items,
+//       eWayBillNo,
+//       bookingDate: new Date(),
+//       ltDate: new Date(),
+//       ltCity,
+//       ltBranch,
+//       ltEmployee,
+//       deliveryEmployee,
+//       cancelByUser,
+//       cancelDate: cancelDate ? new Date(cancelDate) : null,
+//       cancelCity,
+//       cancelBranch,
+//       refundCharge,
+//       refundAmount,
+//       loadingDate,
+//       unloadingDate,
+//       deliveryDate
+//     });
+
+//     await booking.save();
+
+//     res.status(201).json({ success: true, message: "Booking created successfully", data: booking });
+//   } catch (error) {
+//     console.log(error.message);
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+
 const createBooking = async (req, res) => {
   try {
     const { 
@@ -82,14 +188,10 @@ const createBooking = async (req, res) => {
       packages, 
       senderName, senderMobile, senderAddress, senderGst,
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
-      serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,
-      bookingStatus, items,loadingDate="",unloadingDate="",deliveryDate="",
-      ltCity = "", ltBranch = "", ltEmployee = "", deliveryEmployee = "",
-      cancelByUser = "", cancelDate = "", cancelCity = "", cancelBranch = "",
-      refundCharge = 0, refundAmount = 0
+      serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0,items
     } = req.body;
 
-    // ✅ Validate package details
+    //Validate package details
     if (!Array.isArray(packages) || packages.length === 0) {
       return res.status(400).json({ success: false, message: "At least one package is required" });
     }
@@ -103,22 +205,29 @@ const createBooking = async (req, res) => {
     const location = req.user.location; 
     console.log("location", location);
     const bookedBy = req.user.id;
+    const bookingStatus=0;
     const adminUniqueId = req.user.subadminUniqueId;
 
-    // ✅ Generate unique numbers
-    const grnNo = await generateGrnNumber();
-    const lrNumber = await generateLrNumber(fromCity, location);
-    const eWayBillNo = await generateEWayBillNo();
-    const generatedReceiptNo = await generateReceiptNumber();
+    // Generate unique numbers
+    // const grnNo = await generateGrnNumber();
+    // const lrNumber = await generateLrNumber(fromCity, location);
+    // const eWayBillNo = await generateEWayBillNo();
+    // const generatedReceiptNo = await generateReceiptNumber();
+    const [grnNo, lrNumber, eWayBillNo, generatedReceiptNo] = await Promise.all([
+      generateGrnNumber(),
+      generateLrNumber(fromCity, location),
+      generateEWayBillNo(),
+      generateReceiptNumber()
+    ]);
 
-    // ✅ Calculate `totalQuantity` from `packages`
+    //  Calculate totalQuantity from packages
     const totalQuantity = packages.reduce((sum, pkg) => sum + pkg.quantity, 0);
 
-    // ✅ Calculate Grand Total
+    //  Calculate Grand Total
     let packageTotal = packages.reduce((sum, pkg) => sum + (pkg.unitPrice * pkg.quantity), 0);
     let grandTotal = packageTotal + serviceCharge + hamaliCharge + doorDeliveryCharge + doorPickupCharge + valueOfGoods;
 
-    // ✅ Create new booking object
+    //  Create new booking object
     const booking = new Booking({
       grnNo,
       lrNumber,
@@ -132,7 +241,7 @@ const createBooking = async (req, res) => {
       dispatchType,
       bookingType,
       packages,  
-      totalQuantity,  // Auto-filled field ✅
+      totalQuantity,  // Auto-filled field 
       senderName,
       senderMobile,  
       senderAddress,
@@ -154,24 +263,38 @@ const createBooking = async (req, res) => {
       bookedBy,
       items,
       eWayBillNo,
-      bookingDate: new Date(),
-      ltDate: new Date(),
-      ltCity,
-      ltBranch,
-      ltEmployee,
-      deliveryEmployee,
-      cancelByUser,
-      cancelDate: cancelDate ? new Date(cancelDate) : null,
-      cancelCity,
-      cancelBranch,
-      refundCharge,
-      refundAmount,
-      loadingDate,
-      unloadingDate,
-      deliveryDate
+      bookingDate: new Date()
     });
 
-    await booking.save();
+    const savedBooking = await booking.save();
+
+    if (savedBooking) {
+      await Promise.all([
+        (async () => {
+          const senderExists = await User.findOne({ phone: senderMobile });
+          if (!senderExists) {
+            await User.create({
+              name: senderName,
+              phone: senderMobile,
+              address: senderAddress,
+              gst: senderGst
+            });
+          }
+        })(),
+        (async () => {
+          const receiverExists = await User.findOne({ phone: receiverMobile });
+          if (!receiverExists) {
+            await User.create({
+              name: receiverName,
+              phone: receiverMobile,
+              address: receiverAddress,
+              gst: receiverGst
+            });
+          }
+        })()
+      ]);
+    }
+    
 
     res.status(201).json({ success: true, message: "Booking created successfully", data: booking });
   } catch (error) {
@@ -179,6 +302,7 @@ const createBooking = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const getAllBookings = async (req, res) => {
   try {  
@@ -239,11 +363,11 @@ const getAllBookingsPages = async (req, res) => {
       return res.status(404).json({ success: false, message: "No bookings found" });
     }
  
-    // ✅ Calculate next & previous pages
+    //  Calculate next & previous pages
     const nextPage = page < totalPages ? page + 1 : null;
     const prevPage = page > 1 ? page - 1 : null;
  
-    // ✅ Send response with pagination metadata
+    //  Send response with pagination metadata
     res.status(200).json({
       success: true,
       page,
@@ -491,7 +615,57 @@ const getBookingsByAnyField = async (req, res) => {
   }
 };
 
+const getUsersBySearch = async (req, res) => {
+  try {
+    const { query } = req.query; // Get search query from request query parameters
 
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required!" });
+    }
+
+    // Perform case-insensitive search using regex
+    const users = await User.find({
+      $or: [
+        { name: { $regex: query, $options: "i" } },
+        { phone: { $regex: query, $options: "i" } },
+        { address: { $regex: query, $options: "i" } },
+        { gst: { $regex: query, $options: "i" } }
+      ]
+    });
+
+    if (!users.length) {
+      return res.status(404).json({ message: "No users found!" });
+    }
+
+    // Extract only required fields
+    const responseData = users.map(user => ({
+      name: user.name,
+      phone: user.phone,
+      address: user.address,
+      gst: user.gst,
+    
+    }));
+
+    res.status(200).json(responseData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find(); // Fetch all users from DB
+
+    if (!users.length) {
+      return res.status(404).json({ message: "No users found!" });
+    }
+
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 
 export default {
@@ -509,5 +683,7 @@ export default {
   getAllBookingsPages,
   getBookingsByAnyField,
   cityWiseBookings,
+  getUsersBySearch,
+  getAllUsers
   
 }
