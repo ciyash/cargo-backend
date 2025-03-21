@@ -152,6 +152,8 @@ const createBranchToBranch = async (req, res) => {
 
     const fromCity = fromBranchData.city;
     const toCity = toBranchData.city;
+    const fromBranch = fromBranchData.name;
+    const toBranch = toBranchData.name;
 
     // Generate unique voucher number securely
     const vocherNoUnique = generateVocherNoUnique();
