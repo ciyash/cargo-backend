@@ -1,7 +1,76 @@
 import ParcelUnloading from '../models/parcel.unloading.model.js'
 import Booking from '../models/booking.model.js'
-const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);  
+import ParcelLoading from '../models/pracel.loading.model.js'
 
+
+const getParcelsLoading = async (req, res) => {  
+    try {
+        const { fromDate, toDate, fromCity, toCity, vehicalNumber, branch } = req.body;
+
+        // Validate required fields
+        if (!fromDate || !toDate) {
+            return res.status(400).json({ message: "fromDate and toDate are required" });
+        }
+
+        // Parse and validate date formats
+        const startOfDay = new Date(fromDate);
+        const endOfDay = new Date(toDate);
+
+        if (isNaN(startOfDay.getTime()) || isNaN(endOfDay.getTime())) {
+            return res.status(400).json({ message: "Invalid date format. Use YYYY-MM-DD." });
+        }
+
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        endOfDay.setUTCHours(23, 59, 59, 999);
+
+        // Base date filter
+        let filter = {
+            fromBookingDate: { $gte: startOfDay, $lte: endOfDay },
+        };
+
+        // Ensure at least one branch or one city matches
+        let orConditions = [];
+
+        if (Array.isArray(fromCity) && fromCity.length > 0) {
+            orConditions.push({ fromCity: { $in: fromCity } });
+        }
+
+        if (toCity) {
+            orConditions.push({ toCity });
+        }
+
+        if (Array.isArray(branch) && branch.length > 0) {
+            orConditions.push({ branch: { $in: branch } });
+        }
+
+        if (orConditions.length > 0) {
+            filter.$or = orConditions;
+        }
+
+        // Additional filters
+        if (vehicalNumber) {
+            filter.vehicalNumber = vehicalNumber;
+        }
+
+        // Fetch parcels based on the filters
+        const parcels = await ParcelLoading.find(filter);
+
+        if (parcels.length === 0) {
+            return res.status(404).json({ message: "No parcels found!" });
+        }
+
+        res.status(200).json(parcels);
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Server Error",
+            error: error.message,
+        });
+    }
+};
+
+
+const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);  
 
 const createParcelUnloading = async (req, res) => {
     try {
@@ -194,5 +263,6 @@ export default {
     getParcelunLoadingByGrnNumber,
     getParcelsByFilters,
     getParcelUnloadingByVoucher,
-    getUnloadingReport
+    getUnloadingReport,
+    getParcelsLoading
 }

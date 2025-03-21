@@ -487,41 +487,6 @@ const parcelPendingReport = async (req, res) => {
   }
 };
 
-const getParcelsInUnloading = async (req, res) => {
-  try {
-    const { fromDate } = req.body;
-
-    if (!fromDate) {
-      return res.status(400).json({ message: "fromDate is required" });
-    }
-
-    // Convert fromDate to a date range for the entire day (00:00:00 - 23:59:59)
-    const startOfDay = new Date(fromDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(fromDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
-
-    // Filter only by date
-    const filter = {
-      fromBookingDate: { $gte: startOfDay, $lte: endOfDay },
-    };
-
-    // Fetch parcels
-    const parcels = await ParcelLoading.find(filter);
-
-    if (parcels.length === 0) {
-      return res.status(404).json({ message: "No parcels found!" });
-    }
-
-    res.status(200).json(parcels);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Server Error", error: error.message });
-  }
-};
-
 const getBookingsByDateAndBranch = async (req, res) => {
   try {
     const { fromBookingDate, toBookingDate, fromBranch } = req.body;
@@ -565,7 +530,6 @@ export default {
   getParcelLoadingBetweenDates,
   parcelStatusReport,
   parcelPendingReport,
-  getParcelsInUnloading,
   getParcelByGrnNo,
   createBranchToBranch,
   getBookingsByDateAndBranch

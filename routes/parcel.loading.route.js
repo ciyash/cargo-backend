@@ -32,12 +32,9 @@ router.post("/parcel-status-report",parcelController.parcelStatusReport)  //parc
 
 router.post("/parcel-pending-report",parcelController.parcelPendingReport)  // parcel pending delivery stockreport 
 
-router.post("/parcel-filter-Unloading",parcelController.getParcelsInUnloading)
-
 router.post("/branch-to-branch-load",parcelController.getBookingsByDateAndBranch) //branch to branch loading
 
 router.post("/branch-to-branch-post",auth,parcelController.createBranchToBranch)  // branch to branch post
-
 
 
 export default router    

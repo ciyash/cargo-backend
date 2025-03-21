@@ -3,6 +3,8 @@ import parcelUnloadingController from "../controllers/parcel.unloading.controlle
 import auth from '../config/auth.middleware.js'  
 const router = express.Router();
 
+router.post("/parcel-filter-Unloading",parcelUnloadingController.getParcelsLoading)  //loading get
+
 router.post("/",auth,parcelUnloadingController.createParcelUnloading)
 
 router.get("/",parcelUnloadingController.getAllParcelUnloadings)
