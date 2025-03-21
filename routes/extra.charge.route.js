@@ -8,7 +8,7 @@ router.post("/",extraChargeController.createCharge)
 
 router.get("/",extraChargeController.getAllExtraCharge)
 
-router.get("/fromCity/toCity/:fromCity/:toCity", extraChargeController.getChargeFromCityToCity);
+router.post("/filter-city-wise", extraChargeController.getChargeFromCityToCity);
 
 router.delete("/:id",extraChargeController.deleteCharge)
 

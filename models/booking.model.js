@@ -83,4 +83,8 @@ const bookingSchema = new mongoose.Schema(
 
 bookingSchema.index({ grnNumber: 1, adminUniqueId: 1, bookingStatus: 1 });
 
+
 export default mongoose.model("Booking", bookingSchema);
+
+
+

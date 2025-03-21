@@ -55,7 +55,7 @@ const getAllExtraCharge = async (req, res) => {
 
 const getChargeFromCityToCity = async (req, res) => {
     try {
-      const { fromCity, toCity } = req.params;
+      const { fromCity, toCity } = req.body;
   
       if (!fromCity || !toCity) {
         return res.status(400).json({ message: "fromCity and toCity fields are required!" });
