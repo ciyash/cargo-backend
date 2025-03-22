@@ -317,6 +317,38 @@ const getUnloadingReport = async (req, res) => {
 };
 
 
+  const parcelBranchToBranchUnloading = async (req, res) => {
+    try {
+      const { fromLoadingDate, toLoadingDate, fromBranch, toBranch } = req.body;
+  
+      // Validate required fields
+      if (!fromLoadingDate || !toLoadingDate || !fromBranch || !toBranch) {
+        return res.status(400).json({
+          success: false,
+          message: "fromLoadingDate, toLoadingDate, fromBranch, and toBranch are required",
+        });
+      }
+  
+      // Convert "YYYY-MM-DD" to ISO Date format
+      const fromDate = new Date(fromLoadingDate + "T00:00:00.000Z"); // Start of the day
+      const toDate = new Date(toLoadingDate + "T23:59:59.999Z"); // End of the day
+  
+      // Fetch bookings within the loading date range and matching branches
+      const bookings = await Booking.find({
+        loadingDate: { $gte: fromDate, $lte: toDate },
+        pickUpBranch: fromBranch,
+        dropBranch: toBranch,
+      }).lean();
+  
+      return res.status(200).json(bookings);
+  
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      return res.status(500).json({ error:error.message });
+    }
+  };
+  
+
 export default {
     createParcelUnloading,
     getAllParcelUnloadings,
@@ -327,5 +359,6 @@ export default {
     getParcelsByFilters,
     getParcelUnloadingByVoucher,
     getUnloadingReport,
-    getParcelsLoading
+    getParcelsLoading,
+    parcelBranchToBranchUnloading
 }

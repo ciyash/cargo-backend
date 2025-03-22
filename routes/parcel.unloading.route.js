@@ -6,7 +6,8 @@ const router = express.Router();
 
 router.post("/parcel-filter-Unloading",parcelUnloadingController.getParcelsLoading)  //loading get
 
-router.post("/",auth,parcelUnloadingController.createParcelUnloading)
+router.post("/",auth,parcelUnloadingController.createParcelUnloading)   //post
+
 
 router.get("/",parcelUnloadingController.getAllParcelUnloadings)
 
@@ -23,6 +24,10 @@ router.patch("/:id",parcelUnloadingController.updateParcelUnloading)
 router.delete("/:id",parcelUnloadingController.deleteParcelUnloading)
 
 router.post("/pending-delivery-report",parcelUnloadingController.getUnloadingReport)
+
+router.post("/branch-to-branch-load",parcelUnloadingController.parcelBranchToBranchUnloading)  //loading
+
+
 
 
 
