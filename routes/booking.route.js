@@ -10,6 +10,8 @@ router.post("/",auth,bookingController.createBooking)
 router.get("/",bookingController.getAllBookings)
  
 router.get("/users",bookingController.getAllUsers)
+
+router.get("/users/search",bookingController.getUsersBySearch)
  
 router.get("/todaybookings",auth,bookingController.getBookingBydate)
  

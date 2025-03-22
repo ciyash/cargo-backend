@@ -26,7 +26,7 @@ router.delete("/:id",parcelUnloadingController.deleteParcelUnloading)
 router.post("/pending-delivery-report",parcelUnloadingController.getUnloadingReport)
 
 router.post("/branch-to-branch-load",parcelUnloadingController.parcelBranchToBranchUnloading)  //loading
-
+  
 
 
 

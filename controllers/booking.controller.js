@@ -640,6 +640,9 @@ const getBookingBydate = async (req, res) => {
 };
  
  
+const getUsersBySearch = async (req, res) => {
+};
+
  
  
 export default {createBooking,
@@ -657,6 +660,7 @@ export default {createBooking,
   getBookingsByAnyField,
   cityWiseBookings,
   getAllUsers,
+  getUsersBySearch,
   getBookingBydate
 }
  
