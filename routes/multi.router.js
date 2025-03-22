@@ -13,6 +13,9 @@ router.get("/cities", cityController.getCities);
 router.patch("/cities/:id", cityController.updateCity);
 router.delete("/cities/:id", cityController.deleteCity);
 
+//  Ensure it's a static route (not "/cities/:cityIds")
+router.post("/cities/delete-cities", cityController.deleteSelectedCities);
+
 // DispatchType Routes
 router.post("/dispatch-types", dispatchTypeController.createDispatchType);
 router.get("/dispatch-types", dispatchTypeController.getDispatchTypes);

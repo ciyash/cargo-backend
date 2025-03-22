@@ -57,4 +57,35 @@ import { City } from '../models/multi.model.js'
         res.status(500).json({ success: false, message: error.message });
     }
 };
-export default {createCity,getCities,deleteCity,updateCity}
+
+const deleteSelectedCities = async (req, res) => {
+    try {
+        const { cityIds } = req.body;
+
+        if (!cityIds || !Array.isArray(cityIds) || cityIds.length === 0) {
+            return res.status(400).json({ success: false, message: "No valid city IDs provided" });
+        }
+
+        // Ensure all IDs are valid ObjectId before proceeding
+        const isValidIds = cityIds.every(id => /^[0-9a-fA-F]{24}$/.test(id));
+        if (!isValidIds) {
+            return res.status(400).json({ success: false, message: "Invalid ObjectId format in cityIds" });
+        }
+
+        const result = await City.deleteMany({ _id: { $in: cityIds } });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ success: false, message: "No matching cities found" });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Selected cities deleted successfully",
+            deletedCount: result.deletedCount
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+};
+
+export default {createCity,getCities,deleteCity,updateCity,deleteSelectedCities}
