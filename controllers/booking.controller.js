@@ -641,7 +641,42 @@ const getBookingBydate = async (req, res) => {
  
  
 const getUsersBySearch = async (req, res) => {
+  try {
+    const { query } = req.query; // Get search query from request query parameters
+
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required!" });
+    }
+
+    // Perform case-insensitive search using regex
+    const users = await User.find({
+      $or: [
+        { name: { $regex: query, $options: "i" } },
+        { phone: { $regex: query, $options: "i" } },
+        { address: { $regex: query, $options: "i" } },
+        { gst: { $regex: query, $options: "i" } }
+      ]
+    });
+
+    if (!users.length) {
+      return res.status(404).json({ message: "No users found!" });
+    }
+
+    // Extract only required fields
+    const responseData = users.map(user => ({
+      name: user.name,
+      phone: user.phone,
+      address: user.address,
+      gst: user.gst,
+    
+    }));
+
+    res.status(200).json(responseData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
+
 
  
  

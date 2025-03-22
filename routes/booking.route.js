@@ -12,7 +12,7 @@ router.get("/",bookingController.getAllBookings)
 router.get("/users",bookingController.getAllUsers)
 
 router.get("/users/search",bookingController.getUsersBySearch)
- 
+   
 router.get("/todaybookings",auth,bookingController.getBookingBydate)
  
 router.get("/grnNo/:grnNo",bookingController.getBookingByGrnNo)
