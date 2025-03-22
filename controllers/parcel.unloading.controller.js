@@ -350,7 +350,7 @@ const getUnloadingReport = async (req, res) => {
 
   const parcelBranchToBranchUnloadingPost = async (req, res) => {
     try {
-        const { fromDate, toDate, branch, lrNumber, grnNo, bookingType } = req.body;
+        const { fromDate, toDate, branch, lrNumber, grnNo,remarks} = req.body;
 
         console.log("User Data:", req.user); // Debugging Line to check user data
 
@@ -411,7 +411,7 @@ const getUnloadingReport = async (req, res) => {
             branch,
             lrNumber,
             grnNo,
-            bookingType
+            remarks,
         });
 
         await parcel.save();

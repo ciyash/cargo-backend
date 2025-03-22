@@ -11,7 +11,8 @@ const unloadingSchema=new mongoose.Schema({
     bookingType:{type:String,default:""},
     vehicleNo:{type:String,required:false},  
     lrNumber:[{type:String,required:true}],
-    grnNo:[{type:Number,required:true}]
+    grnNo:[{type:Number,required:true}],
+    remarks:{type:String}
 })
  
 export default mongoose.model("ParcelUnloading",unloadingSchema)   
