@@ -12,6 +12,7 @@ const unloadingSchema=new mongoose.Schema({
     vehicleNo:{type:String,required:false},  
     lrNumber:[{type:String,required:true}],
     grnNo:[{type:Number,required:true}],
+    unloadBranch:{type:String},
     remarks:{type:String}
 })
  
