@@ -1,9 +1,10 @@
 import ParcelUnloading from '../models/parcel.unloading.model.js'
 import {Booking} from '../models/booking.model.js'
 import ParcelLoading from '../models/pracel.loading.model.js'
+import Branch from '../models/branch.model.js'
 
 
-const getParcelsLoading = async (req, res) => {  
+const getParcelsLoading = async (req, res) => {
     try {
         const { fromDate, toDate, fromCity, toCity, vehicalNumber, branch } = req.body;
 
@@ -28,43 +29,80 @@ const getParcelsLoading = async (req, res) => {
             fromBookingDate: { $gte: startOfDay, $lte: endOfDay },
         };
 
-        // Ensure at least one matching condition
         let orConditions = [];
-
         if (Array.isArray(fromCity) && fromCity.length > 0) {
             orConditions.push({ fromCity: { $in: fromCity } });
         }
-
         if (toCity) {
             orConditions.push({ toCity });
         }
-
         if (Array.isArray(branch) && branch.length > 0) {
             orConditions.push({ branch: { $in: branch } });
         }
-
         if (orConditions.length > 0) {
             filter.$or = orConditions;
         }
 
         // ✅ Check vehicle number
-        if (Array.isArray(vehicalNumber) && vehicalNumber.length > 0) {
-            filter.vehicalNumber = { $in: vehicalNumber };
+        if (vehicalNumber) {
+            filter.vehicalNumber = vehicalNumber;
         }
-
-        // Log filter to debug
-        // console.log("Generated Filter:", JSON.stringify(filter, null, 2));
 
         // Fetch parcels based on filters
         const parcels = await ParcelLoading.find(filter);
 
-        // If no parcels found, return 404
         if (parcels.length === 0) {
             return res.status(404).json({ message: "No parcels found!" });
         }
 
-        res.status(200).json(parcels);
+        // Extract unique grnNo values from all parcels
+        const grnNumbers = [...new Set(parcels.flatMap(parcel => parcel.grnNo))];
+
+        // Fetch Booking data based on grnNo
+        const bookingData = await Booking.aggregate([
+            { $match: { grnNo: { $in: grnNumbers } } },
+            {
+                $group: {
+                    _id: null,
+                    totalQuantity: { $sum: "$totalQuantity" },
+                    grandTotal: { $sum: "$grandTotal" },
+                    bookingTypes: { $addToSet: "$bookingType" } // Collect unique booking types
+                }
+            }
+        ]);
+
+        // Default booking data if no matching bookings
+        const bookingSummary = bookingData.length > 0 ? bookingData[0] : {
+            totalQuantity: 0,
+            grandTotal: 0,
+            bookingTypes: []
+        };
+
+        // Fetch branch names based on branch codes in the request
+        let branchMap = {};
+        if (Array.isArray(branch) && branch.length > 0) {
+            const branchData = await Branch.find({ branchCode: { $in: branch } });
+
+            // Create a mapping of branchCode to branchName
+            branchMap = branchData.reduce((map, branch) => {
+                map[branch.branchCode] = branch.branchName;
+                return map;
+            }, {});
+        }
+
+        // Format response to include branch names
+        res.status(200).json({
+            parcels,
+            totalQuantity: bookingSummary.totalQuantity,
+            grandTotal: bookingSummary.grandTotal,
+            bookingTypes: bookingSummary.bookingTypes,
+            branchNames: branch.map(code => ({
+                branchCode: code,
+                branchName: branchMap[code] || code // Use code as fallback if name not found
+            }))
+        });
     } catch (error) {
+        console.error("Error fetching parcels:", error);
         res.status(500).json({
             success: false,
             message: "Server Error",
@@ -72,6 +110,7 @@ const getParcelsLoading = async (req, res) => {
         });
     }
 };
+
 
 
 

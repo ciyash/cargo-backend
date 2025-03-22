@@ -24,4 +24,6 @@ router.delete("/:id",parcelUnloadingController.deleteParcelUnloading)
 
 router.post("/pending-delivery-report",parcelUnloadingController.getUnloadingReport)
 
+
+
 export default router

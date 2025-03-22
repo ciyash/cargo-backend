@@ -14,7 +14,6 @@ const createCharge = async (req, res) => {
     if (
       !fromCity ||
       !toCity ||
-      !GST ||
       !serviceCharge ||
       !loadingCharge ||
       !cartageCharge

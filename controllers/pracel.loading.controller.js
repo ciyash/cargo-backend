@@ -498,16 +498,40 @@ const getBookingsByDateAndBranch = async (req, res) => {
     const to = new Date(toBookingDate);
     to.setHours(23, 59, 59, 999); // Extend to the end of the day
 
+    // Fetch bookings based on date and branch
     const bookings = await Booking.find({
       bookingDate: { $gte: from, $lte: to },
-      pickUpBranch: fromBranch // Fixed: Ensure you're filtering by the correct field
+      fromBranch: fromBranch, // Filtering by the branchUniqueId
     }).sort({ bookingDate: -1 });
 
     if (bookings.length === 0) {
-      return res.status(200).json({message: "No parcels available" });
+      return res.status(200).json({ message: "No parcels available" });
     }
 
-    return res.status(200).json(bookings);
+    // Fetch branch names based on branchUniqueId
+    const branchIds = [
+      ...new Set([
+        ...bookings.map((b) => b.fromBranch),
+        ...bookings.map((b) => b.toBranch),
+      ]),
+    ]; // Get unique branch IDs
+
+    const branches = await Branch.find({ branchUniqueId: { $in: branchIds } });
+
+    // Convert to a lookup map
+    const branchMap = branches.reduce((acc, branch) => {
+      acc[branch.branchUniqueId] = branch.name;
+      return acc;
+    }, {});
+
+    // Replace branchUniqueId with branch names
+    const updatedBookings = bookings.map((booking) => ({
+      ...booking._doc,
+      fromBranch: branchMap[booking.fromBranch] || booking.fromBranch,
+      toBranch: branchMap[booking.toBranch] || booking.toBranch,
+    }));
+
+    return res.status(200).json(updatedBookings);
   } catch (error) {
     console.error("Error fetching bookings:", error);
     return res.status(500).json({ success: false, message: "Internal Server Error" });
