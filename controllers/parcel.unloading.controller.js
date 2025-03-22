@@ -372,7 +372,7 @@ const getUnloadingReport = async (req, res) => {
             });
         }
 
-        if (!fromDate || !toDate || !branch || !lrNumber || !bookingType) {
+        if (!fromDate || !toDate || !branch || !lrNumber ) {
             return res.status(400).json({   
                 success: false,
                 message: "All required fields must be provided" 
