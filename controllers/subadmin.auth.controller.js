@@ -136,11 +136,11 @@ const signup = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { identifier, password } = req.body;
- 
+
     if (!identifier || !password) {
       return res.status(400).json({ message: "Email, Phone, or Username, and password are required" });
     }
- 
+
     // Find the subadmin and populate branch details
     const subadmin = await Subadmin.findOne({
       $or: [{ email: identifier }, { phone: identifier }, { username: identifier }]
@@ -148,42 +148,45 @@ const login = async (req, res) => {
       path: "branchId",
       select: "branchUniqueId location name city"
     });
- 
+
     if (!subadmin) {
       return res.status(404).json({ message: "Subadmin not found!" });
     }
- 
+
     const isMatch = await bcrypt.compare(password, subadmin.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Incorrect password" });
     }
- 
+
     const ipAddress = req.headers["x-forwarded-for"]?.split(",")[0].trim() ||
                       req.socket?.remoteAddress ||
                       req.connection?.remoteAddress;
- 
+
     await Subadmin.findByIdAndUpdate(subadmin._id, { ipAddress });
- 
+
     // Ensure `branchId` and its properties exist
     const branchId = subadmin.branchId ? subadmin.branchId.branchUniqueId : null;
     const branchLocation = subadmin.branchId ? subadmin.branchId.location : "Not Assigned";
     const branchName = subadmin.branchId ? subadmin.branchId.name : "Not Assigned";
- 
+    const branchCity = subadmin.branchId ? subadmin.branchId.city : "Not Assigned"; // ✅ Fix applied
+
+    // Create the JWT payload
     const tokenPayload = {
       subadminUniqueId: subadmin.subadminUniqueId,
       id: subadmin._id,
       role: subadmin.role,
-      location:subadmin.location,
+      location: subadmin.location,
       branchId,
       branchLocation,
       branchName,
-      ipAddress
+      branchCity, // ✅ Now correctly extracted
+      ipAddress,
     };
- 
-    // console.log("Token Payload:", tokenPayload);
- 
+
+    console.log(tokenPayload)
+
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
- 
+
     res.status(200).json({
       message: "Login successful",
       token,
@@ -193,7 +196,8 @@ const login = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
- 
+
+
  
 const changeSubadminPassword = async (req, res) => {
   try {

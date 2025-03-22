@@ -27,7 +27,8 @@ router.post("/pending-delivery-report",parcelUnloadingController.getUnloadingRep
 
 router.post("/branch-to-branch-load",parcelUnloadingController.parcelBranchToBranchUnloading)  //loading
   
-
+router.post("/branch-to-branch-post",auth,parcelUnloadingController.parcelBranchToBranchUnloadingPost)  //loading
+  
 
 
 

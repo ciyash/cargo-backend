@@ -347,6 +347,87 @@ const getUnloadingReport = async (req, res) => {
       return res.status(500).json({ error:error.message });
     }
   };
+
+  const parcelBranchToBranchUnloadingPost = async (req, res) => {
+    try {
+        const { fromDate, toDate, branch, lrNumber, grnNo, bookingType } = req.body;
+
+        console.log("User Data:", req.user); // Debugging Line to check user data
+
+        if (!req.user || !req.user.branchCity || !req.user.id) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized: User details are missing",
+            });
+        }
+
+        const fromCity = req.user.branchCity;
+        const toCity = req.user.branchCity;
+        const unLoadingBy = req.user.id;
+
+        if (!grnNo || !Array.isArray(grnNo) || grnNo.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "GRN numbers are required and should be an array" 
+            });
+        }
+
+        if (!fromDate || !toDate || !branch || !lrNumber || !bookingType) {
+            return res.status(400).json({   
+                success: false,
+                message: "All required fields must be provided" 
+            });
+        }
+
+        // Convert dates correctly
+        const fromBookingDate = new Date(fromDate);
+        const toBookingDate = new Date(toDate);
+
+        if (isNaN(fromBookingDate) || isNaN(toBookingDate)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid date format. Use YYYY-MM-DD."
+            });
+        }
+
+        const bookings = await Booking.find({
+            grnNo: { $in: grnNo },
+        });
+
+        if (!bookings.length) {
+            return res.status(404).json({
+                message: "No bookings found for the provided GRN numbers"
+
+            });
+        }
+
+        const parcel = new ParcelUnloading({
+            unLoadingVoucher: generateUnloadingVoucher(),
+            fromBookingDate,
+            toBookingDate,
+            unLoadingBy,
+            fromCity,
+            toCity,
+            branch,
+            lrNumber,
+            grnNo,
+            bookingType
+        });
+
+        await parcel.save();
+
+        return res.status(200).json({ 
+            success: true, 
+            message: "Parcel unloading recorded successfully",
+            data: parcel 
+        });
+
+    } catch (error) {
+        console.error("Error processing request:", error);
+        return res.status(500).json({ error: error.message });
+    }
+};
+ 
   
 
 export default {
@@ -360,5 +441,6 @@ export default {
     getParcelUnloadingByVoucher,
     getUnloadingReport,
     getParcelsLoading,
-    parcelBranchToBranchUnloading
+    parcelBranchToBranchUnloading,
+    parcelBranchToBranchUnloadingPost
 }
