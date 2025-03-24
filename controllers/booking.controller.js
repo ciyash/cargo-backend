@@ -677,6 +677,36 @@ const getUsersBySearch = async (req, res) => {
   }
 };
 
+const receivedBooking = async (req, res) => {
+  try {
+
+    const name = req.user.name;
+    const { grnNo } = req.body; // Get grnNo from request
+
+    if (!grnNo) {
+      return res.status(400).json({ message: "grnNo is required!" });
+    }
+
+    const booking = await Booking.findOne({ grnNo });
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found!" });
+    }
+
+    // Update bookingStatus to 4 (Received) and set deliveryDate to the current date
+    booking.bookingStatus = 4;
+    booking.deliveryDate = new Date();
+    booking.deliveryEmployee=name
+
+    // Save only modified fields without triggering full validation
+    await booking.save({ validateModifiedOnly: true });
+
+    return res.status(200).json({ message: "Booking received successfully", booking });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 
  
  
@@ -696,7 +726,8 @@ export default {createBooking,
   cityWiseBookings,
   getAllUsers,
   getUsersBySearch,
-  getBookingBydate
+  getBookingBydate,
+  receivedBooking
 }
  
  

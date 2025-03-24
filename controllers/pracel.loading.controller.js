@@ -164,15 +164,32 @@ const getAllParcels = async (req, res) => {
 const getParcelVocherNoUnique = async (req, res) => {
   try {
     const { vocherNoUnique } = req.params;
-    const parcels = await ParcelLoading.findOne({ vocherNoUnique });
-    if (!parcels) {
-      return res.status(404).json({ message: "data not found in parcels !" });
+
+    // Find the parcel by vocherNoUnique
+    const parcel = await ParcelLoading.findOne({ vocherNoUnique });
+
+    if (!parcel) {
+      return res.status(404).json({ message: "Data not found in parcels!" });
     }
-    res.status(200).json(parcels);
+
+    // Extract grnNo array from the parcel
+    const grnNos = parcel.grnNo || [];
+
+    // Fetch all matching Booking records based on grnNo
+    const bookings = await Booking.find({ grnNo: { $in: grnNos } });
+
+    // Merge parcel with booking details
+    const result = {
+      ...parcel.toObject(),
+      bookingDetails: bookings, // Attach all related bookings
+    };
+
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const getParcelById = async (req, res) => {
   try {
@@ -388,7 +405,6 @@ const getParcelByVehicalNumber = async (req, res) => {
 };
 
 
-
 const parcelStatusReport = async (req, res) => {
   try {
     const { startDate, endDate, fromCity, toCity, parcelStatus } = req.body;
@@ -481,6 +497,7 @@ const getBookingsByDateAndBranch = async (req, res) => {
   }
 };
 
+
 const offlineParcelVoucherDetails = async (req, res) => {
   try {
     const { fromBookingDate, toBookingDate, vehicalNumber, fromCity, toCity, fromBranch } = req.body;
@@ -491,14 +508,13 @@ const offlineParcelVoucherDetails = async (req, res) => {
 
     const startDate = new Date(fromBookingDate);
     const endDate = new Date(toBookingDate);
-    
+
     // Validate date formats
-    const isValidDate = (date) => date instanceof Date && !isNaN(date);
-    if (!isValidDate(startDate) || !isValidDate(endDate)) {
+    if (isNaN(startDate) || isNaN(endDate)) {
       return res.status(400).json({ message: "Invalid date format!" });
     }
 
-    // Extend end date to include the whole day
+    // Extend end date to include the full day
     endDate.setHours(23, 59, 59, 999);
 
     // Build the query filter
@@ -511,13 +527,31 @@ const offlineParcelVoucherDetails = async (req, res) => {
     if (toCity) filter.toCity = toCity;
     if (fromBranch) filter.fromBranch = fromBranch;
 
+    // Fetch parcels from ParcelLoading
     const parcels = await ParcelLoading.find(filter);
 
     if (!parcels.length) {
       return res.status(404).json({ message: "No parcels found in the given date range!" });
     }
 
-    res.status(200).json(parcels);
+    // Extract all grnNos from the parcels (flatten the array)
+    const grnNos = parcels.flatMap((parcel) => parcel.grnNo); // Since grnNo is an array
+
+    // Fetch booking details using grnNo array
+    const bookings = await Booking.find({ grnNo: { $in: grnNos } });
+
+    // Combine parcel and booking data
+    const result = parcels.map((parcel) => {
+      // Find all bookings that match any grnNo from this parcel
+      const matchingBookings = bookings.filter((booking) => parcel.grnNo.includes(booking.grnNo));
+      
+      return {
+        ...parcel.toObject(),
+        bookingDetails: matchingBookings, // Attach all matching bookings
+      };
+    });
+
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -38,6 +38,8 @@ router.patch("/grnNoUnique/:grnNoUnique",bookingController.updateGRNBookings)
 router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
  
 router.post("/city-wise-booking",bookingController.cityWiseBookings)  // city wise booking
+
+router.post("/receivedBooking",auth,bookingController.receivedBooking)
  
 export default router
  
