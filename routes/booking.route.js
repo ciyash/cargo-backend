@@ -6,10 +6,10 @@ import bookingController from '../controllers/booking.controller.js'
 const router=express.Router()  
  
 router.post("/",auth,bookingController.createBooking)
- 
+
 router.get("/",bookingController.getAllBookings)
  
-router.get("/users",bookingController.getAllUsers)
+router.get("/users",bookingController.getAllUsers)  
 
 router.get("/users/search",bookingController.getUsersBySearch)
    
@@ -38,9 +38,6 @@ router.patch("/grnNoUnique/:grnNoUnique",bookingController.updateGRNBookings)
 router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
  
 router.post("/city-wise-booking",bookingController.cityWiseBookings)  // city wise booking
- 
- 
- 
  
 export default router
  

@@ -352,7 +352,7 @@ const getUnloadingReport = async (req, res) => {
     try {
         const { fromDate, toDate, branch, lrNumber, grnNo,unloadBranch,remarks} = req.body;
 
-        console.log("User Data:", req.user); // Debugging Line to check user data
+        // console.log("User Data:", req.user); // Debugging Line to check user data
 
         if (!req.user || !req.user.branchCity || !req.user.id) {
             return res.status(401).json({

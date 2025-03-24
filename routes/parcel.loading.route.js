@@ -24,7 +24,7 @@ router.post("/grnNo",parcelController.getParcelByGrnNo)
 
 router.get("/vehicalNumber/:vehicalNumber",parcelController.getParcelByVehicalNumber)
 
-router.post("/between-dates",parcelController.getParcelLoadingBetweenDates)
+router.post("/offline-parcel-voucher-details",parcelController.offlineParcelVoucherDetails)
 
 router.post("/parcel-offline-report",parcelController.getParcelsByFilter)
 

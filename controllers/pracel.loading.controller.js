@@ -387,40 +387,7 @@ const getParcelByVehicalNumber = async (req, res) => {
   }
 };
 
-const getParcelLoadingBetweenDates = async (req, res) => {
-  try {
-    const { fromBookingDate, toBookingDate } = req.body;
 
-    if (!fromBookingDate || !toBookingDate) {
-      return res
-        .status(400)
-        .json({ message: "fromBookingDate and toBookingDate are required!" });
-    }
-
-    const startDate = new Date(fromBookingDate);
-    const endDate = new Date(toBookingDate);
-
-    if (isNaN(startDate) || isNaN(endDate)) {
-      return res.status(400).json({ message: "Invalid date format!" });
-    }
-
-    endDate.setHours(23, 59, 59, 999);
-
-    const parcels = await ParcelLoading.find({
-      fromBookingDate: { $gte: startDate, $lte: endDate },
-    });
-
-    if (!parcels.length) {
-      return res
-        .status(404)
-        .json({ message: "No parcels found in the given date range!" });
-    }
-
-    res.status(200).json(parcels);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
 
 const parcelStatusReport = async (req, res) => {
   try {
@@ -514,6 +481,47 @@ const getBookingsByDateAndBranch = async (req, res) => {
   }
 };
 
+const offlineParcelVoucherDetails = async (req, res) => {
+  try {
+    const { fromBookingDate, toBookingDate, vehicalNumber, fromCity, toCity, fromBranch } = req.body;
+
+    if (!fromBookingDate || !toBookingDate) {
+      return res.status(400).json({ message: "fromBookingDate and toBookingDate are required!" });
+    }
+
+    const startDate = new Date(fromBookingDate);
+    const endDate = new Date(toBookingDate);
+    
+    // Validate date formats
+    const isValidDate = (date) => date instanceof Date && !isNaN(date);
+    if (!isValidDate(startDate) || !isValidDate(endDate)) {
+      return res.status(400).json({ message: "Invalid date format!" });
+    }
+
+    // Extend end date to include the whole day
+    endDate.setHours(23, 59, 59, 999);
+
+    // Build the query filter
+    const filter = {
+      fromBookingDate: { $gte: startDate, $lte: endDate }, // Adjust field name if needed
+    };
+
+    if (vehicalNumber) filter.vehicalNumber = vehicalNumber;
+    if (fromCity) filter.fromCity = fromCity;
+    if (toCity) filter.toCity = toCity;
+    if (fromBranch) filter.fromBranch = fromBranch;
+
+    const parcels = await ParcelLoading.find(filter);
+
+    if (!parcels.length) {
+      return res.status(404).json({ message: "No parcels found in the given date range!" });
+    }
+
+    res.status(200).json(parcels);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 export default {
   createParcel,
@@ -526,7 +534,7 @@ export default {
   updateAllGrnNumbers,
   getParcelByLrNumber,
   getParcelByVehicalNumber,
-  getParcelLoadingBetweenDates,
+  offlineParcelVoucherDetails,
   parcelStatusReport,
   parcelPendingReport,
   getParcelByGrnNo,

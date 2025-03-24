@@ -274,7 +274,9 @@ const getAllSubadmins = async (req, res) => {
   }
 };
  
- 
+
+
+
 const getSubadminsByBranchName = async (req, res) => {
   try {
     const { branchName } = req.body; // Get branch name from request body
@@ -321,6 +323,7 @@ const deleteSubadmin = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 const updateSubadmin = async (req, res) => {
   try {
  
