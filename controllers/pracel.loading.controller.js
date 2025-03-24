@@ -290,8 +290,6 @@ const getParcelsByFilter = async (req, res) => {
   }
 };
 
-
-
 const updateAllGrnNumbers = async (req, res) => {
   try {
     const { grnNumbers, updateFields } = req.body;
@@ -403,7 +401,6 @@ const getParcelByVehicalNumber = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 const parcelStatusReport = async (req, res) => {
   try {
@@ -606,5 +603,4 @@ export default {
   getParcelByGrnNo,
   createBranchToBranch,
   getBookingsByDateAndBranch
-  
 };

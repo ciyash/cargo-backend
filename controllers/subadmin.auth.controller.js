@@ -197,8 +197,6 @@ const login = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
-
-
  
 const changeSubadminPassword = async (req, res) => {
   try {
@@ -275,9 +273,6 @@ const getAllSubadmins = async (req, res) => {
   }
 };
  
-
-
-
 const getSubadminsByBranchName = async (req, res) => {
   try {
     const { branchName } = req.body; // Get branch name from request body
@@ -306,7 +301,6 @@ const getSubadminsByBranchName = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
- 
  
  
 const deleteSubadmin = async (req, res) => {

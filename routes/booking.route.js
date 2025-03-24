@@ -40,6 +40,8 @@ router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
 router.post("/city-wise-booking",bookingController.cityWiseBookings)  // city wise booking
 
 router.post("/receivedBooking",auth,bookingController.receivedBooking)
+
+router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)
  
 export default router
   

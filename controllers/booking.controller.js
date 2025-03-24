@@ -712,10 +712,58 @@ const receivedBooking = async (req, res) => {
   }
 };
 
+const cancelBooking = async (req, res) => {
+  try {
+    const { grnNo } = req.params; // Get grnNo from request params
+    const { refundCharge, refundAmount, additionalField } = req.body; // Accept 3 fields from request body
+
+    // Ensure user details are available in request
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { name, branch, city } = req.user; // Assuming req.user contains these details
+
+    // Find the booking by grnNo
+    const booking = await Booking.findOne({ grnNo });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Check if bookingStatus is 4 (Parcel Received) -> Cannot be cancelled
+    if (booking.bookingStatus === 4) {
+      return res.status(400).json({ message: "Booking cannot be cancelled. Parcel already received." });
+    }
+
+    // Update cancellation details
+    booking.bookingStatus = 5; // Assuming '5' represents 'Cancelled'
+    booking.cancelByUser = name;
+    booking.cancelBranch = branch;
+    booking.cancelCity = city;
+    booking.cancelDate = new Date();
+
+    // Update refund details
+    if (refundCharge !== undefined) {
+      booking.refundCharge = refundCharge;
+    }
+    if (refundAmount !== undefined) {
+      booking.refundAmount = refundAmount;
+    }
+    if (additionalField !== undefined) {
+      booking.additionalField = additionalField; // Update the third field
+    }
+
+    // Save without validation to avoid required field errors
+    await booking.save({ validateBeforeSave: false });
+
+    res.status(200).json({ message: "Booking cancelled successfully", booking });
+  } catch (error) {
+    console.error("Error cancelling booking:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 
-
- 
  
 export default {createBooking,
   getAllBookings,
@@ -734,7 +782,8 @@ export default {createBooking,
   getAllUsers,
   getUsersBySearch,
   getBookingBydate,
-  receivedBooking
+  receivedBooking,
+  cancelBooking
 }
  
  
