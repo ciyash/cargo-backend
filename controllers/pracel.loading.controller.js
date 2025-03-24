@@ -534,24 +534,56 @@ const offlineParcelVoucherDetails = async (req, res) => {
       return res.status(404).json({ message: "No parcels found in the given date range!" });
     }
 
-    // Extract all grnNos from the parcels (flatten the array)
-    const grnNos = parcels.flatMap((parcel) => parcel.grnNo); // Since grnNo is an array
+    // Extract all grnNos from the parcels
+    const grnNos = parcels.flatMap((parcel) => parcel.grnNo); // Flatten array
 
-    // Fetch booking details using grnNo array
+    // Fetch all matching bookings
     const bookings = await Booking.find({ grnNo: { $in: grnNos } });
 
-    // Combine parcel and booking data
+    // Initialize overall totals
+    let totalParcels = parcels.length;
+    let totalPackages = 0;
+    let totalCharge = 0;
+
+    // Process parcels
     const result = parcels.map((parcel) => {
-      // Find all bookings that match any grnNo from this parcel
+      // Get matching bookings for this parcel
       const matchingBookings = bookings.filter((booking) => parcel.grnNo.includes(booking.grnNo));
-      
+
+      // Initialize totals for this parcel
+      let parcelPackages = 0;
+      let parcelCharge = 0;
+
+      // Loop through matched bookings
+      matchingBookings.forEach((booking) => {
+        parcelCharge += booking.grandTotal || 0;
+
+        // Ensure packages exist before iterating
+        if (booking.packages && Array.isArray(booking.packages)) {
+          parcelPackages += booking.packages.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0);
+        }
+      });
+
+      // Update overall totals
+      totalPackages += parcelPackages;
+      totalCharge += parcelCharge;
+
       return {
         ...parcel.toObject(),
-        bookingDetails: matchingBookings, // Attach all matching bookings
+        bookingDetails: matchingBookings,
+        parcelPackages, // Total packages for this parcel
+        parcelCharge,   // Total charge for this parcel
       };
     });
 
-    res.status(200).json(result);
+    // Final response with totalParcels, totalPackages, and totalCharge
+    res.status(200).json({
+      totalParcels,   // Total number of parcels
+      totalPackages,  // Total number of packages across all parcels
+      totalCharge,    // Total charge across all parcels
+      parcels: result // Detailed parcel data
+    });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

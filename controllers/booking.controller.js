@@ -679,12 +679,17 @@ const getUsersBySearch = async (req, res) => {
 
 const receivedBooking = async (req, res) => {
   try {
-
-    const name = req.user.name;
-    const { grnNo } = req.body; // Get grnNo from request
+    
+    const { grnNo } = req.body;
+    const name = req.user?.name; // Get the name from req.user
+    console.log(name, "name"); // Check if name exists
 
     if (!grnNo) {
       return res.status(400).json({ message: "grnNo is required!" });
+    }
+
+    if (!name) {
+      return res.status(400).json({ message: "Delivery employee name is required!" });
     }
 
     const booking = await Booking.findOne({ grnNo });
@@ -693,12 +698,12 @@ const receivedBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found!" });
     }
 
-    // Update bookingStatus to 4 (Received) and set deliveryDate to the current date
+    // Update booking fields
     booking.bookingStatus = 4;
     booking.deliveryDate = new Date();
-    booking.deliveryEmployee=name
+    booking.deliveryEmployee = name;
 
-    // Save only modified fields without triggering full validation
+    // Save only modified fields
     await booking.save({ validateModifiedOnly: true });
 
     return res.status(200).json({ message: "Booking received successfully", booking });
@@ -706,6 +711,8 @@ const receivedBooking = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+
 
 
  

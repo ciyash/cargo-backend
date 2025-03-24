@@ -175,11 +175,12 @@ const login = async (req, res) => {
       subadminUniqueId: subadmin.subadminUniqueId,
       id: subadmin._id,
       role: subadmin.role,
+      name:subadmin.name,
       location: subadmin.location,
       branchId,
       branchLocation,
       branchName,
-      branchCity, // ✅ Now correctly extracted
+      branchCity, 
       ipAddress,
     };
 

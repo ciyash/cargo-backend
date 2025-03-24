@@ -42,4 +42,4 @@ router.post("/city-wise-booking",bookingController.cityWiseBookings)  // city wi
 router.post("/receivedBooking",auth,bookingController.receivedBooking)
  
 export default router
- 
+  
