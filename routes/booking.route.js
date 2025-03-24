@@ -42,6 +42,10 @@ router.post("/city-wise-booking",bookingController.cityWiseBookings)  // city wi
 router.post("/receivedBooking",auth,bookingController.receivedBooking)
 
 router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)
+
+// reports 
+
+router.post("/parcel-booking-reports",bookingController.parcelBookingReports)
  
 export default router
   

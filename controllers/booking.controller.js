@@ -764,6 +764,44 @@ const cancelBooking = async (req, res) => {
 };
 
 
+
+
+// all booking reports 
+
+const parcelBookingReports = async (req, res) => {
+  try {
+      let { fromDate, toDate, fromCity, toCity, bookingStatus, bookingType } = req.body;
+
+      // Construct filter query
+      let query = {};
+
+      if (fromDate && toDate) {
+          query.bookingDate = { 
+              $gte: new Date(fromDate), 
+              $lte: new Date(toDate) 
+          };
+      }
+
+      if (fromCity) query.fromCity = fromCity;
+      if (toCity) query.toCity = toCity;
+      if (bookingStatus) query.bookingStatus = Number(bookingStatus);
+      if (bookingType) query.bookingType = bookingType;
+
+      const bookings = await Booking.find(query).sort({ bookingDate: -1 });
+
+      if (bookings.length === 0) {
+        return res.status(404).json({ message: "No parcels found" });
+    }
+
+
+      res.status(200).json(bookings);
+  } catch (error) {
+      res.status(500).json({ success: false, message: "Error fetching bookings", error: error.message });
+  }
+};
+
+
+
  
 export default {createBooking,
   getAllBookings,
@@ -783,7 +821,12 @@ export default {createBooking,
   getUsersBySearch,
   getBookingBydate,
   receivedBooking,
-  cancelBooking
+  cancelBooking,
+// reports  
+
+parcelBookingReports
+
+
 }
  
  
