@@ -288,6 +288,7 @@ const getAllBookings = async (req, res) => {
     });
   }
 }
+
 const getAllUsers = async (req, res) => {
   try {  
     const users = await User.find()
@@ -406,16 +407,12 @@ const getAllBookingsPages = async (req, res) => {
   }
  
  
- 
- 
   const getBookinglrNumber = async (req, res) => {
     try {
       const { lrNumber } = req.body;
-      console.log("Received lrNumber:", lrNumber);
- 
+     
       const booking = await Booking.findOne({ lrNumber });
-      console.log("Booking Found:", booking);
- 
+      
       if (!booking) {
         return res.status(404).json({ message: "No bookings found for this lrNumber!" });
       }
@@ -681,10 +678,8 @@ const getUsersBySearch = async (req, res) => {
 
 const receivedBooking = async (req, res) => {
   try {
-    
     const { grnNo } = req.body;
-    const name = req.user?.name; // Get the name from req.user
-    console.log(name, "name"); // Check if name exists
+    const name = req.user?.name; // Ensure req.user is properly populated
 
     if (!grnNo) {
       return res.status(400).json({ message: "grnNo is required!" });
@@ -694,18 +689,23 @@ const receivedBooking = async (req, res) => {
       return res.status(400).json({ message: "Delivery employee name is required!" });
     }
 
+    // Find the booking first
     const booking = await Booking.findOne({ grnNo });
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found!" });
     }
 
-    // Update booking fields
+    // Check if the parcel is already received
+    if (booking.bookingStatus === 4) {
+      return res.status(400).json({ message: "Parcel already received!" });
+    }
+
+    // Update the booking if not already received
     booking.bookingStatus = 4;
     booking.deliveryDate = new Date();
     booking.deliveryEmployee = name;
 
-    // Save only modified fields
     await booking.save({ validateModifiedOnly: true });
 
     return res.status(200).json({ message: "Booking received successfully", booking });
@@ -714,25 +714,24 @@ const receivedBooking = async (req, res) => {
   }
 };
 
+
 const cancelBooking = async (req, res) => {
   try {
-    const { grnNo } = req.params; // Get grnNo from request params
-    const { refundCharge, refundAmount, additionalField } = req.body; // Accept 3 fields from request body
+    const { grnNo } = req.params; 
+    const { refundCharge, refundAmount, additionalField } = req.body; 
 
-    // Ensure user details are available in request
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { name, branch, city } = req.user; // Assuming req.user contains these details
+    const { name, branch, city } = req.user; 
 
-    // Find the booking by grnNo
+   
     const booking = await Booking.findOne({ grnNo });
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Check if bookingStatus is 4 (Parcel Received) -> Cannot be cancelled
     if (booking.bookingStatus === 4) {
       return res.status(400).json({ message: "Booking cannot be cancelled. Parcel already received." });
     }
@@ -1007,6 +1006,157 @@ const regularCustomerBooking = async (req, res) => {
   }
 };
 
+const branchWiseCollectionReport = async (req, res) => {
+  try {
+    const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;  
+
+    // Validate required query parameters
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ error: "fromDate and toDate are required" });
+    }
+
+    // Convert string dates to JavaScript Date objects
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999); // Ensure the full day is included
+
+    // Create a filter object for MongoDB query
+    let filter = {
+      bookingDate: { $gte: start, $lte: end }, // Filter by bookingDate range
+    };
+
+    if (fromCity) filter.fromCity = fromCity;
+    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+    if (bookedBy) filter.bookedBy = bookedBy;
+
+    // Fetch data from MongoDB collection
+    const reportData = await Booking.find(filter);
+
+    if (reportData.length === 0) {
+      return res.status(404).json({ message: "No bookings found." });
+    }
+    
+
+    // Send response
+    res.status(200).json(reportData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+const parcelBranchConsolidatedReport = async (req, res) => {
+  try {
+    const { fromDate, toDate, pickUpBranch, fromCity, bookedBy, filter: bookingStatus } = req.body;
+    
+    // Validate required fields
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ error: "fromDate and toDate are required." });
+    }
+
+    // Convert dates to JavaScript Date objects
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    
+    if (end < start) {
+      return res.status(400).json({ error: "toDate must be greater than or equal to fromDate." });
+    }
+
+    end.setHours(23, 59, 59, 999); // Ensure full-day inclusion
+
+    // Build the filter object for all bookings
+    let filters = { bookingDate: { $gte: start, $lte: end } };
+
+    if (pickUpBranch) filters.pickUpBranch = pickUpBranch;
+    if (fromCity) filters.fromCity = fromCity;
+    if (bookedBy) filters.bookedBy = bookedBy;
+    if (bookingStatus !== undefined) filters.bookingStatus = bookingStatus;
+
+    // Fetch all bookings matching the filters
+    const reportData = await Booking.find(filters);
+
+    // Get total count of bookings
+    const totalBookings = reportData.length;
+
+    // Fetch count of canceled bookings (bookingStatus = 5)
+    const canceledBookings = await Booking.countDocuments({ ...filters, bookingStatus: 5 });
+
+    // Check if any records exist
+    if (totalBookings === 0) {
+      return res.status(404).json({ 
+        message: "No bookings found for the given criteria.", 
+        totalBookings: 0, 
+        canceledBookings: 0 
+      });
+    }
+
+    // Return response with total and canceled bookings
+    res.status(200).json({
+      totalBookings,
+      canceledBookings,
+      bookings: reportData
+    });
+  } catch (error) {
+    console.error("Error fetching parcel branch consolidated report:", error);
+    res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+// gst report
+
+const parcelBranchWiseGSTReport = async (req, res) => {
+  try {
+    const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
+
+    let query = {
+      $or: [
+        { bookingType: "paid", bookingStatus: { $in: [0, 1, 2] } },
+        { bookingType: "toPay", bookingStatus: { $in: [0, 1, 2, 4] } }, // Include 4 only for 'toPay'
+        {bookingType: "Credit", bookingStatus:{$in:[5]}}
+      ],
+    };
+
+    if (fromDate && toDate) {
+      query.bookingDate = { 
+        $gte: new Date(fromDate + "T00:00:00.000Z"), 
+        $lte: new Date(toDate + "T23:59:59.999Z") 
+      };
+    }
+
+    if (fromCity) {
+      query.fromCity = { $regex: new RegExp(`^${fromCity}$`, "i") };
+    }
+
+    if (pickUpBranch) {
+      query.pickUpBranch = { $regex: new RegExp(`^${pickUpBranch}$`, "i") };
+    }
+
+    const bookings = await Booking.find(query);
+
+    if (bookings.length === 0) {
+      return res.status(404).json({ success: false, message: "No bookings found" });
+    }
+
+    // Calculate total parcels and total GST amount
+    const totalParcel = bookings.length;
+    const parcelGstAmount = bookings.reduce((sum, booking) => sum + (booking.parcelGstAmount || 0), 0);
+
+    console.log("Total Bookings:", totalParcel);
+    console.log("Total Parcel GST Amount:", parcelGstAmount);
+
+    res.status(200).json({
+      success: true,
+      totalParcel,
+      parcelGstAmount,
+      bookings,
+    });
+  } catch (error) {
+    console.error("Error fetching GST report:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+
 
 export default {createBooking,
   getAllBookings,
@@ -1036,8 +1186,10 @@ parcelReportSerialNo,
 parcelCancelReport,
 parcelBookingSummaryReport,
 parcelBookingMobileNumber,
-regularCustomerBooking
-
+regularCustomerBooking,
+branchWiseCollectionReport,
+parcelBranchConsolidatedReport,
+parcelBranchWiseGSTReport
 }
  
  

@@ -1,6 +1,7 @@
 import express from 'express'
 import auth from '../config/auth.middleware.js'
 import bookingController from '../controllers/booking.controller.js'
+import branchController from '../controllers/branch.controller.js'
  
  
 const router=express.Router()  
@@ -53,6 +54,10 @@ router.post('/parcel-cancel-report',bookingController.parcelCancelReport)
 router.post("/parcel-booking-summary-report",bookingController.parcelBookingSummaryReport)
 router.post("/parcel-booking-mobileNumber",bookingController.parcelBookingMobileNumber)
 router.post("/regular-customer-booking",bookingController.regularCustomerBooking)
+
+router.post("/branch-Wise-collection-report",bookingController.branchWiseCollectionReport)
+router.post("/parcel-branch-consolidated-report",bookingController.parcelBranchConsolidatedReport)
+router.post("/parcel-branch-wise-gst-report",bookingController.parcelBranchWiseGSTReport)
  
 export default router
   
