@@ -73,7 +73,7 @@ const bookingSchema = new mongoose.Schema(
     ltBranch: { type: String, default: null },
     ltEmployee: { type: String, default: null },
     deliveryEmployee: { type: String, default: null },
- 
+    vehicalNumber:{type:String,default:null},
     cancelByUser: { type: String, default: null },
     cancelDate: { type: Date, default: null },
     cancelCity: { type: String, default: null },

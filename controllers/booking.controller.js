@@ -1,5 +1,6 @@
 import {User,Booking} from "../models/booking.model.js";
 import Branch from "../models/branch.model.js";
+import ParcelLoading from '../models/pracel.loading.model.js'
 import moment from "moment";
    
 const generateGrnNumber = async () => {
@@ -94,7 +95,7 @@ const createBooking = async (req, res) => {
     const {
       fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
       packages, senderName, senderMobile, senderAddress, senderGst,
-      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,
+      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,vehicalNumber,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0, items
     } = Object.fromEntries(
       Object.entries(req.body).map(([key, value]) => [key, sanitizeInput(value)])
@@ -201,6 +202,7 @@ const createBooking = async (req, res) => {
       bookedBy,
       items,
       eWayBillNo,
+      vehicalNumber,
       bookingDate: new Date(),bookbranchid,pickUpBranchname,dropBranchname
     });
  
@@ -800,9 +802,50 @@ const parcelBookingReports = async (req, res) => {
   }
 };
 
+const allParcelBookingReport = async (req, res) => {
+  try {
+    const {
+      startDate,
+      fromDate,
+      fromCity,
+      toCity,
+      pickUpBranch,
+      dropBranch,
+      bookingStatus,
+      vehicalNumber, // Corrected to match your model
+    } = req.body;
+
+    let query = {};
+
+    // Date range filtering
+    if (startDate && fromDate) {
+      query.bookingDate = {
+        $gte: new Date(fromDate + "T00:00:00.000Z"),
+        $lte: new Date(startDate + "T23:59:59.999Z"),
+      };
+    }
+
+    // Case-insensitive matching
+    if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
+    if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
+    if (pickUpBranch) query.pickUpBranch = { $regex: new RegExp(pickUpBranch, "i") };
+    if (dropBranch) query.dropBranch = { $regex: new RegExp(dropBranch, "i") };
+    if (bookingStatus) query.bookingStatus = Number(bookingStatus);
+    if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") }; // Corrected field name
+
+    console.log("Generated Query:", JSON.stringify(query, null, 2));
+
+    const bookings = await Booking.find(query);
+    console.log("Fetched Bookings:", bookings);
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
 
 
- 
 export default {createBooking,
   getAllBookings,
   getBookingByGrnNo,
@@ -822,10 +865,11 @@ export default {createBooking,
   getBookingBydate,
   receivedBooking,
   cancelBooking,
-// reports  
 
-parcelBookingReports
+// Reports  
 
+parcelBookingReports,
+allParcelBookingReport
 
 }
  

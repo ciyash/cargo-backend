@@ -8,7 +8,7 @@ const parcelSchema = new mongoose.Schema({
     fromBookingDate: { type: Date, required: true },
     toBookingDate: { type: Date, required: true },
     fromCity: { type: String },
-    toCity: [{ type: String}],
+    toCity: [{ type: String}],  
     fromBranch: { type: String, required: true },
     toBranch: { type: String, required: true },
     vehicalNumber: { type: String, required: true },  

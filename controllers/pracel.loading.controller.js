@@ -86,6 +86,7 @@ const createParcel = async (req, res) => {
         $set: {
           bookingStatus: 1,
           loadingDate: loadingDate,
+          vehicalNumber: vehicalNumber
         },
       },
       { session }
