@@ -897,9 +897,112 @@ const parcelCancelReport = async (req, res) => {
     const bookings = await Booking.find(query).sort({ bookingDate: 1 });
 
 
+    if (bookings.length === 0) {
+      return res.status(200).json({ success: true, message: "No customer bookings found." });
+    }
+    
     res.status(200).json(bookings);
   } catch (error) {
     console.error("Error fetching canceled bookings:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const parcelBookingSummaryReport = async (req, res) => {
+  try {
+    const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;
+
+    let query = {};
+
+    // Filter by date range
+    if (fromDate && toDate) {
+      query.bookingDate = {
+        $gte: new Date(fromDate + "T00:00:00.000Z"),
+        $lte: new Date(toDate + "T23:59:59.999Z"),
+      };
+    }
+
+    // Filter by fromCity and toCity
+    if (fromCity) query.fromCity = { $regex: new RegExp(`^${fromCity}$`, "i") };
+    if (toCity) query.toCity = { $regex: new RegExp(`^${toCity}$`, "i") };
+
+    // Filter by pickup and drop branches
+    if (pickUpBranch) query.pickUpBranch = { $regex: new RegExp(`^${pickUpBranch}$`, "i") };
+    if (dropBranch) query.dropBranch = { $regex: new RegExp(`^${dropBranch}$`, "i") };
+
+    // Fetch data from the database
+    const bookings = await Booking.find(query);
+
+    
+    if (bookings.length === 0) {
+      return res.status(200).json({ success: true, message: "No customer bookings found." });
+    }
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Error fetching parcel booking summary report:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const parcelBookingMobileNumber = async (req, res) => {
+  try {
+    const { fromDate, toDate, senderMobile, receiverMobile, bookingType, bookingStatus } = req.body;
+
+    let query = {};
+
+    if (fromDate && toDate) {
+      query.bookingDate = {
+        $gte: new Date(fromDate + "T00:00:00.000Z"),
+        $lte: new Date(toDate + "T23:59:59.999Z"),
+      };
+    }
+
+    if (senderMobile) query.senderMobile = senderMobile;
+    if (receiverMobile) query.receiverMobile = receiverMobile;
+    if (bookingType) query.bookingType = bookingType;
+    if (bookingStatus) query.bookingStatus = parseInt(bookingStatus);
+
+    const bookings = await Booking.find(query);
+
+    
+    if (bookings.length === 0) {
+      return res.status(200).json({ success: true, message: "No  bookings found." });
+    }
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const regularCustomerBooking = async (req, res) => {
+  try {
+    const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;
+
+    let query = {};
+
+    if (fromDate && toDate) {
+      query.bookingDate = {
+        $gte: new Date(fromDate + "T00:00:00.000Z"),
+        $lte: new Date(toDate + "T23:59:59.999Z"),
+      };
+    }
+
+    if (fromCity) query.fromCity = fromCity;
+    if (toCity) query.toCity = toCity;
+    if (pickUpBranch) query.pickUpBranch = pickUpBranch;
+    if (dropBranch) query.dropBranch = dropBranch;
+
+    const bookings = await Booking.find(query);
+
+    
+    if (bookings.length === 0) {
+      return res.status(200).json({ success: true, message: "No customer bookings found." });
+    }
+
+    res.status(200).json(bookings);
+  } catch (error) {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -930,7 +1033,10 @@ export default {createBooking,
 parcelBookingReports,
 allParcelBookingReport,
 parcelReportSerialNo,
-parcelCancelReport
+parcelCancelReport,
+parcelBookingSummaryReport,
+parcelBookingMobileNumber,
+regularCustomerBooking
 
 }
  

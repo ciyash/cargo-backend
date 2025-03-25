@@ -50,6 +50,9 @@ router.post("/all-parcelbooking-report")
 router.post("/all-parcel-booking-report",bookingController.allParcelBookingReport)
 router.post("/parcel-report-serialNo",bookingController.parcelReportSerialNo)
 router.post('/parcel-cancel-report',bookingController.parcelCancelReport)
+router.post("/parcel-booking-summary-report",bookingController.parcelBookingSummaryReport)
+router.post("/parcel-booking-mobileNumber",bookingController.parcelBookingMobileNumber)
+router.post("/regular-customer-booking",bookingController.regularCustomerBooking)
  
 export default router
   
