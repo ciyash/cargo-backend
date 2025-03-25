@@ -833,14 +833,73 @@ const allParcelBookingReport = async (req, res) => {
     if (bookingStatus) query.bookingStatus = Number(bookingStatus);
     if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") }; // Corrected field name
 
-    console.log("Generated Query:", JSON.stringify(query, null, 2));
-
     const bookings = await Booking.find(query);
-    console.log("Fetched Bookings:", bookings);
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const parcelReportSerialNo = async (req, res) => {
+  try {
+    const { fromDate, toDate, fromCity, toCity } = req.body;
+
+    let query = {};
+
+    // Date range filtering
+    if (fromDate && toDate) {
+      query.bookingDate = {
+        $gte: new Date(fromDate + "T00:00:00.000Z"),
+        $lte: new Date(toDate + "T23:59:59.999Z"),
+      };
+    }
+
+    // Case-insensitive search for cities
+    if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
+    if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
+
+    // Fetch data from the Booking collection
+    const bookings = await Booking.find(query).sort({ bookingDate: 1 });
+
 
     res.status(200).json(bookings);
   } catch (error) {
     console.error("Error fetching bookings:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const parcelCancelReport = async (req, res) => {
+  try {
+    const { fromDate, toDate, fromCity, toCity, bookingType } = req.body;
+
+    let query = { bookingStatus: 5 }; // Fetch only canceled bookings
+
+    // Date range filtering
+    if (fromDate && toDate) {
+      query.bookingDate = {
+        $gte: new Date(fromDate + "T00:00:00.000Z"),
+        $lte: new Date(toDate + "T23:59:59.999Z"),
+      };
+    }
+
+    // Case-insensitive search for cities
+    if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
+    if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
+
+    // Filter by booking type if provided
+    if (bookingType) query.bookingType = { $regex: new RegExp(bookingType, "i") };
+
+    
+
+    // Fetch data from the Booking collection
+    const bookings = await Booking.find(query).sort({ bookingDate: 1 });
+
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Error fetching canceled bookings:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -869,7 +928,9 @@ export default {createBooking,
 // Reports  
 
 parcelBookingReports,
-allParcelBookingReport
+allParcelBookingReport,
+parcelReportSerialNo,
+parcelCancelReport
 
 }
  
