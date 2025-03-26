@@ -36,5 +36,8 @@ router.post("/branch-to-branch-load",parcelController.getBookingsByDateAndBranch
 
 router.post("/branch-to-branch-post",auth,parcelController.createBranchToBranch)  // branch to branch post
 
+// reports
+
+router.post("/dispatched-stock-report",parcelController.dispatchedStockReport)
 
 export default router    

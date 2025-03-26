@@ -161,7 +161,7 @@ const createParcelUnloading = async (req, res) => {
             lrNumber,
             grnNo: grnNumbers,
             bookingType,
-            createdAt: currentDate,
+            unloadingDate:new Date()
         });
 
         await newParcel.save();

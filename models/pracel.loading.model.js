@@ -8,6 +8,7 @@ const parcelSchema = new mongoose.Schema({
     fromBookingDate: { type: Date, required: true },
     toBookingDate: { type: Date, required: true },
     fromCity: { type: String },
+    loadingDate:{type:Date,default:()=>new Date()},
     toCity: [{ type: String}],  
     fromBranch: { type: String, required: true },
     toBranch: { type: String, required: true },
@@ -18,6 +19,7 @@ const parcelSchema = new mongoose.Schema({
     lrNumber: [{ type: String, required: true }],
     parcelStatus: { type: Number, default: 0 },
     remarks: { type: String, default: "" },
+    
     
 });
 

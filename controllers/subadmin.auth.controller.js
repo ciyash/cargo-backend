@@ -184,7 +184,7 @@ const login = async (req, res) => {
       ipAddress,
     };
 
-    console.log(tokenPayload)
+    // console.log(tokenPayload)
 
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 

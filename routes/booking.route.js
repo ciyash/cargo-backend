@@ -1,7 +1,7 @@
 import express from 'express'
 import auth from '../config/auth.middleware.js'
 import bookingController from '../controllers/booking.controller.js'
-import branchController from '../controllers/branch.controller.js'
+
  
  
 const router=express.Router()  
@@ -37,7 +37,7 @@ router.patch("/:id",bookingController.updateBookings)
 router.patch("/grnNoUnique/:grnNoUnique",bookingController.updateGRNBookings)
  
 router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
- 
+  
 router.post("/city-wise-booking",bookingController.cityWiseBookings)  // city wise booking
 
 router.post("/receivedBooking",auth,bookingController.receivedBooking)
@@ -58,6 +58,9 @@ router.post("/regular-customer-booking",bookingController.regularCustomerBooking
 router.post("/branch-Wise-collection-report",bookingController.branchWiseCollectionReport)
 router.post("/parcel-branch-consolidated-report",bookingController.parcelBranchConsolidatedReport)
 router.post("/parcel-branch-wise-gst-report",bookingController.parcelBranchWiseGSTReport)
- 
+router.post("/sender-receiver-gst-report",bookingController.senderReceiverGSTReport)
+router.post("/pending-delivery-stock-report",bookingController.pendingDeliveryStockReport) //sudheer 
+router.post("/parcel-status-date-difference-report",bookingController.parcelStatusDateDifferenceReport)
+router.post("/pending-delivery-luggage-report",bookingController.pendingDeliveryLuggageReport)
 export default router
   

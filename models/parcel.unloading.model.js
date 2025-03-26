@@ -8,6 +8,7 @@ const unloadingSchema=new mongoose.Schema({
     fromCity:[{type:String,required:true}],
     toCity:{type:String,required:true},
     branch:{type:String,required:true},
+    unloadingDate:{type:Date,default:()=>new Date()},
     bookingType:{type:String,default:""},
     vehicleNo:{type:String,required:false},  
     lrNumber:[{type:String,required:true}],

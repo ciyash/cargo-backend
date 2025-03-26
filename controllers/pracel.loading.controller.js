@@ -77,6 +77,7 @@ const createParcel = async (req, res) => {
       remarks,
       grnNo,
       lrNumber,
+      loadingDate : new Date()
     }).save({ session });
 
     //  Update all bookings in a single query
@@ -587,6 +588,41 @@ const offlineParcelVoucherDetails = async (req, res) => {
   }
 };
 
+//reports
+
+const dispatchedStockReport = async (req, res) => {
+  try {
+    const { fromDate, toDate, fromCity, toCity, fromBranch } = req.body;
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ message: "fromDate and toDate are required" });
+    }
+
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    let query = { loadingDate: { $gte: start, $lte: end } }; // Filter by loadingDate
+
+    if (fromCity) query.fromCity = fromCity;
+    if (toCity) query.toCity = toCity;
+    if (fromBranch) query.fromBranch = fromBranch;
+
+    // Fetch data from ParcelLoading without select() (gets all fields)
+    const dispatchedStock = await ParcelLoading.find(query).lean();
+
+    if (!dispatchedStock.length) {
+      return res.status(404).json({ message: "No dispatched stock found for the given criteria" });
+    }
+
+    res.status(200).json(dispatchedStock);
+  } catch (error) {
+    console.error("Error generating dispatched stock report:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+
 export default {
   createParcel,
   getParcelById,
@@ -603,5 +639,6 @@ export default {
   parcelPendingReport,
   getParcelByGrnNo,
   createBranchToBranch,
-  getBookingsByDateAndBranch
+  getBookingsByDateAndBranch,
+  dispatchedStockReport
 };
