@@ -6,7 +6,8 @@ const packageSchema = new mongoose.Schema({
   contains: { type: String, default:null},
   weight: { type: Number, required: true },
   unitPrice: { type: Number, required: true },
-  totalPrice: { type: Number, required:true }
+  totalPrice: { type: Number, required:true },
+  actulWeight:{type:String,default:0}
 });
  
 const bookingSchema = new mongoose.Schema(

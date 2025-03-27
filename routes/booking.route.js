@@ -38,8 +38,6 @@ router.patch("/grnNoUnique/:grnNoUnique",bookingController.updateGRNBookings)
  
 router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
   
-router.post("/city-wise-booking",bookingController.cityWiseBookings)  // city wise booking
-
 router.post("/receivedBooking",auth,bookingController.receivedBooking)
 
 router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)
@@ -62,5 +60,9 @@ router.post("/sender-receiver-gst-report",bookingController.senderReceiverGSTRep
 router.post("/pending-delivery-stock-report",bookingController.pendingDeliveryStockReport) //sudheer 
 router.post("/parcel-status-date-difference-report",bookingController.parcelStatusDateDifferenceReport)
 router.post("/pending-delivery-luggage-report",bookingController.pendingDeliveryLuggageReport)
+router.post("/parcel-received-stock-report",bookingController.parcelReceivedStockReport)
+router.post("/delivered-stock-report",bookingController.deliveredStockReport) 
+router.post("/pending-dispatch-stock-report",bookingController.pendingDispatchStockReport)
+
 export default router
   
