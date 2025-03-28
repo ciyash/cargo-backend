@@ -63,6 +63,8 @@ router.post("/pending-delivery-luggage-report",bookingController.pendingDelivery
 router.post("/parcel-received-stock-report",bookingController.parcelReceivedStockReport)
 router.post("/delivered-stock-report",bookingController.deliveredStockReport) 
 router.post("/pending-dispatch-stock-report",bookingController.pendingDispatchStockReport)
+router.post("/dispatched-memo-report",bookingController.dispatchedMemoReport)
+router.post("/parcel-incoming-luggages-report",bookingController.parcelIncomingLuggagesReport)
 
 export default router
   

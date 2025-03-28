@@ -1695,8 +1695,6 @@ const deliveredStockReport = async (req, res) => {
   }
 };
 
-
-
 const pendingDispatchStockReport = async (req, res) => {
   try {
     const { fromCity, toCity, pickUpBranch } = req.body;
@@ -1763,6 +1761,116 @@ const pendingDispatchStockReport = async (req, res) => {
   }
 };
 
+const dispatchedMemoReport = async (req, res) => {
+  try {
+    const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch, vehicalNumber } = req.body;
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ message: "fromDate and toDate are required" });
+    }
+
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    let query = {
+      bookingDate: { $gte: start, $lte: end },
+      bookingStatus: 1,
+    };
+
+    if (fromCity) query.fromCity = fromCity;
+    if (toCity) query.toCity = toCity;
+    if (pickUpBranch) query.pickUpBranch = pickUpBranch;
+    if (dropBranch) query.dropBranch = dropBranch;
+    if (vehicalNumber) query.vehicalNumber = vehicalNumber;
+
+    const stockReport = await Booking.find(query)
+      .select("_id grnNo lrNumber vehicalNumber toCity serviceCharge hamaliCharge grandTotal senderName receiverName senderMobile loadingDate bookingDate bookingType packages")
+      .lean();
+
+    let totalPaid = { grandTotal: 0, serviceCharge: 0, hamaliCharge: 0 };
+    let totalToPay = { grandTotal: 0, serviceCharge: 0, hamaliCharge: 0 };
+    let totalCredit = { grandTotal: 0, serviceCharge: 0, hamaliCharge: 0 };
+
+    const groupedData = stockReport.reduce((acc, item) => {
+      const type = item.bookingType;
+
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(item);
+
+      if (type === "paid") {
+        totalPaid.grandTotal += item.grandTotal || 0;
+        totalPaid.serviceCharge += item.serviceCharge || 0;
+        totalPaid.hamaliCharge += item.hamaliCharge || 0;
+      } else if (type === "toPay") {
+        totalToPay.grandTotal += item.grandTotal || 0;
+        totalToPay.serviceCharge += item.serviceCharge || 0;
+        totalToPay.hamaliCharge += item.hamaliCharge || 0;
+      } else if (type === "credit") {
+        totalCredit.grandTotal += item.grandTotal || 0;
+        totalCredit.serviceCharge += item.serviceCharge || 0;
+        totalCredit.hamaliCharge += item.hamaliCharge || 0;
+      }
+
+      return acc;
+    }, {});
+
+    return res.status(200).json({
+      data: groupedData,
+      totalPaid,
+      totalToPay,
+      totalCredit,
+    });
+  } catch (error) {
+    console.error("Error in dispatchedMemoReport:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+const parcelIncomingLuggagesReport = async (req, res) => {
+  try {
+    const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ message: "fromDate and toDate are required" });
+    }
+
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    let query = {
+      bookingDate: { $gte: start, $lte: end },
+      bookingStatus: 1,
+    };
+
+    if (fromCity) query.fromCity = fromCity;
+    if (toCity) query.toCity = toCity;
+    if (pickUpBranch) query.pickUpBranch = pickUpBranch;
+    if (dropBranch) query.dropBranch = dropBranch;
+
+    const stockReport = await Booking.find(query).select(
+      "grnNo lrNumber deliveryEmployee senderName senderMobile loadingDate bookingDate bookingType receiverName receiverMobile packages grandTotal"
+    ).lean();
+
+    if (stockReport.length === 0) {
+      return res.status(404).json({ message: "No stock found for the given criteria" });
+    }
+
+    // Calculate total grandTotal
+    const totalGrandTotal = stockReport.reduce((sum, record) => sum + (record.grandTotal || 0), 0);
+
+    res.status(200).json({ 
+      data: stockReport,
+      totalGrandTotal 
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
 
 
 export default {createBooking,
@@ -1802,7 +1910,9 @@ parcelStatusDateDifferenceReport,
 pendingDeliveryLuggageReport,
 parcelReceivedStockReport,
 deliveredStockReport,
-pendingDispatchStockReport
+pendingDispatchStockReport,
+dispatchedMemoReport,
+parcelIncomingLuggagesReport
 
 }
  
