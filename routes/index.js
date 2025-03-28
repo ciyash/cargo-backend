@@ -7,6 +7,7 @@ import parcelLoadingRouter from '../routes/parcel.loading.route.js'
 import multiRouter from '../routes/multi.router.js'
 import extraChargeRouter from '../routes/extra.charge.route.js'
 import parcelUnloadingRouter from '../routes/parcel.unloading.route.js'
+import masterRouter from './master.router.js'
 
 const app=express.Router()
 
@@ -19,5 +20,7 @@ app.use("/parcel-loading",parcelLoadingRouter)
 app.use("/multi-router",multiRouter)
 app.use("/extra-charge",extraChargeRouter)
 app.use("/parcel-unloading",parcelUnloadingRouter)
+
+app.use("/master",masterRouter)
 
 export default app

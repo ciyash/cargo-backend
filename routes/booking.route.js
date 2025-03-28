@@ -67,4 +67,4 @@ router.post("/dispatched-memo-report",bookingController.dispatchedMemoReport)
 router.post("/parcel-incoming-luggages-report",bookingController.parcelIncomingLuggagesReport)
 
 export default router
-  
+    

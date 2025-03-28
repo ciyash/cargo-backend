@@ -1,6 +1,5 @@
-import Master from "../models/masterModel.js";  
+import Master from '../models/master.model.js' 
 
-// Create a new master record
  const createMaster = async (req, res) => {
     try {
         const {
@@ -24,17 +23,16 @@ import Master from "../models/masterModel.js";
     }
 };
 
-// Get all master records
  const getAllMasters = async (req, res) => {
     try {
         const masters = await Master.find();
-        res.status(200).json({ success: true, data: masters });
+        res.status(200).json({data: masters });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// Get a single master record by ID
+
  const getMasterById = async (req, res) => {
     try {
         const master = await Master.findById(req.params.id);
@@ -62,7 +60,7 @@ import Master from "../models/masterModel.js";
     }
 };
 
-// Delete a master record by ID
+// Delete a master record by ID  
  const deleteMaster = async (req, res) => {
     try {
         const deletedMaster = await Master.findByIdAndDelete(req.params.id);

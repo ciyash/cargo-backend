@@ -1,113 +1,131 @@
 import ParcelUnloading from '../models/parcel.unloading.model.js'
 import {Booking} from '../models/booking.model.js'
-import ParcelLoading from '../models/pracel.loading.model.js'
-import Branch from '../models/branch.model.js'
+
+
+// const getParcelsLoading = async (req, res) => {
+//     try {
+//         const { fromDate, toDate, fromCity, toCity, vehicalNumber, dropBranch } = req.body;
+
+//         if (!fromDate || !toDate) {
+//             return res.status(400).json({ message: "fromDate and toDate are required" });
+//         }
+
+//         let matchQuery = {
+//             bookingStatus: 1, 
+//             bookingDate: {
+//                 $gte: new Date(fromDate + "T00:00:00.000Z"),
+//                 $lte: new Date(toDate + "T23:59:59.999Z"),
+//             },
+//         };
+
+//         if (fromCity) matchQuery.fromCity = { $regex: new RegExp(`^${fromCity}$`, "i") };
+//         if (toCity) matchQuery.toCity = { $regex: new RegExp(`^${toCity}$`, "i") };
+//         if (dropBranch) matchQuery.dropBranch = { $regex: new RegExp(`^${dropBranch}$`, "i") };
+//         if (vehicalNumber) matchQuery.vehicalNumber = { $regex: new RegExp(`^${vehicalNumber}$`, "i") };
+
+//         const bookings = await Booking.aggregate([
+//             { $match: matchQuery },
+//             {
+//                 $addFields: {
+//                     totalQuantity: { $sum: "$packages.quantity" } // Calculate totalQuantity dynamically
+//                 }
+//             },
+//             {
+//                 $project: {
+//                     grnNo: 1,
+//                     fromCity: 1,
+//                     toCity: 1,
+//                     pickUpBranch: 1,
+//                     dropBranch: 1,
+//                     senderName: 1,
+//                     receiverName: 1,
+//                     bookingDate: 1,
+//                     totalQuantity: 1, // Now calculated dynamically
+//                     grandTotal: 1,
+//                     _id: 0
+//                 }
+//             }
+//         ]);
+
+//         if (bookings.length === 0) {
+//             return res.status(200).json({ success: true, message: "No customer bookings found with bookingStatus: 1." });
+//         }
+
+//         return res.status(200).json({ success: true, data: bookings });
+
+//     } catch (error) {
+//         console.error("Error fetching parcel booking summary report:", error);
+//         res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+//     }
+// };
 
 
 const getParcelsLoading = async (req, res) => {
     try {
-        const { fromDate, toDate, fromCity, toCity, vehicalNumber, branch } = req.body;
+        const { fromDate, toDate, fromCity, toCity, vehicalNumber, dropBranch } = req.body;
 
-        // Validate required fields
         if (!fromDate || !toDate) {
             return res.status(400).json({ message: "fromDate and toDate are required" });
         }
 
-        // Parse and validate date formats
-        const startOfDay = new Date(fromDate);
-        const endOfDay = new Date(toDate);
-
-        if (isNaN(startOfDay.getTime()) || isNaN(endOfDay.getTime())) {
-            return res.status(400).json({ message: "Invalid date format. Use YYYY-MM-DD." });
-        }
-
-        startOfDay.setUTCHours(0, 0, 0, 0);
-        endOfDay.setUTCHours(23, 59, 59, 999);
-
-        // Base filter with date range
-        let filter = {
-            fromBookingDate: { $gte: startOfDay, $lte: endOfDay },
+        let matchQuery = {
+            bookingStatus: 1, 
+            bookingDate: {
+                $gte: new Date(fromDate + "T00:00:00.000Z"),
+                $lte: new Date(toDate + "T23:59:59.999Z"),
+            },
         };
 
-        let orConditions = [];
-        if (Array.isArray(fromCity) && fromCity.length > 0) {
-            orConditions.push({ fromCity: { $in: fromCity } });
-        }
-        if (toCity) {
-            orConditions.push({ toCity });
-        }
-        if (Array.isArray(branch) && branch.length > 0) {
-            orConditions.push({ branch: { $in: branch } });
-        }
-        if (orConditions.length > 0) {
-            filter.$or = orConditions;
-        }
+        if (fromCity) matchQuery.fromCity = { $regex: new RegExp(`^${fromCity}$`, "i") };
+        if (toCity) matchQuery.toCity = { $regex: new RegExp(`^${toCity}$`, "i") };
+        if (dropBranch) matchQuery.dropBranch = { $regex: new RegExp(`^${dropBranch}$`, "i") };
+        if (vehicalNumber) matchQuery.vehicalNumber = { $regex: new RegExp(`^${vehicalNumber}$`, "i") };
 
-        // ✅ Check vehicle number
-        if (vehicalNumber) {
-            filter.vehicalNumber = vehicalNumber;
-        }
-
-        // Fetch parcels based on filters
-        const parcels = await ParcelLoading.find(filter);
-
-        if (parcels.length === 0) {
-            return res.status(404).json({ message: "No parcels found!" });
-        }
-
-        // Extract unique grnNo values from all parcels
-        const grnNumbers = [...new Set(parcels.flatMap(parcel => parcel.grnNo))];
-
-        // Fetch Booking data based on grnNo
-        const bookingData = await Booking.aggregate([
-            { $match: { grnNo: { $in: grnNumbers } } },
+        const bookings = await Booking.aggregate([
+            { $match: matchQuery },
+            {
+                $addFields: {
+                    totalQuantity: { $sum: "$packages.quantity" }
+                }
+            },
             {
                 $group: {
-                    _id: null,
+                    _id: "$bookingType",
                     totalQuantity: { $sum: "$totalQuantity" },
-                    grandTotal: { $sum: "$grandTotal" },
-                    bookingTypes: { $addToSet: "$bookingType" } // Collect unique booking types
+                    totalGrandTotal: { $sum: "$grandTotal" },
+                    bookings: { $push: "$$ROOT" } // Keep original data
+                }
+            },
+            {
+                $project: {
+                    bookingType: "$_id",
+                    totalQuantity: 1,
+                    totalGrandTotal: 1,
+                    bookings: {
+                        grnNo: 1,
+                        fromCity: 1,
+                        toCity: 1,
+                        pickUpBranch: 1,
+                        dropBranch: 1,
+                        senderName: 1,
+                        receiverName: 1,
+                        bookingDate: 1,
+                        totalQuantity: 1,
+                        grandTotal: 1
+                    }
                 }
             }
         ]);
 
-        // Default booking data if no matching bookings
-        const bookingSummary = bookingData.length > 0 ? bookingData[0] : {
-            totalQuantity: 0,
-            grandTotal: 0,
-            bookingTypes: []
-        };
-
-        // Fetch branch names based on branch codes in the request
-        let branchMap = {};
-        if (Array.isArray(branch) && branch.length > 0) {
-            const branchData = await Branch.find({ branchCode: { $in: branch } });
-
-            // Create a mapping of branchCode to branchName
-            branchMap = branchData.reduce((map, branch) => {
-                map[branch.branchCode] = branch.branchName;
-                return map;
-            }, {});
+        if (bookings.length === 0) {
+            return res.status(200).json({ success: true, message: "No customer bookings found with bookingStatus: 1." });
         }
 
-        // Format response to include branch names
-        res.status(200).json({
-            parcels,
-            totalQuantity: bookingSummary.totalQuantity,
-            grandTotal: bookingSummary.grandTotal,
-            bookingTypes: bookingSummary.bookingTypes,
-            branchNames: branch.map(code => ({
-                branchCode: code,
-                branchName: branchMap[code] || code // Use code as fallback if name not found
-            }))
-        });
+        return res.status(200).json({ success: true, data: bookings });
+
     } catch (error) {
-        console.error("Error fetching parcels:", error);
-        res.status(500).json({
-            success: false,
-            message: "Server Error",
-            error: error.message,
-        });
+        console.error("Error fetching parcel booking summary report:", error);
+        res.status(500).json({ success: false, message: "Internal server error", error: error.message });
     }
 };
 
