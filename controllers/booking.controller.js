@@ -198,7 +198,10 @@ const createBooking = async (req, res) => {
       eWayBillNo,
       vehicalNumber,
       actulWeight,
-      bookingDate: new Date(),bookbranchid,pickUpBranchname,dropBranchname
+      bookingDate: new Date(),
+      bookbranchid,
+      pickUpBranchname,
+      dropBranchname
     });
  
     const savedBooking = await booking.save();
