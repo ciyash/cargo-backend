@@ -5,53 +5,79 @@ import {Booking} from '../models/booking.model.js';
 
 
 const getVoucherDetails = async (req, res) => {
-    try {
-      const { fromDate, toDate, agent, voucherNo, voucherType } = req.body;
-  
-      // Validate required fields
-      if (!fromDate || !toDate) {
-        return res.status(400).json({ success: false, message: "fromDate and toDate are required" });
-      }
-  
-      // Step 1: Get ParcelLoading data by date range
-      const parcelLoadings = await ParcelLoading.find({
-        loadingDate: {
-          $gte: new Date(fromDate),
-          $lte: new Date(toDate)
-        }
-      });
-  
-      // Step 2: Extract grnNo from ParcelLoading records
-      const grnNumbers = parcelLoadings.map(p => p.grnNo);
-  
-      // Step 3: Get Booking data using those grnNo
-      const bookings = await Booking.find({ grnNo: { $in: grnNumbers } })
-        .select("grnNo senderName grandTotal bookingType");
-  
-      res.status(200).json({
-        success: true,
-        data: {
-          voucherInfo: {
-            fromDate,
-            toDate,
-            ...(agent && { agent }),
-            ...(voucherNo && { voucherNo }),
-            ...(voucherType && { voucherType }),
-          },
-          parcelLoadings,
-          bookings,
-        }
-      });
-    } catch (error) {
-      console.error("Error fetching voucher details:", error);
-      res.status(500).json({ success: false, message: "Server error", error: error.message });
-    }
-  };
-  
-  
+  try {
+    const { fromDate, toDate, agent, voucherNo, voucherType } = req.body;
 
-// Create a new voucher
- const createVoucher = async (req, res) => {
+    if (!fromDate || !toDate) {
+      return res.status(400).json({
+        success: false,
+        message: "fromDate and toDate are required"
+      });
+    }
+
+    const start = new Date(fromDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Build ParcelLoading query
+    let parcelQuery = {
+      loadingDate: {
+        $gte: start,
+        $lte: end
+      }
+    };
+
+    if (voucherNo) parcelQuery.vocherNoUnique = voucherNo;
+
+    const parcelLoadings = await ParcelLoading.find(parcelQuery);
+
+    const grnNumbers = parcelLoadings.flatMap(p => p.grnNo).filter(Boolean);
+
+    if (grnNumbers.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No GRN numbers found for given filters",
+        data: {
+          voucherInfo: { fromDate, toDate, agent, voucherNo, voucherType },
+          parcelLoadings,
+          bookings: []
+        }
+      });
+    }
+
+    // Build Booking query
+    const bookingQuery = {
+      grnNo: { $in: grnNumbers }
+    };
+
+    if (agent) bookingQuery.senderName = agent;
+    if (voucherType) bookingQuery.bookingType = voucherType;
+
+    const bookings = await Booking.find(bookingQuery)
+      .select("grnNo senderName grandTotal bookingType");
+
+    res.status(200).json({
+      success: true,
+      data: {
+        voucherInfo: { fromDate, toDate, agent, voucherNo, voucherType },
+        parcelLoadings,
+        bookings
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching voucher details:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+};
+
+
+const createVoucher = async (req, res) => {
   try {
     const {
       fromDate,

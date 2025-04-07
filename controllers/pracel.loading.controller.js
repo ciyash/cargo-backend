@@ -52,6 +52,7 @@ const createParcel = async (req, res) => {
       loadingType,
       fromBranch,
       toBranch,
+      senderName,
       parcelStatus,
       vehicalNumber,
       driverName,
@@ -71,6 +72,7 @@ const createParcel = async (req, res) => {
       !fromBranch ||
       !vehicalNumber ||
       !driverName ||
+      !senderName ||
       !driverNo ||
       !fromBookingDate ||
       !toBookingDate ||
@@ -102,6 +104,7 @@ const createParcel = async (req, res) => {
       vehicalNumber,
       parcelStatus,
       loadingBy,
+      senderName,
       vocherNoUnique,
       fromBranch,
       toBranch,

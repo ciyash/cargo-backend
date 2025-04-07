@@ -15,4 +15,8 @@ router.patch("/:id", cfVoucherController.updateCFVoucher);
 
 router.delete("/:id", cfVoucherController.deleteCFVoucher);
 
+router.post("/voucher-details",cfVoucherController.voucherDetails)
+
+router.post("/voucher-details-print",cfVoucherController.voucherDetailsPrint)
+
 export default router;

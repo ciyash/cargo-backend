@@ -28,6 +28,6 @@ app.use("/parcel-unloading",parcelUnloadingRouter)
 app.use("/cfmaster",masterRouter)
 app.use("/cfextra-charge",cfExtraChargeRouter)
 app.use("/voucher-generate",voucherRouter)
-app.use("/cfvoucher-collection",cfVoucherCollectionRouter)
+
 
 export default app

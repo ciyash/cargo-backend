@@ -6,7 +6,7 @@ const router = express.Router();
 router.post('/', cfMasterController.createMasterBooking);
 router.get('/', cfMasterController.getAllMasters);
 router.get('/search/:name', cfMasterController.getMasterByName);
-router.put('/:id', cfMasterController.updateMaster);
+router.patch('/:id', cfMasterController.updateMaster);
 router.delete('/:id', cfMasterController.deleteMaster);
 
 export default router;

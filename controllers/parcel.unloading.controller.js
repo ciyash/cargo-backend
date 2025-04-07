@@ -134,7 +134,7 @@ const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000)
 
 const createParcelUnloading = async (req, res) => {
     try {
-        const { fromBookingDate, toBookingDate, fromCity, toCity, branch, vehicleNo, lrNumber, grnNo, bookingType } = req.body;
+        const { fromBookingDate, toBookingDate, fromCity, toCity, branch, vehicalNumber, lrNumber, grnNo, bookingType } = req.body;
 
         if (!grnNo || !Array.isArray(grnNo) || grnNo.length === 0) {
             return res.status(400).json({ message: "GRN numbers are required and should be an array" });
@@ -175,7 +175,7 @@ const createParcelUnloading = async (req, res) => {
             fromCity,
             toCity,
             branch,
-            vehicleNo,
+            vehicalNumber,
             lrNumber,
             grnNo: grnNumbers,
             bookingType,

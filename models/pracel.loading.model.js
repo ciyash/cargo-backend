@@ -7,6 +7,7 @@ const parcelSchema = new mongoose.Schema({
     loadingBy: { type: mongoose.Schema.Types.ObjectId, ref: "Subadmin", required: true }, // Loading employee
     fromBookingDate: { type: Date, required: true },
     toBookingDate: { type: Date, required: true },
+    senderName:{type:String,required:true},
     fromCity: { type: String },
     loadingDate:{type:Date,default:()=>new Date()},
     toCity: [{ type: String}],  
