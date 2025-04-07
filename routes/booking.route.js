@@ -26,7 +26,7 @@ router.get("/pages",bookingController.getAllBookingsPages)
  
 router.get("/fromCity/:fromCity/toCity/:toCity/:vehicalNumber",bookingController.getBookingsfromCityTotoCity)
  
-router.post("/filterDates" ,bookingController.getBookingsBetweenDates);
+
  
 router.post("/get-lrNumber",bookingController.getBookinglrNumber)
  

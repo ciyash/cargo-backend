@@ -1,5 +1,5 @@
 import CFVoucher from '../models/cf.voucher.generate.model.js' 
-import Masterbooking from '../models/master.booking.model.js'
+import {Booking} from '../models/booking.model.js'
 
 
 const creditForVoucherGenerate = async (req, res) => {
@@ -20,7 +20,7 @@ const creditForVoucherGenerate = async (req, res) => {
 
         // Build query dynamically
         let query = {
-            masterBookingDate: { $gte: from, $lte: to },
+            Booking: { $gte: from, $lte: to },
         };
 
         // If senderName is provided, add it to the query
@@ -28,9 +28,13 @@ const creditForVoucherGenerate = async (req, res) => {
             query.senderName = { $regex: `^${senderName}$`, $options: "i" }; // Case-insensitive match
         }
 
-        const masters = await Masterbooking.find(query)
+        const masters = await Booking.find(query)
             .sort({ masterBookingDate: -1 }) // Sort by newest first
             .select("grnNo senderName pickUpBranchname dropBranchname bookingStatus totalAmount masterBookingDate"); // Select required fields
+
+            if (masters.length === 0) {
+                return res.status(404).json({ success: false, message: "No bookings found" });
+              }
 
         res.status(200).json(masters);
     } catch (error) {

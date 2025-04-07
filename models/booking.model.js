@@ -95,8 +95,13 @@ const bookingSchema = new mongoose.Schema(
     cancelCity: { type: String, default: null },
     cancelBranch: { type: String, default: null },
     refundCharge: { type: Number, default: 0 },
-    refundAmount: { type: Number, default: 0 }
+    refundAmount: { type: Number, default: 0 },
+
   },
+
+
+
+
   { timestamps: true }
 );
  

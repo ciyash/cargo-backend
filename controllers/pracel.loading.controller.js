@@ -5,6 +5,44 @@ const generateVocherNoUnique = () => {
   return Math.floor(100000 + Math.random() * 900000);
 };
 
+const getBookingsBetweenDates = async (req, res) => {
+  try {
+    const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
+ 
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "Start date and end date are required!" });
+    }
+ 
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+ 
+    let filter = { bookingDate: { $gte: start, $lte: end }, bookingStatus: 0 };
+ 
+    if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
+ 
+    if (Array.isArray(toCity) && toCity.length > 0) {
+      filter.toCity = { $in: toCity.map(city => new RegExp(`^${city}$`, "i")) };
+    } else if (toCity) {
+      filter.toCity = new RegExp(`^${toCity}$`, "i");
+    }
+ 
+    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+ 
+    const bookings = await Booking.find(filter);
+ 
+    if (bookings.length === 0) {
+      return res.status(404).json({ message: "No bookings found for the given filters!", data: [] });
+    }
+ 
+    res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 const createParcel = async (req, res) => {
   const session = await ParcelLoading.startSession(); // Start a transaction session
   session.startTransaction();
@@ -624,6 +662,7 @@ const dispatchedStockReport = async (req, res) => {
 
 
 export default {
+  getBookingsBetweenDates,
   createParcel,
   getParcelById,
   getAllParcels,

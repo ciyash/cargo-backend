@@ -8,9 +8,11 @@ import multiRouter from '../routes/multi.router.js'
 import extraChargeRouter from '../routes/extra.charge.route.js'
 import parcelUnloadingRouter from '../routes/parcel.unloading.route.js'
 
-import masterRouter from './master.booking.router.js'
-import userMasterRouter from './cf.user.collection.router.js'
+import masterRouter from './cf.master.router.js'
+import cfExtraChargeRouter from './cf.extra.charge.router.js'
 import voucherRouter from './cf.voucher.generate.route.js'
+import cfVoucherCollectionRouter from '../routes/cf.voucher.collection.router.js'
+
 const app=express.Router()
 
 
@@ -23,8 +25,9 @@ app.use("/multi-router",multiRouter)
 app.use("/extra-charge",extraChargeRouter)
 app.use("/parcel-unloading",parcelUnloadingRouter)
 
-app.use("/master-booking",masterRouter)
-app.use("/user-collection",userMasterRouter)
+app.use("/cfmaster",masterRouter)
+app.use("/cfextra-charge",cfExtraChargeRouter)
 app.use("/voucher-generate",voucherRouter)
+app.use("/cfvoucher-collection",cfVoucherCollectionRouter)
 
 export default app

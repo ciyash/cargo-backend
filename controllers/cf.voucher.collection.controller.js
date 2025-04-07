@@ -1,0 +1,149 @@
+import Vouchercollection from '../models/cf.voucher.collection.model.js'
+
+import ParcelLoading from '../models/pracel.loading.model.js'
+import {Booking} from '../models/booking.model.js';
+
+
+const getVoucherDetails = async (req, res) => {
+    try {
+      const { fromDate, toDate, agent, voucherNo, voucherType } = req.body;
+  
+      // Validate required fields
+      if (!fromDate || !toDate) {
+        return res.status(400).json({ success: false, message: "fromDate and toDate are required" });
+      }
+  
+      // Step 1: Get ParcelLoading data by date range
+      const parcelLoadings = await ParcelLoading.find({
+        loadingDate: {
+          $gte: new Date(fromDate),
+          $lte: new Date(toDate)
+        }
+      });
+  
+      // Step 2: Extract grnNo from ParcelLoading records
+      const grnNumbers = parcelLoadings.map(p => p.grnNo);
+  
+      // Step 3: Get Booking data using those grnNo
+      const bookings = await Booking.find({ grnNo: { $in: grnNumbers } })
+        .select("grnNo senderName grandTotal bookingType");
+  
+      res.status(200).json({
+        success: true,
+        data: {
+          voucherInfo: {
+            fromDate,
+            toDate,
+            ...(agent && { agent }),
+            ...(voucherNo && { voucherNo }),
+            ...(voucherType && { voucherType }),
+          },
+          parcelLoadings,
+          bookings,
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching voucher details:", error);
+      res.status(500).json({ success: false, message: "Server error", error: error.message });
+    }
+  };
+  
+  
+
+// Create a new voucher
+ const createVoucher = async (req, res) => {
+  try {
+    const {
+      fromDate,
+      toDate,
+      agent,
+      voucherNo,
+      voucherType,
+      grnNo,
+      user
+    } = req.body;
+
+    const newVoucher = new Vouchercollection({
+      fromDate,
+      toDate,
+      agent,
+      voucherNo,
+      voucherType,
+      grnNo,
+      user
+    });
+
+    const savedVoucher = await newVoucher.save();
+    res.status(201).json({ success: true, message: "Voucher created successfully", data: savedVoucher });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// Get all vouchers
+ const getAllVouchers = async (req, res) => {
+  try {
+    const vouchers = await Vouchercollection.find().sort({ createdAt: -1 });
+
+    if (vouchers.length === 0) {
+      return res.status(404).json({ success: false, message: "No vouchers found" });
+    }
+
+    res.status(200).json({ success: true, data: vouchers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get voucher by ID
+ const getVoucherById = async (req, res) => {
+  try {
+    const voucher = await Vouchercollection.findById(req.params.id);
+    if (!voucher) {
+      return res.status(404).json({ success: false, message: "Voucher not found" });
+    }
+    res.status(200).json({ success: true, data: voucher });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update voucher by ID
+ const updateVoucher = async (req, res) => {
+  try {
+    const updated = await Vouchercollection.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: "Voucher not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Voucher updated successfully", data: updated });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete voucher by ID
+ const deleteVoucher = async (req, res) => {
+  try {
+    const deleted = await Vouchercollection.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Voucher not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Voucher deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+export default {
+    createVoucher,
+    getAllVouchers,
+    getVoucherById,
+    updateVoucher,
+    deleteVoucher,
+    getVoucherDetails
+}

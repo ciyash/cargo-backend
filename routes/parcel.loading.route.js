@@ -4,6 +4,8 @@ import auth from '../config/auth.middleware.js'
 
 const router=express.Router()   
 
+router.post("/parcel-loding-load" ,parcelController.getBookingsBetweenDates);
+
 router.post("/",auth,parcelController.createParcel)
 
 router.get("/",parcelController.getAllParcels)
