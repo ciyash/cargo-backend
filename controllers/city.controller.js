@@ -3,9 +3,9 @@ import { City } from '../models/multi.model.js'
 // Create City
  const createCity = async (req, res) => {
     try {
-        const { cityName, state } = req.body;
+        const { cityName, state,code,address } = req.body;
 
-        if(!cityName || !state){
+        if(!cityName || !state || !address ){
           return res.status(404).json({message:"Required fields missing cityName state"})
         }
 
@@ -15,7 +15,7 @@ import { City } from '../models/multi.model.js'
           return res.status(400).json({message:"Already city exist "})
         }
 
-        const newCity = new City({ cityName, state });
+        const newCity = new City({ cityName, state,code,address });
 
         await newCity.save();
         res.status(201).json({message: "City added successfully", city: newCity });

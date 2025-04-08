@@ -128,12 +128,16 @@ const createParcel = async (req, res) => {
         $set: {
           bookingStatus: 1,
           loadingDate: loadingDate,
-          vehicalNumber: vehicalNumber
+          vehicalNumber: vehicalNumber,
+          ltDate: new Date(),
+          ltCity: fromCity,
+          ltBranch: fromBranch,
+          ltEmployee: loadingBy
         },
       },
       { session }
     );
-
+    
 
     await session.commitTransaction(); //  Commit transaction
     res

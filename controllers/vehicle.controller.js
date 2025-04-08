@@ -94,6 +94,38 @@ const deleteVehicle = async (req, res) => {
     }
 };
 
+const getVehiclesByStatus = async (req, res) => {
+    try {
+      const { status } = req.params;
+  
+      // Validate status value
+      if (!["active", "inactive"].includes(status.toLowerCase())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid status. Use 'active' or 'inactive'."
+        });
+      }
+  
+      const vehicles = await Vehicle.find({ vehicleStatus: status.toLowerCase() });
+  
+      res.status(200).json({
+        success: true,
+        message: `Vehicles with status '${status}' fetched successfully`,
+        count: vehicles.length,
+        data: vehicles
+      });
+    } catch (error) {
+      console.error("Error fetching vehicles by status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message
+      });
+    }
+  };
+  
+  
+
 // Export all controllers
 export default {
     createVehicle,
@@ -101,5 +133,6 @@ export default {
     getVehicleById,
     updateVehicle,
     deleteVehicle,
-    getVehicleNo
+    getVehicleNo,
+    getVehiclesByStatus
 };

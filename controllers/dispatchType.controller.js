@@ -2,14 +2,14 @@ import { DispatchType } from '../models/multi.model.js';
 
  const createDispatchType = async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name,isActive } = req.body;
 
        
         if (!name) {
             return res.status(400).json({message: "Name is required" });
         }
 
-        const newDispatchType = new DispatchType({ name });
+        const newDispatchType = new DispatchType({ name,isActive });
         await newDispatchType.save();
 
         res.status(201).json({message: "Dispatch Type added",newDispatchType });
@@ -54,14 +54,14 @@ import { DispatchType } from '../models/multi.model.js';
  const updateDispatchType = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name } = req.body;
+        const { name,isActive } = req.body;
 
         // Check if required fields are provided
         if (!name) {
             return res.status(400).json({ success: false, message: "Name is required" });
         }
 
-        const updatedDispatchType = await DispatchType.findByIdAndUpdate(id, { name }, { new: true });
+        const updatedDispatchType = await DispatchType.findByIdAndUpdate(id, { name,isActive }, { new: true });
 
         if (!updatedDispatchType) {
             return res.status(404).json({ success: false, message: "Dispatch Type not found" });

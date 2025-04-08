@@ -14,5 +14,8 @@ router.patch("/:id",vehicleController.updateVehicle)
 
 router.delete("/:id",vehicleController.deleteVehicle)
 
+router.get("/status/:status", vehicleController.getVehiclesByStatus);
+
+
 export default router
 

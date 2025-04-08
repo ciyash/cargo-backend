@@ -122,10 +122,25 @@ const deleteMaster = async (req, res) => {
   }
 };
 
+const getCFMasterByCity=async(req,res) => {
+  try{
+    const {city}=req.params
+    const master=await CFMaster.find({city})
+    if(master.length===0){
+      return res.status(404).json({message:"city not found in data !"})
+    }
+    res.status(200).json(master)
+  }
+  catch(error){
+   res.status(500).json({error:error.message})
+  }
+}
+
 export default {
   createMasterBooking,
   getAllMasters,
   getMasterByName,
   updateMaster,
   deleteMaster,
+  getCFMasterByCity
 };

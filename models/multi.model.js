@@ -2,11 +2,14 @@ import mongoose from "mongoose";
 
 const citySchema = new mongoose.Schema({
     cityName: { type: String, required: true, trim: true },   
-    state: { type: String, required: true, trim: true }
+    state: { type: String, required: true, trim: true },
+    address: {type:String,required:true},
+    code:{type:String}
 }, { timestamps: true });
 
 const dispatchTypeSchema = new mongoose.Schema({
-    name: { type: String, required: true, trim: true }
+    name: { type: String, required: true, trim: true },
+    isActive:{type:Boolean,default:false}
 }, { timestamps: true });
 
 const packageTypeSchema = new mongoose.Schema({

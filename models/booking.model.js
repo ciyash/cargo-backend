@@ -84,7 +84,7 @@ const bookingSchema = new mongoose.Schema(
     ltDate: { type: Date, default: () => new Date() },
     ltCity: { type: String, default: null },
     ltBranch: { type: String, default: null },
-    ltBranchName: { type: String, default: null },
+    // ltBranchName: { type: String, default: null },
     ltEmployee: { type: String, default: null },
    
    

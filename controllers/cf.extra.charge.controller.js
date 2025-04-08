@@ -87,11 +87,11 @@ const createCFExtraCharge = async (req, res) => {
   }
 };
 
+
 export default {
  createCFExtraCharge,
  getAllCFExtraCharges,
  getCFExtraChargeByAgentName,
  updateCFExtraCharge,
- deleteCFExtraCharge,
-
+ deleteCFExtraCharge
 }

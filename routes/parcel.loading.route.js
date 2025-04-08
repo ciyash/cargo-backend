@@ -7,7 +7,7 @@ const router=express.Router()
 router.post("/parcel-loding-load" ,parcelController.getBookingsBetweenDates);
 
 router.post("/",auth,parcelController.createParcel)
-
+ 
 router.get("/",parcelController.getAllParcels)
 
 router.get("/:id",parcelController.getParcelById)  

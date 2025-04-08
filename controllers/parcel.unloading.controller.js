@@ -69,17 +69,35 @@ const getParcelsLoading = async (req, res) => {
         }
 
         let matchQuery = {
-            bookingStatus: 1, 
+            bookingStatus: 1,
             bookingDate: {
                 $gte: new Date(fromDate + "T00:00:00.000Z"),
                 $lte: new Date(toDate + "T23:59:59.999Z"),
             },
         };
 
-        if (fromCity) matchQuery.fromCity = { $regex: new RegExp(`^${fromCity}$`, "i") };
-        if (toCity) matchQuery.toCity = { $regex: new RegExp(`^${toCity}$`, "i") };
-        if (dropBranch) matchQuery.dropBranch = { $regex: new RegExp(`^${dropBranch}$`, "i") };
-        if (vehicalNumber) matchQuery.vehicalNumber = { $regex: new RegExp(`^${vehicalNumber}$`, "i") };
+        // Handle fromCity as string or array
+        if (fromCity) {
+            if (Array.isArray(fromCity) && fromCity.length > 0) {
+                matchQuery.fromCity = {
+                    $in: fromCity.map(city => new RegExp(`^${city}$`, 'i'))
+                };
+            } else if (typeof fromCity === 'string') {
+                matchQuery.fromCity = { $regex: new RegExp(`^${fromCity}$`, 'i') };
+            }
+        }
+
+        if (toCity) {
+            matchQuery.toCity = { $regex: new RegExp(`^${toCity}$`, 'i') };
+        }
+
+        if (dropBranch) {
+            matchQuery.dropBranch = { $regex: new RegExp(`^${dropBranch}$`, 'i') };
+        }
+
+        if (vehicalNumber) {
+            matchQuery.vehicalNumber = { $regex: new RegExp(`^${vehicalNumber}$`, 'i') };
+        }
 
         const bookings = await Booking.aggregate([
             { $match: matchQuery },
@@ -93,7 +111,7 @@ const getParcelsLoading = async (req, res) => {
                     _id: "$bookingType",
                     totalQuantity: { $sum: "$totalQuantity" },
                     totalGrandTotal: { $sum: "$grandTotal" },
-                    bookings: { $push: "$$ROOT" } // Keep original data
+                    bookings: { $push: "$$ROOT" }
                 }
             },
             {
@@ -109,6 +127,7 @@ const getParcelsLoading = async (req, res) => {
                         dropBranch: 1,
                         senderName: 1,
                         receiverName: 1,
+                        bookingStatus: 1,
                         bookingDate: 1,
                         totalQuantity: 1,
                         grandTotal: 1
@@ -118,16 +137,24 @@ const getParcelsLoading = async (req, res) => {
         ]);
 
         if (bookings.length === 0) {
-            return res.status(200).json({ success: true, message: "No customer bookings found with bookingStatus: 1." });
+            return res.status(200).json({
+                success: true,
+                message: "No customer bookings found with bookingStatus: 1."
+            });
         }
 
         return res.status(200).json({ success: true, data: bookings });
 
     } catch (error) {
         console.error("Error fetching parcel booking summary report:", error);
-        res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: error.message
+        });
     }
 };
+
 
 
 const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);  
