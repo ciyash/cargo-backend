@@ -10,18 +10,24 @@ const masterSchema = new mongoose.Schema({
     phone: { type: String, required: true }, 
     address: { type: String, required: true },
     isActive: { type: Boolean, default: false }, 
-    isPostPaid: { type: Boolean, default: false },
-    isAgent: { type: Boolean, default: false },
+    isPostPaid: { type: Boolean, default: true },
+    isAgent: { type: Boolean, default: true },
     isAllowNegativeBooking: { type: Boolean, default: false }, 
     PAN: { type: String, default:null },
     accountNo: { type: Number, default:null }, 
     ifscCode: { type: String, default:null },
     tanNo: { type: String,default:null },
     creditDaysLimit: { type: Number, default: 0 },
-    exDate: { type: Date },
-    partyAccountEmail: { type: String, required: true },
-    transportEmail: { type: String, required: true },
-    executiveName: { type: String, required: true }    
+    exDate: { type: Date },  
+    partyAccountEmail: { type: String, default:null },
+    transportEmail: { type: String, default:null },
+    executiveName: { type: String, default:null }  ,  
+
+    senderName: { type: String ,default:null},
+    senderMobile: { type: Number,default:null },
+
+    receiverName: { type: String,default:null },  
+    receiverMobile: { type: Number,default:null},
 });
 
 export default mongoose.model("CFMaster", masterSchema);

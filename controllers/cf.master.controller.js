@@ -25,6 +25,10 @@ const createMasterBooking = async (req, res) => {
       partyAccountEmail,
       transportEmail,
       executiveName,  
+      senderName,
+      senderMobile,
+      receiverName,
+      receiverMobile
     } = req.body;
 
     const newMaster = new CFMaster({
@@ -49,6 +53,10 @@ const createMasterBooking = async (req, res) => {
       partyAccountEmail,
       transportEmail,
       executiveName,
+      senderName,
+      senderMobile,
+      receiverName,
+      receiverMobile
     });
 
     await newMaster.save();
