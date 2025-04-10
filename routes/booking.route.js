@@ -15,7 +15,7 @@ router.get("/users",bookingController.getAllUsers)
 router.get("/users/search",bookingController.getUsersBySearch)
    
 router.get("/todaybookings",auth,bookingController.getBookingBydate)
- 
+   
 router.get("/grnNo/:grnNo",bookingController.getBookingByGrnNo)
  
 router.get("/adminUniqueId/:adminUniqueId",bookingController.getBookingadminUniqueId)
@@ -65,6 +65,8 @@ router.post("/delivered-stock-report",bookingController.deliveredStockReport)
 router.post("/pending-dispatch-stock-report",bookingController.pendingDispatchStockReport)
 router.post("/dispatched-memo-report",bookingController.dispatchedMemoReport)
 router.post("/parcel-incoming-luggages-report",bookingController.parcelIncomingLuggagesReport)
+router.post("/grnNolrNo", bookingController.getBookingByGrnOrLrNumber);
+
 
 export default router
     

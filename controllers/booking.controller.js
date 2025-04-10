@@ -1839,6 +1839,54 @@ const parcelIncomingLuggagesReport = async (req, res) => {
 };
 
 
+const getBookingByGrnOrLrNumber = async (req, res) => { 
+  try {
+    const { grnlrn } = req.body;
+
+    if (!grnlrn || typeof grnlrn !== 'string') {
+      return res.status(400).json({
+        message: "Please provide grnlrn (grnNo or lrNumber) as a string in the request body",
+      });
+    }
+
+    const orConditions = [];
+
+    // If it's numeric, try grnNo
+    if (/^\d+$/.test(grnlrn)) {
+      orConditions.push({ grnNo: parseInt(grnlrn) });
+    }
+
+    // Always try lrNumber as string
+    orConditions.push({ lrNumber: grnlrn });
+
+    const booking = await Booking.findOne({ $or: orConditions });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: booking,
+    });
+
+  } catch (error) {
+    console.error("Error fetching booking:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+
 
 export default {createBooking,
   getAllBookings,
@@ -1878,8 +1926,8 @@ parcelReceivedStockReport,
 deliveredStockReport,
 pendingDispatchStockReport,
 dispatchedMemoReport,
-parcelIncomingLuggagesReport
-
+parcelIncomingLuggagesReport,
+getBookingByGrnOrLrNumber
 }
  
  

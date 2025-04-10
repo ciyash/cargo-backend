@@ -13,7 +13,6 @@ const masterSchema = new mongoose.Schema({
     isPostPaid: { type: Boolean, default: false },
     isAgent: { type: Boolean, default: false },
     isAllowNegativeBooking: { type: Boolean, default: false }, 
-    postPaidRole: { type: String }, 
     PAN: { type: String, default:null },
     accountNo: { type: Number, default:null }, 
     ifscCode: { type: String, default:null },

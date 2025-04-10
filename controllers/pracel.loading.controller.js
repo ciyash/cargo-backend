@@ -14,7 +14,7 @@ const getBookingsBetweenDates = async (req, res) => {
     }
  
     const start = new Date(startDate);
-    const end = new Date(endDate);
+    const end = new Date(endDate);     
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
  

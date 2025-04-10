@@ -16,7 +16,6 @@ const createMasterBooking = async (req, res) => {
       isPostPaid,
       isAgent,
       isAllowNegativeBooking,
-      postPaidRole,
       PAN,
       accountNo,
       ifscCode,
@@ -25,7 +24,7 @@ const createMasterBooking = async (req, res) => {
       exDate,
       partyAccountEmail,
       transportEmail,
-      executiveName,
+      executiveName,  
     } = req.body;
 
     const newMaster = new CFMaster({
@@ -41,7 +40,6 @@ const createMasterBooking = async (req, res) => {
       isPostPaid,
       isAgent,
       isAllowNegativeBooking,
-      postPaidRole,
       PAN,
       accountNo,
       ifscCode,
