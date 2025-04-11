@@ -41,7 +41,8 @@ const getBookingsBetweenDates = async (req, res) => {
     console.error("Error fetching bookings:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
-};
+};   
+//
 
 
 // const createParcel = async (req, res) => {
