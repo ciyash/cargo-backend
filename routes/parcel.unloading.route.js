@@ -6,12 +6,11 @@ const router = express.Router();
 
 router.post("/parcel-filter-Unloading",parcelUnloadingController.getParcelsLoading)  //loading get
 
+router.get("/grnNo/:grnNo",parcelUnloadingController.getParcelunLoadingByGrnNumber)
+
 router.post("/",auth,parcelUnloadingController.createParcelUnloading)   //post
 
-
 router.get("/",parcelUnloadingController.getAllParcelUnloadings)
-
-router.get("/grnNo/:grnNo",parcelUnloadingController.getParcelunLoadingByGrnNumber)
 
 router.get("/:id",parcelUnloadingController.getParcelUnloadingById)
 

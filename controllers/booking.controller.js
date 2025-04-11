@@ -702,40 +702,69 @@ const allParcelBookingReport = async (req, res) => {
   try {
     const {
       startDate,
-      fromDate,
+      endDate,
       fromCity,
       toCity,
       pickUpBranch,
       dropBranch,
       bookingStatus,
-      vehicalNumber, // Corrected to match your model
+      vehicalNumber,
     } = req.body;
 
-    let query = {};
-
-    // Date range filtering
-    if (startDate && fromDate) {
-      query.bookingDate = {
-        $gte: new Date(fromDate + "T00:00:00.000Z"),
-        $lte: new Date(startDate + "T23:59:59.999Z"),
-      };
+    // Validate required fields
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Both startDate and endDate are required.",
+      });
     }
 
-    // Case-insensitive matching
+    // Ensure startDate is after or equal to endDate
+    if (new Date(startDate) < new Date(endDate)) {
+      return res.status(400).json({
+        success: false,
+        message: "startDate should be after or equal to endDate.",
+      });
+    }
+
+    let query = {
+      bookingDate: {
+        $gte: new Date(endDate + "T00:00:00.000Z"),   // 🟢 Corrected to endDate (lower bound)
+        $lte: new Date(startDate + "T23:59:59.999Z"), // 🟢 Corrected to startDate (upper bound)
+      },
+    };
+
+    // Optional filters
     if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
     if (pickUpBranch) query.pickUpBranch = { $regex: new RegExp(pickUpBranch, "i") };
     if (dropBranch) query.dropBranch = { $regex: new RegExp(dropBranch, "i") };
-    if (bookingStatus) query.bookingStatus = Number(bookingStatus);
-    if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") }; // Corrected field name
+    if (bookingStatus !== undefined) query.bookingStatus = Number(bookingStatus);
+    if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") };
 
     const bookings = await Booking.find(query);
-    res.status(200).json(bookings);
+
+    if (bookings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No bookings found matching the criteria.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Bookings fetched successfully.",
+      data: bookings,
+    });
   } catch (error) {
     console.error("Error fetching bookings:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({
+      success: false,
+      message: "Internal server error.",
+    });
   }
 };
+
 
 const parcelReportSerialNo = async (req, res) => {
   try {

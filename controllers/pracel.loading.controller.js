@@ -187,6 +187,7 @@ const createParcel = async (req, res) => {
 
   try {
     const {
+      senderName,
       parcelStatus,
       vehicalNumber,
       driverName,
@@ -201,7 +202,6 @@ const createParcel = async (req, res) => {
       
       !vehicalNumber ||
       !driverName ||
-      !senderName ||
       !driverNo ||
       !Array.isArray(grnNo) ||
       grnNo.length === 0 ||
@@ -250,10 +250,7 @@ const createParcel = async (req, res) => {
           bookingStatus: 1,
           loadingDate: loadingDate,
           vehicalNumber: vehicalNumber,
-          ltDate: new Date(),
-          ltCity: fromCity,
-          ltBranch: fromBranch,
-          ltEmployee: loadingBy
+          ltDate: new Date()
         },
       },
       { session }

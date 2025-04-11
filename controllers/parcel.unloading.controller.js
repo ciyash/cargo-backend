@@ -1,4 +1,5 @@
 import ParcelUnloading from '../models/parcel.unloading.model.js'
+import ParcelLoading from '../models/pracel.loading.model.js'
 import {Booking} from '../models/booking.model.js'
 
 
@@ -155,13 +156,46 @@ const getParcelsLoading = async (req, res) => {
     }
 };
 
-
+const getParcelunLoadingByGrnNumber = async (req, res) => {
+    try {
+      const { grnNo } = req.params;
+  
+      if (!grnNo) {
+        return res.status(400).json({ message: "grnNo is required" });
+      }
+  
+      // Find in ParcelLoading where grnNo exists in array
+      const parcel = await ParcelLoading.findOne(
+        { grnNo: { $in: [grnNo] } }, // checks if grnNo exists in array
+        { vehicleNumber: 1, driverName: 1, grnNo: 1, _id: 0 } // project only needed fields
+      );
+  
+      if (!parcel) {
+        return res.status(404).json({ message: "ParcelLoading not found for given grnNo" });
+      }
+  
+      // Find matching booking by grnNo
+      const booking = await Booking.findOne({ grnNo });
+  
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found for given grnNo" });
+      }
+  
+      res.status(200).json({
+        parcel,
+        booking
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
 
 const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);  
 
 const createParcelUnloading = async (req, res) => {
     try {
-        const { fromBookingDate, toBookingDate, fromCity, toCity, branch, vehicalNumber, lrNumber, grnNo, bookingType } = req.body;
+        const {vehicalNumber,branch, lrNumber, grnNo, bookingType } = req.body;
 
         if (!grnNo || !Array.isArray(grnNo) || grnNo.length === 0) {
             return res.status(400).json({ message: "GRN numbers are required and should be an array" });
@@ -196,11 +230,7 @@ const createParcelUnloading = async (req, res) => {
         // Create a new Parcel Unloading entry
         const newParcel = new ParcelUnloading({
             unLoadingVoucher: generateUnloadingVoucher(),
-            fromBookingDate,
-            toBookingDate,
             unLoadingBy,
-            fromCity,
-            toCity,
             branch,
             vehicalNumber,
             lrNumber,
@@ -268,25 +298,9 @@ const getParcelsByFilters = async (req, res) => {
     }
 };
 
-const getParcelunLoadingByGrnNumber = async (req, res) => {
-    try {
-        const { grnNo } = req.params;
 
-        if (!grnNo) {
-            return res.status(400).json({ message: "GRN number is required" });
-        }
-
-        const parcel = await ParcelUnloading.findOne({ grnNo: grnNo });
-
-        if (!parcel) {
-            return res.status(404).json({ message: "Parcel not found" });
-        }
-
-        res.status(200).json(parcel);
-    } catch (error) {
-        res.status(500).json({error:error.message}); 
-    }
-};
+  
+  
 
 const getParcelUnloadingByVoucher = async (req, res) => {
     try {

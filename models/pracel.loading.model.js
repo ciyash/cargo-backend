@@ -9,7 +9,7 @@ const parcelSchema = new mongoose.Schema({
     loadingDate:{type:Date,default:()=>new Date()},
 
     // frontend entered
-    senderName:{type:String,required:true},
+    senderName:{type:String},
     vehicalNumber: { type: String, required: true },  
     driverName: { type: String,default:null },
     driverNo: { type: Number, default:null }, 
@@ -19,12 +19,12 @@ const parcelSchema = new mongoose.Schema({
     remarks: { type: String, default: "" },
 
 // optional
-    fromBookingDate: { type: Date },
-    toBookingDate: { type: Date },
-    fromCity: { type: String },
-    toCity: [{ type: String}],  
-    fromBranch: { type: String },
-    toBranch: { type: String },
+    // fromBookingDate: { type: Date },
+    // toBookingDate: { type: Date },
+    // fromCity: { type: String },
+    // toCity: [{ type: String}],  
+    // fromBranch: { type: String },
+    // toBranch: { type: String },
     
     
 });
