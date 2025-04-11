@@ -44,6 +44,26 @@ const getBookingsBetweenDates = async (req, res) => {
 };   
 //
 
+const getParcelByGrnNo = async (req, res) => {
+  try {
+    const { grnNo } = req.params;  
+
+    if (!grnNo) {
+      return res.status(400).json({ message: "grnNo is required" });
+    }
+
+    const booking = await Booking.findOne({ grnNo, bookingStatus: 0 });
+
+    if (!booking) {
+      return res.status(404).json({ message: "No matching data found with bookingStatus 0" });
+    }
+
+    res.status(200).json({ booking });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
 // const createParcel = async (req, res) => {
 //   const session = await ParcelLoading.startSession(); // Start a transaction session
@@ -263,10 +283,6 @@ const createParcel = async (req, res) => {
 const createBranchToBranch = async (req, res) => {
   try {
     const {
-      fromBookingDate,
-      toBookingDate,
-      fromBranch,
-      toBranch,
       lrNumber,
       grnNo,
       vehicalNumber,
@@ -280,10 +296,6 @@ const createBranchToBranch = async (req, res) => {
       loadingType:"branchLoad",
       vocherNoUnique,
       loadingBy,
-      fromBookingDate,
-      toBookingDate,
-      fromBranch,
-      toBranch,
       lrNumber,
       grnNo,
       vehicalNumber,
@@ -509,29 +521,7 @@ const getParcelByLrNumber = async (req, res) => {
   }
 };
 
-const getParcelByGrnNo = async (req, res) => {
-  try {
-    const { grnNo } = req.body;
 
-    if (!grnNo) {
-      return res.status(400).json({ message: "grnNo is required" });
-    }
-
-    // Fetch parcel where grnNo matches
-    const parcel = await ParcelLoading.findOne({ grnNo: grnNo });
-
-    // Fetch booking data separately
-    const booking = await Booking.findOne({ grnNumber: grnNo });
-
-    if (!parcel && !booking) {
-      return res.status(404).json({ message: "No matching data found" });
-    }
-
-    res.status(200).json({ parcel, booking });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
 
 const getParcelByVehicalNumber = async (req, res) => {
   try {
