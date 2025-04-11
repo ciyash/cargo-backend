@@ -4,6 +4,7 @@ import CFMaster from '../models/cf.master.model.js';
 const createMasterBooking = async (req, res) => {
   try {
     const {
+      gst,
       country,
       state,
       city,
@@ -32,6 +33,7 @@ const createMasterBooking = async (req, res) => {
     } = req.body;
 
     const newMaster = new CFMaster({
+      gst,
       country,
       state,
       city,
