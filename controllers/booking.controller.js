@@ -719,18 +719,19 @@ const allParcelBookingReport = async (req, res) => {
       });
     }
 
-    // Ensure startDate is after or equal to endDate
-    if (new Date(startDate) < new Date(endDate)) {
+    // Ensure startDate is BEFORE or equal to endDate
+    if (new Date(startDate) > new Date(endDate)) {
       return res.status(400).json({
         success: false,
-        message: "startDate should be after or equal to endDate.",
+        message: "startDate should be before or equal to endDate.",
       });
     }
 
+    // Correct date range query
     let query = {
       bookingDate: {
-        $gte: new Date(endDate + "T00:00:00.000Z"),   // 🟢 Corrected to endDate (lower bound)
-        $lte: new Date(startDate + "T23:59:59.999Z"), // 🟢 Corrected to startDate (upper bound)
+        $gte: new Date(startDate + "T00:00:00.000Z"),  // 🟢 startDate = from
+        $lte: new Date(endDate + "T23:59:59.999Z"),    // 🟢 endDate = to
       },
     };
 
