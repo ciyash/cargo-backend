@@ -708,7 +708,6 @@ const parcelBookingReports = async (req, res) => {
   }
 };
 
-
 const allParcelBookingReport = async (req, res) => {
   try {
     const {
@@ -722,7 +721,7 @@ const allParcelBookingReport = async (req, res) => {
       vehicalNumber,
     } = req.body;
 
-    // Validate required fields
+    // Required date checks
     if (!startDate || !endDate) {
       return res.status(400).json({
         success: false,
@@ -730,7 +729,6 @@ const allParcelBookingReport = async (req, res) => {
       });
     }
 
-    // Ensure startDate is BEFORE or equal to endDate
     if (new Date(startDate) > new Date(endDate)) {
       return res.status(400).json({
         success: false,
@@ -738,23 +736,26 @@ const allParcelBookingReport = async (req, res) => {
       });
     }
 
-    // Correct date range query
+    // Base query
     let query = {
       bookingDate: {
-        $gte: new Date(startDate + "T00:00:00.000Z"),  // 🟢 startDate = from
-        $lte: new Date(endDate + "T23:59:59.999Z"),    // 🟢 endDate = to
+        $gte: new Date(startDate + "T00:00:00.000Z"),
+        $lte: new Date(endDate + "T23:59:59.999Z"),
       },
     };
 
     // Optional filters
     if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
-    if (pickUpBranch) query.pickUpBranch = { $regex: new RegExp(pickUpBranch, "i") };
-    if (dropBranch) query.dropBranch = { $regex: new RegExp(dropBranch, "i") };
+    if (pickUpBranch) query.pickUpBranchname = { $regex: new RegExp(pickUpBranch, "i") };
+    if (dropBranch) query.dropBranchname = { $regex: new RegExp(dropBranch, "i") };
     if (bookingStatus !== undefined) query.bookingStatus = Number(bookingStatus);
     if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") };
 
-    const bookings = await Booking.find(query);
+    // Fetch matching bookings
+    const bookings = await Booking.find(query).select(
+      "grnNo bookingDate bookingStatus fromCity toCity bookingType pickUpBranchname dropBranchname senderName receiverName totalQuantity grandTotal hamaliCharge"
+    );
 
     if (bookings.length === 0) {
       return res.status(404).json({
@@ -763,9 +764,24 @@ const allParcelBookingReport = async (req, res) => {
       });
     }
 
+    // Totals calculation
+    let allGrandTotal = 0;
+    let allTotalQuantity = 0;
+    let allTotalHamaliCharge = 0;
+
+    bookings.forEach((booking) => {
+      allGrandTotal += Number(booking.grandTotal || 0);
+      allTotalQuantity += Number(booking.totalQuantity || 0);
+      allTotalHamaliCharge += Number(booking.hamaliCharge || 0);
+    });
+
+    // Final response
     res.status(200).json({
       success: true,
       message: "Bookings fetched successfully.",
+      allGrandTotal,
+      allTotalQuantity,
+      allTotalHamaliCharge,
       data: bookings,
     });
   } catch (error) {
@@ -773,6 +789,7 @@ const allParcelBookingReport = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Internal server error.",
+      error: error.message,
     });
   }
 };
@@ -809,41 +826,44 @@ const parcelReportSerialNo = async (req, res) => {
 
 const parcelCancelReport = async (req, res) => {
   try {
-    const {  b } = req.body;
+    const { fromDate, toDate, fromCity, toCity, bookingType, toPay } = req.body;
 
-    let query = { bookingStatus: 5 }; // Fetch only canceled bookings
+    let query = { bookingStatus: 5 }; // 5 = Cancelled
 
     // Date range filtering
     if (fromDate && toDate) {
       query.bookingDate = {
-        $gte: new Date(fromDate + "T00:00:00.000Z"),
-        $lte: new Date(toDate + "T23:59:59.999Z"),
+        $gte: new Date(`${fromDate}T00:00:00.000Z`),
+        $lte: new Date(`${toDate}T23:59:59.999Z`),
       };
     }
 
-    // Case-insensitive search for cities
+    // Case-insensitive city filtering
     if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
 
-    // Filter by booking type if provided
+    // Booking type filter
     if (bookingType) query.bookingType = { $regex: new RegExp(bookingType, "i") };
 
-    
+    // Future: Add `toPay` filter if needed
 
-    // Fetch data from the Booking collection
+    // Fetch matching bookings
     const bookings = await Booking.find(query).sort({ bookingDate: 1 });
 
-
     if (bookings.length === 0) {
-      return res.status(200).json({ success: true, message: "No customer bookings found." });
+      return res.status(200).json({ success: true, message: "No cancelled bookings found." });
     }
-    
-    res.status(200).json(bookings);
+
+    res.status(200).json({
+      data: bookings
+    });
+
   } catch (error) {
-    console.error("Error fetching canceled bookings:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    console.error("Error in parcelCancelReport:", error);
+    res.status(500).json({error: error.message });
   }
 };
+
 
 const parcelBookingSummaryReport = async (req, res) => {
   try {
