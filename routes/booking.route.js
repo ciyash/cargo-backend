@@ -45,7 +45,6 @@ router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)
 // reports 
 
 router.post("/parcel-booking-reports",bookingController.parcelBookingReports)
-// router.post("/all-parcelbooking-report")
 router.post("/all-parcel-booking-report",bookingController.allParcelBookingReport)
 router.post("/parcel-report-serialNo",bookingController.parcelReportSerialNo)
 router.post('/parcel-cancel-report',bookingController.parcelCancelReport)
@@ -69,4 +68,3 @@ router.post("/grnNolrNo", bookingController.getBookingByGrnOrLrNumber);
 
 
 export default router
-    
