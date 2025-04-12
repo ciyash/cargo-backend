@@ -665,35 +665,49 @@ const cancelBooking = async (req, res) => {
 
 const parcelBookingReports = async (req, res) => {
   try {
-      let { fromDate, toDate, fromCity, toCity, bookingStatus, bookingType } = req.body;
+    let { fromDate, toDate, fromCity, toCity, bookingStatus, bookingType } = req.body;
 
-      // Construct filter query
-      let query = {};
+    let query = {};
 
-      if (fromDate && toDate) {
-          query.bookingDate = { 
-              $gte: new Date(fromDate), 
-              $lte: new Date(toDate) 
-          };
-      }
-
-      if (fromCity) query.fromCity = fromCity;
-      if (toCity) query.toCity = toCity;
-      if (bookingStatus) query.bookingStatus = Number(bookingStatus);
-      if (bookingType) query.bookingType = bookingType;
-
-      const bookings = await Booking.find(query).sort({ bookingDate: -1 });
-
-      if (bookings.length === 0) {
-        return res.status(404).json({ message: "No parcels found" });
+    if (fromDate && toDate) {
+      query.bookingDate = {
+        $gte: new Date(fromDate + "T00:00:00.000Z"),
+        $lte: new Date(toDate + "T23:59:59.999Z"),
+      };
     }
 
+    if (fromCity) query.fromCity = fromCity;
+    if (toCity) query.toCity = toCity;
+    if (bookingStatus) query.bookingStatus = Number(bookingStatus);
+    if (bookingType) query.bookingType = bookingType;
 
-      res.status(200).json(bookings);
+    const bookings = await Booking.find(query)
+      .sort({ bookingDate: -1 })
+      .select('grnNo bookingStatus bookingDate pickUpBranchname dropBranchname senderName receiverName totalQuantity grandTotal');
+
+    if (!bookings.length) {
+      return res.status(404).json({ message: "No parcels found" });
+    }
+
+    let allGrandTotal = 0;
+    let allTotalQuantity = 0;
+
+    bookings.forEach(b => {
+      allGrandTotal += b.grandTotal || 0;
+      allTotalQuantity += b.totalQuantity || 0;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: bookings,
+      allGrandTotal,
+      allTotalQuantity
+    });
   } catch (error) {
-      res.status(500).json({ success: false, message: "Error fetching bookings", error: error.message });
+    res.status(500).json({ success: false, message: "Error fetching bookings", error: error.message });
   }
 };
+
 
 const allParcelBookingReport = async (req, res) => {
   try {
