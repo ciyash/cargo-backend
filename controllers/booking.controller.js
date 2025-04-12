@@ -940,14 +940,13 @@ const parcelBookingMobileNumber = async (req, res) => {
 };
 
 
-
-
 const regularCustomerBooking = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;
 
     let query = {};
 
+    // Date filter
     if (fromDate && toDate) {
       query.bookingDate = {
         $gte: new Date(fromDate + "T00:00:00.000Z"),
@@ -955,20 +954,33 @@ const regularCustomerBooking = async (req, res) => {
       };
     }
 
+    // Optional filters
     if (fromCity) query.fromCity = fromCity;
     if (toCity) query.toCity = toCity;
     if (pickUpBranch) query.pickUpBranch = pickUpBranch;
     if (dropBranch) query.dropBranch = dropBranch;
 
-    const bookings = await Booking.find(query);
+    // Select only required fields
+    const bookings = await Booking.find(query).select(
+      "fromCity pickUpBranchname toCity dropBranchname bookingDate senderName senderNumber grandTotal totalQuantity"
+    );
 
-    
     if (bookings.length === 0) {
       return res.status(200).json({ success: true, message: "No customer bookings found." });
     }
 
-    res.status(200).json(bookings);
+    // Calculate totals
+    const allGrandTotal = bookings.reduce((sum, b) => sum + (b.grandTotal || 0), 0);
+    const allTotalQuantity = bookings.reduce((sum, b) => sum + (b.totalQuantity || 0), 0);
+
+    res.status(200).json({
+      data: bookings,
+      allGrandTotal,
+      allTotalQuantity
+    });
+
   } catch (error) {
+    console.error("Error in regularCustomerBooking:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
