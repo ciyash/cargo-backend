@@ -1,5 +1,5 @@
 import ParcelUnloading from '../models/parcel.unloading.model.js'
-import ParcelLoading from '../models/pracel.loading.model.js'
+
 import {Booking} from '../models/booking.model.js'
 
 
@@ -124,6 +124,7 @@ const getParcelsLoading = async (req, res) => {
                         grnNo: 1,
                         fromCity: 1,
                         toCity: 1,
+                        lrNumber:1,
                         pickUpBranch: 1,
                         pickUpBranchname:1,
                         dropBranch: 1,
@@ -160,37 +161,72 @@ const getParcelsLoading = async (req, res) => {
 
 const getParcelunLoadingByGrnNumber = async (req, res) => {
     try {
-      const { grnNo } = req.params;
-  
-      if (!grnNo) {
-        return res.status(400).json({ message: "grnNo is required" });
-      }
-  
-      // Find in ParcelLoading where grnNo exists in array
-      const parcel = await ParcelLoading.findOne(
-        { grnNo: { $in: [grnNo] } }, // checks if grnNo exists in array
-        { vehicleNumber: 1, driverName: 1, grnNo: 1, _id: 0 } // project only needed fields
-      );
-  
-      if (!parcel) {
-        return res.status(404).json({ message: "ParcelLoading not found for given grnNo" });
-      }
-  
-      // Find matching booking by grnNo
-      const booking = await Booking.findOne({ grnNo });
-  
-      if (!booking) {
-        return res.status(404).json({ message: "Booking not found for given grnNo" });
-      }
-  
-      res.status(200).json({
-        parcel,
-        booking
-      });
+        const grnNo = Number(req.params.grnNo); // FIXED
+
+        if (!grnNo) {
+            return res.status(400).json({ message: "grnNo is required and must be a number" });
+        }
+
+        const booking = await Booking.aggregate([
+            { $match: { grnNo, bookingStatus: 1 } }, // will now match properly
+            {
+                $addFields: {
+                    totalQuantity: { $sum: "$packages.quantity" }
+                }
+            },
+            {
+                $group: {
+                    _id: "$bookingType",
+                    totalQuantity: { $sum: "$totalQuantity" },
+                    totalGrandTotal: { $sum: "$grandTotal" },
+                    bookings: { $push: "$$ROOT" }
+                }
+            },
+            {
+                $project: {
+                    bookingType: "$_id",
+                    totalQuantity: 1,
+                    totalGrandTotal: 1,
+                    bookings: {
+                        $map: {
+                            input: "$bookings",
+                            as: "booking",
+                            in: {
+                                grnNo: "$$booking.grnNo",
+                                fromCity: "$$booking.fromCity",
+                                toCity: "$$booking.toCity",
+                                pickUpBranch: "$$booking.pickUpBranch",
+                                pickUpBranchname: "$$booking.pickUpBranchname",
+                                dropBranch: "$$booking.dropBranch",
+                                dropBranchname: "$$booking.dropBranchname",
+                                senderName: "$$booking.senderName",
+                                receiverName: "$$booking.receiverName",
+                                bookingStatus: "$$booking.bookingStatus",
+                                bookingDate: "$$booking.bookingDate",
+                                totalQuantity: "$$booking.totalQuantity",
+                                grandTotal: "$$booking.grandTotal"
+                            }
+                        }
+                    }
+                }
+            }
+        ]);
+
+        if (!booking || booking.length === 0) {
+            return res.status(404).json({ message: "Booking not found or doesn't match bookingStatus: 1" });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: booking
+        });
+
     } catch (error) {
-      res.status(500).json({ error: error.message });
+        console.error("Error in getParcelunLoadingByGrnNumber:", error);
+        res.status(500).json({ success: false, error: error.message });
     }
-  };
+};
+
   
 
 const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);  

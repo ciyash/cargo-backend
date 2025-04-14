@@ -38,7 +38,7 @@ const bookingSchema = new mongoose.Schema(
     senderName: { type: String },
     senderMobile: {
       type: Number,  
-      validate: { validator: (v) => /^\d{10}$/.test(v), message: "Invalid mobile number" }
+      // validate: { validator: (v) => /^\d{10}$/.test(v), message: "Invalid mobile number" }
     },
     senderAddress: { type: String },
     senderGst: { type: String, default: null },  
@@ -46,7 +46,7 @@ const bookingSchema = new mongoose.Schema(
     receiverName: { type: String },  
     receiverMobile: {
       type: Number,
-      validate: { validator: (v) => /^\d{10}$/.test(v), message: "Invalid mobile number" }
+      // validate: { validator: (v) => /^\d{10}$/.test(v), message: "Invalid mobile number" }
     },
     receiverAddress: { type: String },
     receiverGst: { type: String, default: null },
