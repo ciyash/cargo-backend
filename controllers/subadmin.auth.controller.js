@@ -247,7 +247,7 @@ const getSubadminById = async (req, res) => {
       return res.status(400).json({ message: "Invalid or missing subadmin ID" });
     }
  
-    const subadmin = await Subadmin.findById(id).populate("branchId",'name city');
+    const subadmin = await Subadmin.findById(id).populate("branchId",'name city branchUniqueId');
     if (!subadmin) {
       return res.status(404).json({ message: "Subadmin not found" });
     }
