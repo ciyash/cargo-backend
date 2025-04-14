@@ -58,7 +58,7 @@ const getParcelByGrnNo = async (req, res) => {
       return res.status(404).json({ message: "No matching data found with bookingStatus 0" });
     }
 
-    res.status(200).json({ booking });
+    res.status(200).json(booking);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
