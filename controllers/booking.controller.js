@@ -678,12 +678,12 @@ const parcelBookingReports = async (req, res) => {
 
     if (fromCity) query.fromCity = fromCity;
     if (toCity) query.toCity = toCity;
-    if (bookingStatus) query.bookingStatus = Number(bookingStatus);
+    if (bookingStatus) query.bookingStatus = Number(bookingStatus); 
     if (bookingType) query.bookingType = bookingType;
 
     const bookings = await Booking.find(query)
       .sort({ bookingDate: -1 })
-      .select('grnNo bookingStatus bookingDate pickUpBranchname dropBranchname senderName receiverName totalQuantity grandTotal');
+      .select('grnNo bookingStatus bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo');
 
     if (!bookings.length) {
       return res.status(404).json({ message: "No parcels found" });
