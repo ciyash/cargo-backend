@@ -313,7 +313,7 @@ const getAllBookingsPages = async (req, res) => {
         return res.status(400).json({ success: false, message: "grnNumber is required" });
       }
  
-      const booking = await Booking.findOne({ grnNo });
+      const booking = await Booking.findOne({ grnNo }).populate("bookedBy","name");
  
       if (!booking) {
         return res.status(404).json({ success: false, message: "Booking not found" });
@@ -614,16 +614,15 @@ const receivedBooking = async (req, res) => {
 
 const cancelBooking = async (req, res) => {
   try {
-    const { grnNo } = req.params; 
-    const { refundCharge, refundAmount, additionalField } = req.body; 
+    const { grnNo } = req.params;
+    const { refundCharge, refundAmount, date } = req.body; // 'date' sent from frontend
 
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const { name, branch, city } = req.user; 
+    const { name, branch, city } = req.user;
 
-   
     const booking = await Booking.findOne({ grnNo });
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
@@ -634,11 +633,11 @@ const cancelBooking = async (req, res) => {
     }
 
     // Update cancellation details
-    booking.bookingStatus = 5; // Assuming '5' represents 'Cancelled'
+    booking.bookingStatus = 5; // '5' = Cancelled
     booking.cancelByUser = name;
     booking.cancelBranch = branch;
     booking.cancelCity = city;
-    booking.cancelDate = new Date();
+    booking.cancelDate = date ? new Date(date) : new Date(); // use frontend date if provided
 
     // Update refund details
     if (refundCharge !== undefined) {
@@ -647,11 +646,7 @@ const cancelBooking = async (req, res) => {
     if (refundAmount !== undefined) {
       booking.refundAmount = refundAmount;
     }
-    if (additionalField !== undefined) {
-      booking.additionalField = additionalField; // Update the third field
-    }
 
-    // Save without validation to avoid required field errors
     await booking.save({ validateBeforeSave: false });
 
     res.status(200).json({ message: "Booking cancelled successfully", booking });
@@ -660,6 +655,7 @@ const cancelBooking = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 // all booking reports 
 
