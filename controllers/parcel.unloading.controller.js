@@ -193,6 +193,7 @@ const getParcelunLoadingByGrnNumber = async (req, res) => {
                             as: "booking",
                             in: {
                                 grnNo: "$$booking.grnNo",
+                                lrNumber:"$$booking.lrNumber",
                                 fromCity: "$$booking.fromCity",
                                 toCity: "$$booking.toCity",
                                 pickUpBranch: "$$booking.pickUpBranch",
