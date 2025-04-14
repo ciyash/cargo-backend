@@ -1,4 +1,6 @@
 import {User,Booking} from "../models/booking.model.js";
+import ParcelLoading from '../models/pracel.loading.model.js'
+import ParcelUnloading from '../models/parcel.unloading.model.js'
 import Branch from "../models/branch.model.js";
 import moment from "moment";
    
@@ -1951,7 +1953,7 @@ const parcelIncomingLuggagesReport = async (req, res) => {
 };
 
 
-const getBookingByGrnOrLrNumber = async (req, res) => { 
+const getBookingByGrnOrLrNumber = async (req, res) => {
   try {
     const { grnlrn } = req.body;
 
@@ -1963,37 +1965,36 @@ const getBookingByGrnOrLrNumber = async (req, res) => {
 
     const orConditions = [];
 
-    // If it's numeric, try grnNo
+    // If grnlrn is numeric, include grnNo
     if (/^\d+$/.test(grnlrn)) {
       orConditions.push({ grnNo: parseInt(grnlrn) });
     }
 
-    // Always try lrNumber as string
+    // Always check lrNumber as string
     orConditions.push({ lrNumber: grnlrn });
 
-    const booking = await Booking.findOne({ $or: orConditions });
-
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Booking not found",
-      });
-    }
+    const [booking, parcelLoading, parcelUnloading] = await Promise.all([
+      Booking.findOne({ $or: orConditions }),
+      ParcelLoading.findOne({ $or: orConditions }),
+      ParcelUnloading.findOne({ $or: orConditions }),
+    ]);
 
     return res.status(200).json({
-      success: true,
-      data: booking,
+      booking: booking || {},
+      parcelLoading: parcelLoading || {},
+      parcelUnloading: parcelUnloading || {},
     });
 
   } catch (error) {
-    console.error("Error fetching booking:", error);
+    console.error("Error fetching data:", error);
     return res.status(500).json({
-      success: false,
+  
       message: "Internal server error",
       error: error.message,
     });
   }
 };
+
 
 
 
