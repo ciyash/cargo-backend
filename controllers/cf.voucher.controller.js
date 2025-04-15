@@ -37,13 +37,11 @@ const creditForVoucherGenerate = async (req, res) => {
           return res.status(404).json({ message: "No bookings found" });
       }
 
-      res.status(200).json({ success: true, data: bookings });
+      res.status(200).json(bookings);
   } catch (error) {
       res.status(500).json({ success: false, message: "Server Error", error: error.message });
   }
 };
-
-
 
 const generateVoucher = async () => {
 
