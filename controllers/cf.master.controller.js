@@ -1,7 +1,7 @@
 import CFMaster from '../models/cf.master.model.js';
 
 // Create a new master record
-const createMasterBooking = async (req, res) => {
+const createMaster = async (req, res) => {
   try {
     const {
       gst,
@@ -145,7 +145,7 @@ const getCFMasterByCity=async(req,res) => {
 }
 
 export default {
-  createMasterBooking,
+  createMaster,
   getAllMasters,
   getMasterByName,
   updateMaster,

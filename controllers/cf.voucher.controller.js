@@ -1,4 +1,5 @@
 import CFVoucher from '../models/cf.voucher.generate.model.js' 
+import CFMaster from '../models/cf.master.model.js '
 import {Booking} from '../models/booking.model.js'
 
 
@@ -64,7 +65,7 @@ const generateVoucher = async () => {
 
         await newVoucher.save();
 
-        await Masterbooking.updateOne(
+        await CFMaster.updateOne(
             { grnNo: grnNo },
             { $set: { bookingStatus: 1 } }
         );
