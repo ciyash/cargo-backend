@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const citySchema = new mongoose.Schema({
     cityName: { type: String, required: true, trim: true },   
     state: { type: String, required: true, trim: true },
-    address: {type:String,required:true},
+    address: {type:String},
     code:{type:String}
 }, { timestamps: true });
 
