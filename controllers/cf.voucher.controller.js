@@ -31,7 +31,7 @@ const creditForVoucherGenerate = async (req, res) => {
 
       const bookings = await Booking.find(query)
           .sort({ bookingTime: -1 })
-          .select("grnNo senderName pickUpBranchname dropBranchname bookingStatus totalAmount bookingTime");
+          .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingTime");
 
       if (bookings.length === 0) {
           return res.status(404).json({ message: "No bookings found" });
