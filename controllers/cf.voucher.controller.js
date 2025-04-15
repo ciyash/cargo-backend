@@ -3,47 +3,50 @@ import {Booking} from '../models/booking.model.js'
 
 
 const creditForVoucherGenerate = async (req, res) => {
-    try {
-        const { fromDate, toDate, senderName } = req.body;
+  try {
+      const { fromDate, toDate, senderName } = req.body;
 
-        if (!fromDate || !toDate) {
-            return res.status(400).json({ success: false, message: "Missing required query parameters" });
-        }
+      if (!fromDate || !toDate) {
+          return res.status(400).json({ success: false, message: "Missing required query parameters" });
+      }
 
-        const from = new Date(fromDate);
-        const to = new Date(toDate);
-        if (isNaN(from) || isNaN(to)) {
-            return res.status(400).json({ success: false, message: "Invalid date format" });
-        }
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
 
-        to.setHours(23, 59, 59, 999); // Include full day
+      if (isNaN(from) || isNaN(to)) {
+          return res.status(400).json({ success: false, message: "Invalid date format" });
+      }
 
-        // Build query dynamically
-        let query = {
-            Booking: { $gte: from, $lte: to },
-        };
+      // Include full 'toDate' day
+      to.setHours(23, 59, 59, 999);
 
-        // If senderName is provided, add it to the query
-        if (senderName) {
-            query.senderName = { $regex: `^${senderName}$`, $options: "i" }; // Case-insensitive match
-        }
+      // Build query with bookingTime instead of masterBookingDate
+      let query = {
+          bookingTime: { $gte: from, $lte: to }
+      };
 
-        const masters = await Booking.find(query)
-            .sort({ masterBookingDate: -1 }) // Sort by newest first
-            .select("grnNo senderName pickUpBranchname dropBranchname bookingStatus totalAmount masterBookingDate"); // Select required fields
+      if (senderName) {
+          query.senderName = { $regex: `^${senderName}$`, $options: "i" }; // Case-insensitive exact match
+      }
 
-            if (masters.length === 0) {
-                return res.status(404).json({ success: false, message: "No bookings found" });
-              }
+      const bookings = await Booking.find(query)
+          .sort({ bookingTime: -1 })
+          .select("grnNo senderName pickUpBranchname dropBranchname bookingStatus totalAmount bookingTime");
 
-        res.status(200).json(masters);
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server Error", error: error.message });
-    }
+      if (bookings.length === 0) {
+          return res.status(404).json({ message: "No bookings found" });
+      }
+
+      res.status(200).json({ success: true, data: bookings });
+  } catch (error) {
+      res.status(500).json({ success: false, message: "Server Error", error: error.message });
+  }
 };
 
 
+
 const generateVoucher = async () => {
+
     const lastVoucher = await CFVoucher.findOne().sort({ voucherNo: -1 });
 
     if (!lastVoucher) {
