@@ -5,9 +5,7 @@ import { City } from '../models/multi.model.js'
     try {
         const { cityName, state,code,address } = req.body;
 
-        if(!cityName || !state || !address ){
-          return res.status(404).json({message:"Required fields missing cityName state"})
-        }
+      
 
         const existCity=await City.findOne({cityName})
 

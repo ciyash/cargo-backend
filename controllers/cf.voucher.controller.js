@@ -44,63 +44,57 @@ import {Booking} from '../models/booking.model.js'
 //   }
 // };
 
-
 const creditForVoucherGenerate = async (req, res) => {
   try {
     const { fromDate, toDate, senderName } = req.body;
 
+    // Step 1: Validate dates
     if (!fromDate || !toDate) {
       return res.status(400).json({ success: false, message: "Missing required query parameters" });
     }
 
     const from = new Date(fromDate);
     const to = new Date(toDate);
-    to.setHours(23, 59, 59, 999); // Include full 'toDate' day
+    to.setHours(23, 59, 59, 999); // Full day
 
     if (isNaN(from) || isNaN(to)) {
       return res.status(400).json({ success: false, message: "Invalid date format" });
     }
 
-    // Build base query
-    let bookingQuery = {
-      bookingTime: { $gte: from, $lte: to }
-    };
-
-    // Add senderName filter if provided
+    // Step 2: Get sender names from CFMaster
+    let cfMasterQuery = {};
     if (senderName) {
-      bookingQuery.senderName = { $regex: `^${senderName}$`, $options: "i" };
+      cfMasterQuery.name = { $regex: `^${senderName}$`, $options: "i" };
     }
+
+    const matchedMasters = await CFMaster.find(cfMasterQuery).select("name");
+
+    if (!matchedMasters.length) {
+      return res.status(404).json({ message: "No matching sender names found in CFMaster" });
+    }
+
+    const validSenderNames = matchedMasters.map(master => master.name);
+
+    // Step 3: Booking query with senderName IN validSenderNames
+    const bookingQuery = {
+      bookingTime: { $gte: from, $lte: to },
+      senderName: { $in: validSenderNames }
+    };
 
     const bookings = await Booking.find(bookingQuery)
       .sort({ bookingTime: -1 })
       .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingTime");
 
-    if (bookings.length === 0) {
-      return res.status(404).json({ message: "No bookings found" });
+    if (!bookings.length) {
+      return res.status(404).json({ message: "No bookings found for given date and sender match" });
     }
 
-    // Get sender names from bookings
-    const senderNames = [...new Set(bookings.map(b => b.senderName))];
-
-    // Get matching names from CFMaster
-    const matchedMasters = await CFMaster.find({
-      name: { $in: senderNames }
-    }).select("name");
-
-    const validNames = matchedMasters.map(c => c.name);
-
-    // Final filter: only bookings whose senderName is in CFMaster
-    const filteredBookings = bookings.filter(b => validNames.includes(b.senderName));
-
-    if (filteredBookings.length === 0) {
-      return res.status(404).json({ message: "No matching bookings with valid company sender name" });
-    }
-
-    res.status(200).json(filteredBookings);
+    res.status(200).json(bookings);
   } catch (error) {
     res.status(500).json({ success: false, message: "Server Error", error: error.message });
   }
 };
+
 
 
 const generateVoucher = async () => {
@@ -194,59 +188,71 @@ const generateVoucher = async () => {
 };
 
 const voucherDetails = async (req, res) => {
-    try {
-      const { fromDate, toDate, senderName } = req.body;
-  
-      if (!fromDate || !toDate) {
-        return res.status(400).json({
-          success: false,
-          message: "fromDate and toDate are required"
-        });
-      }
-  
-      const start = new Date(fromDate);
-      start.setHours(0, 0, 0, 0);
-  
-      const end = new Date(toDate);
-      end.setHours(23, 59, 59, 999);
-  
-      // Build query
-      let query = {
-        bookingDate: {
-          $gte: start,
-          $lte: end
-        }
-      };
-  
-      if (senderName) {
-        query.senderName = senderName;
-      }
-  
-      const bookings = await Booking.find(query).select(
-        "senderName grandTotal packages totalQuantity"
-      );
-  
-      const result = bookings.map(b => ({
-        senderName: b.senderName,
-        grandTotal: b.grandTotal,
-        numberOfPackages: b.packages.length,
-        noOfParcels: b.totalQuantity
-      }));
-  
-      res.status(200).json({
-        success: true,
-        totalRecords: bookings.length,
-        data: result
-      });
-    } catch (error) {
-      console.error("Error fetching voucher details:", error);
-      res.status(500).json({
+  try {
+    const { fromDate, toDate, senderName } = req.body;
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({
         success: false,
-        message: "Server Error",
-        error: error.message
+        message: "fromDate and toDate are required"
       });
     }
-  };
+
+    const start = new Date(fromDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Step 1: Get vouchers from CFVoucher
+    const cfVoucherQuery = {
+      generateDate: { $gte: start, $lte: end }
+    };
+    if (senderName) {
+      cfVoucherQuery.senderName = senderName;
+    }
+
+    const cfVouchers = await CFVoucher.find(cfVoucherQuery).select("voucherNo grnNo");
+
+    if (!cfVouchers.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No vouchers found for given criteria"
+      });
+    }
+
+    const grnNos = cfVouchers.map(v => v.grnNo);
+
+    // Step 2: Get corresponding bookings
+    const bookings = await Booking.find({ grnNo: { $in: grnNos } }).select(
+      "senderName grandTotal packages totalQuantity grnNo"
+    );
+
+    // Step 3: Merge by grnNo
+    const result = bookings.map(booking => {
+      const match = cfVouchers.find(v => v.grnNo === booking.grnNo);
+      return {
+        voucherNo: match?.voucherNo || null,
+        booking: {
+          senderName: booking.senderName,
+          grandTotal: booking.grandTotal,
+          numberOfPackages: booking.packages.length,
+          noOfParcels: booking.totalQuantity
+        }
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      totalRecords: result.length,
+      data: result
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
   const voucherDetailsPrint = async (req, res) => {
     try {

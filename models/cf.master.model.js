@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const masterSchema = new mongoose.Schema({
     gst:{type:String},
+    cfMasterUnique:{type:Number,required:true},
     country: { type: String, required: true },
     state: { type: String, required: true },
     city: { type: String, required: true },

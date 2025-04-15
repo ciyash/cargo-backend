@@ -262,11 +262,7 @@ const getAllUsers = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
- 
-
- 
- 
- 
+  
 const getAllBookingsPages = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1; // Default: Page 1
@@ -306,7 +302,6 @@ const getAllBookingsPages = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
- 
  
   const getBookingByGrnNo = async (req, res) => {
     try {

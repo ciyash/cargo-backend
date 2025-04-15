@@ -4,7 +4,7 @@ const cfVoucher=new mongoose.Schema({
     voucherNo:{type:Number,required:true},
     fromDate:{type:Date,required:true},
     toDate:{type:Date,required:true},
-    grnNo:{type:String,required:true},
+    grnNo:{type:Number,required:true},
     voucherType:{type:String,enum:["pending","credit","assign"]},
     creditForAgent:{type:String,required:true},
     fromBranch:{type:String,required:true},
