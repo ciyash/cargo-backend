@@ -1,4 +1,4 @@
-import {Booking} from "../models/booking.model.js";
+import {User,Booking} from "../models/booking.model.js";
 import CFMaster from '../models/cf.master.model.js'
 import ParcelLoading from '../models/pracel.loading.model.js'
 import ParcelUnloading from '../models/parcel.unloading.model.js'
@@ -88,76 +88,82 @@ const sanitizeInput = (input) => {
  
 const createBooking = async (req, res) => {
   try {
+    // console.log(req.user)
     if (!req.user) {
+     
       return res.status(401).json({ success: false, message: "Unauthorized: User data missing" });
     }
-
+ 
     const {
       fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
-      packages, senderName, senderMobile, senderAddress, senderGst, actulWeight,
-      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount, vehicalNumber,
+      packages, senderName, senderMobile, senderAddress, senderGst,actulWeight,
+      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,vehicalNumber,
       serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0, items
     } = Object.fromEntries(
       Object.entries(req.body).map(([key, value]) => [key, sanitizeInput(value)])
     );
-
+ 
+   
     if (!fromCity || !toCity || !pickUpBranch || !dropBranch || !dispatchType || !bookingType) {
       return res.status(400).json({ success: false, message: 'Missing required booking fields' });
     }
-
+ 
+    //Validate package details
     if (!Array.isArray(packages) || packages.length === 0) {
       return res.status(400).json({ success: false, message: "At least one package is required" });
     }
-
+ 
     for (const pkg of packages) {
       if (!pkg.quantity || !pkg.packageType || !pkg.weight || !pkg.unitPrice) {
         return res.status(400).json({ success: false, message: "Each package must have quantity, packageType, weight, and unitPrice" });
       }
     }
-
-    for (const { quantity, packageType, weight, unitPrice } of packages) {
+    for (const { quantity, packageType, weight, unitPrice,actulWeight } of packages) {
       if (!Number.isInteger(quantity) || quantity < 1 || !packageType || !weight || !unitPrice) {
         return res.status(400).json({ success: false, message: 'Each package must have valid quantity, packageType, weight, and unitPrice' });
       }
     }
-
     if (!senderName || !senderMobile || !senderAddress || !receiverName || !receiverMobile || !receiverAddress) {
       return res.status(400).json({ success: false, message: 'Sender and receiver details are required' });
     }
-
+ 
     if (![senderMobile, receiverMobile].every(m => /^\d{10}$/.test(m))) {
       return res.status(400).json({ success: false, message: 'Mobile numbers must be 10 digits' });
     }
-
     const [pickUpBranchdata, dropBranchdata] = await Promise.all([
       Branch.findOne({ branchUniqueId: pickUpBranch }).lean(),
       Branch.findOne({ branchUniqueId: dropBranch }).lean(),
     ]);
-
+ 
     if (!pickUpBranchdata || !dropBranchdata) {
       return res.status(404).json({ message: "Invalid branch provided" });
     }
-
     const pickUpBranchname = pickUpBranchdata.name;
     const dropBranchname = dropBranchdata.name;
-
+ 
     const location = req.user.location;
+    console.log("location", location);
     const bookedBy = req.user.id;
-    const bookingStatus = 0;
+    const bookingStatus=0;
     const adminUniqueId = req.user.subadminUniqueId;
-    const bookbranchid = req.user.branchId;
-
+    const bookbranchid= req.user.branchId;
+ 
+ 
     const [grnNo, lrNumber, eWayBillNo, generatedReceiptNo] = await Promise.all([
       generateGrnNumber(),
       generateLrNumber(fromCity, location),
       generateEWayBillNo(),
       generateReceiptNumber()
     ]);
-
+ 
+    //  Calculate `totalQuantity` from `packages`
     const totalQuantity = packages.reduce((sum, pkg) => sum + Number(pkg.quantity), 0);
-    const packageTotal = packages.reduce((sum, pkg) => sum + Number(pkg.unitPrice) * Number(pkg.quantity), 0);
-    const grandTotal = Number(packageTotal) + Number(serviceCharge) + Number(hamaliCharge) + Number(doorDeliveryCharge) + Number(doorPickupCharge) + Number(valueOfGoods);
-
+ 
+    //  Calculate Grand Total
+    let packageTotal = packages.reduce((sum, pkg) => sum + Number(pkg.unitPrice) * Number(pkg.quantity), 0);
+    let grandTotal = Number(packageTotal) + Number(serviceCharge) + Number(hamaliCharge) + Number(doorDeliveryCharge) + Number(doorPickupCharge) + Number(valueOfGoods);
+ 
+    //  Create new booking object
     const booking = new Booking({
       grnNo,
       lrNumber,
@@ -170,10 +176,10 @@ const createBooking = async (req, res) => {
       dropBranch,
       dispatchType,
       bookingType,
-      packages,
-      totalQuantity,
+      packages,  
+      totalQuantity,  // Auto-filled field
       senderName,
-      senderMobile,
+      senderMobile,  
       senderAddress,
       senderGst,
       receiverName,
@@ -200,33 +206,34 @@ const createBooking = async (req, res) => {
       pickUpBranchname,
       dropBranchname
     });
-
+ 
     const savedBooking = await booking.save();
-
+ 
     if (savedBooking) {
       await Promise.all([
         (async () => {
-          const senderExists = await CFMaster.findOne({ phone: senderMobile });
+          const senderExists = await User.findOne({ phone: senderMobile });
           if (!senderExists) {
-            await CFMaster.create({ name: senderName, phone: senderMobile, address: senderAddress, gst: senderGst });
+            await User.create({ name: senderName, phone: senderMobile, address: senderAddress, gst: senderGst });
           }
         })(),
         (async () => {
-          const receiverExists = await CFMaster.findOne({ phone: receiverMobile });
+          const receiverExists = await User.findOne({ phone: receiverMobile });
           if (!receiverExists) {
-            await CFMaster.create({ name: receiverName, phone: receiverMobile, address: receiverAddress, gst: receiverGst });
+            await User.create({ name: receiverName, phone: receiverMobile, address: receiverAddress, gst: receiverGst });
           }
         })(),
       ]);
     }
-
+   
+ 
     res.status(201).json({ success: true, message: "Booking created successfully", data: booking });
   } catch (error) {
-    console.error("createBooking error:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.log(error.message);
+    res.status(500).json({ error: error.message });
   }
 };
-
+ 
 const getAllBookings = async (req, res) => {
   try {
     const booking=await Booking.find()
@@ -246,7 +253,7 @@ const getAllBookings = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {  
-    const users = await CFMaster.find()
+    const users = await User.find()
     if (users.length === 0) {
       return res.status(404).json({ success: false, message: "No Users found" });
     }
@@ -257,7 +264,8 @@ const getAllUsers = async (req, res) => {
 };
  
 
-  
+ 
+ 
  
 const getAllBookingsPages = async (req, res) => {
   try {
@@ -533,14 +541,14 @@ const getBookingBydate = async (req, res) => {
  
 const getUsersBySearch = async (req, res) => {
   try {
-    const { query } = req.query; // Get search query from request query parameters
+    const { query } = req.query;
 
     if (!query) {
       return res.status(400).json({ message: "Search query is required!" });
     }
 
-    // Perform case-insensitive search using regex
-    const users = await CFMaster.find({
+    // Search in User collection
+    const users = await User.find({
       $or: [
         { name: { $regex: query, $options: "i" } },
         { phone: { $regex: query, $options: "i" } },
@@ -549,20 +557,40 @@ const getUsersBySearch = async (req, res) => {
       ]
     });
 
-    if (!users.length) {
-      return res.status(404).json({ message: "No users found!" });
+    if (users.length > 0) {
+      const responseData = users.map(user => ({
+        type: "user",
+        name: user.name,
+        phone: user.phone,
+        address: user.address,
+        gst: user.gst,
+      }));
+      return res.status(200).json(responseData);
     }
 
-    // Extract only required fields
-    const responseData = users.map(user => ({
-      name: user.name,
-      phone: user.phone,
-      address: user.address,
-      gst: user.gst,
-    
-    }));
+    // If not found in User, then search in CFMaster
+    const companies = await CFMaster.find({
+      $or: [
+        { name: { $regex: query, $options: "i" } },
+        { phone: { $regex: query, $options: "i" } },
+        { address: { $regex: query, $options: "i" } },
+        { gst: { $regex: query, $options: "i" } }
+      ]
+    });
 
-    res.status(200).json(responseData);
+    if (companies.length > 0) {
+      const responseData = companies.map(company => ({
+        type: "company",
+        name: company.name,
+        phone: company.phone,
+        address: company.address,
+        gst: company.gst,
+      }));
+      return res.status(200).json(responseData);
+    }
+
+    return res.status(404).json({ message: "No matching users or companies found!" });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

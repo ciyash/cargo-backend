@@ -107,8 +107,15 @@ const bookingSchema = new mongoose.Schema(
  
 bookingSchema.index({ grnNumber: 1, adminUniqueId: 1, bookingStatus: 1 });
  
-
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  phone: { type: String, required: true ,unique: true},
+  address: { type: String, required: true },
+  gst: { type: String, required: null }
+});
+ 
+const User = mongoose.model("User", userSchema);
 const Booking = mongoose.model("Booking", bookingSchema);
-export { Booking };
+export { User, Booking };
  
  
