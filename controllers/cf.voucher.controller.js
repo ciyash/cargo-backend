@@ -2,33 +2,25 @@ import CFVoucher from '../models/cf.voucher.generate.model.js'
 import CFMaster from '../models/cf.master.model.js '
 import {Booking} from '../models/booking.model.js'
 
-
 const creditForVoucherGenerate = async (req, res) => {
   try {
     const { fromDate, toDate, senderName } = req.body;
 
     // Step 1: Validate dates
     if (!fromDate || !toDate) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required query parameters",
-      });
+      return res.status(400).json({ success: false, message: "Missing required query parameters" });
     }
 
     const from = new Date(fromDate);
     const to = new Date(toDate);
-    to.setHours(23, 59, 59, 999); // Include entire day
+    to.setHours(23, 59, 59, 999); // Full day
 
     if (isNaN(from) || isNaN(to)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid date format",
-      });
+      return res.status(400).json({ success: false, message: "Invalid date format" });
     }
 
-    // Step 2: Get sender names from CFMaster (only company type)
-    let cfMasterQuery = { senderType: "company" };
-
+    // Step 2: Get sender names from CFMaster
+    let cfMasterQuery = {};
     if (senderName) {
       cfMasterQuery.name = { $regex: `^${senderName}$`, $options: "i" };
     }
@@ -36,41 +28,28 @@ const creditForVoucherGenerate = async (req, res) => {
     const matchedMasters = await CFMaster.find(cfMasterQuery).select("name");
 
     if (!matchedMasters.length) {
-      return res.status(404).json({
-        success: false,
-        message: "No matching sender names found in CFMaster",
-      });
+      return res.status(404).json({ message: "No matching sender names found in CFMaster" });
     }
 
-    const validSenderNames = matchedMasters.map((master) => master.name);
+    const validSenderNames = matchedMasters.map(master => master.name);
 
-    // Step 3: Get bookings within date range and matching sender names
+    // Step 3: Booking query with senderName IN validSenderNames
     const bookingQuery = {
       bookingTime: { $gte: from, $lte: to },
-      senderName: { $in: validSenderNames },
+      senderName: { $in: validSenderNames }
     };
 
     const bookings = await Booking.find(bookingQuery)
       .sort({ bookingTime: -1 })
-      .select(
-        "grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingTime"
-      );
+      .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingTime");
 
     if (!bookings.length) {
-      return res.status(404).json({
-        success: false,
-        message: "No bookings found for given date and sender match",
-      });
+      return res.status(404).json({ message: "No bookings found for given date and sender match" });
     }
 
-    // Step 4: Return bookings
     res.status(200).json(bookings);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: "Server Error", error: error.message });
   }
 };
 
