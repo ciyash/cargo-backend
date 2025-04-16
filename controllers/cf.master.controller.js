@@ -1,9 +1,5 @@
 import CFMaster from '../models/cf.master.model.js';
 
-
-const generateCfMasterUnique =() => {
-  return M
-}
 // Create a new master record
 const createMaster = async (req, res) => {
   try {
@@ -37,7 +33,6 @@ const createMaster = async (req, res) => {
     } = req.body;
 
     const newMaster = new CFMaster({
-      cfMasterUnique:generateCfMasterUnique(),
       gst,
       country,
       state,

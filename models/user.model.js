@@ -1,7 +1,12 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
+ 
     {
+      senderType:{
+        type:String,
+        default:"user"
+      },
       name: {
         type: String,
         required: true,

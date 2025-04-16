@@ -465,36 +465,39 @@ const getBookingsfromCityTotoCity=async(req,res) => {
   }
 }
  
-
- 
 const getBookingsByAnyField = async (req, res) => {
   try {
-    const { query } = req.query; // Use 'query' as the search input
- 
-    if (!query) {
-      return res.status(400).json({ success: false, message: "Query parameter is required" });
+    const { searchField, query } = req.params; // Use both 'searchField' and 'query' from route params
+
+    // Validate that the searchField and query are provided
+    if (!searchField || !query) {
+      return res.status(400).json({ success: false, message: "Both searchField and query are required" });
     }
- 
-    const searchRegex = new RegExp(query, "i"); // Case-insensitive search
- 
-    const bookings = await Booking.find({
-      $or: [
-        { senderName: searchRegex },
-        { receiverName: searchRegex },
-        { pickUpBranch: searchRegex },
-        {senderGst:searchRegex},
-        {receiverGst:searchRegex},
-        { senderMobile: isNaN(query) ? null : Number(query) },
-        { receiverMobile: isNaN(query) ? null : Number(query) }
-      ]
-    });
- 
+
+    const validFields = ['senderName', 'receiverName', 'pickUpBranch', 'senderMobile', 'receiverMobile', 'grnNo', 'lrNumber'];
+
+    // Check if the searchField is valid
+    if (!validFields.includes(searchField)) {
+      return res.status(400).json({ success: false, message: "Invalid search field" });
+    }
+
+    const searchRegex = new RegExp(query, "i"); // For text-based search (case-insensitive)
+    const queryNumber = isNaN(query) ? null : Number(query); // If the query is a number (e.g., for mobile, grnNo)
+
+    // Adjust search based on the field type
+    const searchCondition = searchField === 'senderMobile' || searchField === 'receiverMobile' || searchField === 'grnNo' || searchField === 'lrNumber'
+      ? { [searchField]: queryNumber }
+      : { [searchField]: searchRegex };
+
+    // Find bookings based on the specific search condition
+    const bookings = await Booking.find(searchCondition);
+
     res.status(200).json({ success: true, data: bookings });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
- 
+
 //by sudheer
  
 const getBookingBydate = async (req, res) => {
