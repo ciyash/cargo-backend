@@ -20,7 +20,7 @@ router.get("/grnNo/:grnNo",bookingController.getBookingByGrnNo)
  
 router.get("/adminUniqueId/:adminUniqueId",bookingController.getBookingadminUniqueId)
  
-router.get("/search/:searchField/:query", bookingController.getBookingsByAnyField);
+router.post("/search-data", bookingController.getBookingsByAnyField);
 
 
 router.get("/pages",bookingController.getAllBookingsPages)

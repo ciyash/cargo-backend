@@ -467,32 +467,51 @@ const getBookingsfromCityTotoCity=async(req,res) => {
  
 const getBookingsByAnyField = async (req, res) => {
   try {
-    const { searchField, query } = req.params; // Use both 'searchField' and 'query' from route params
+    const { mobile, searchCustomer, grnNo, lrNumber } = req.body;
 
-    // Validate that the searchField and query are provided
-    if (!searchField || !query) {
-      return res.status(400).json({ success: false, message: "Both searchField and query are required" });
+    let orConditions = [];
+
+    // Add mobile condition (number match on sender or receiver mobile)
+    if (mobile) {
+      const mobileNumber = Number(mobile);
+      if (!isNaN(mobileNumber)) {
+        orConditions.push(
+          { senderMobile: mobileNumber },
+          { receiverMobile: mobileNumber }
+        );
+      }
     }
 
-    const validFields = ['senderName', 'receiverName', 'pickUpBranch', 'senderMobile', 'receiverMobile', 'grnNo', 'lrNumber'];
-
-    // Check if the searchField is valid
-    if (!validFields.includes(searchField)) {
-      return res.status(400).json({ success: false, message: "Invalid search field" });
+    // Add customer name condition (regex match on sender or receiver name)
+    if (searchCustomer) {
+      const nameRegex = new RegExp(searchCustomer, "i");
+      orConditions.push(
+        { senderName: nameRegex },
+        { receiverName: nameRegex }
+      );
     }
 
-    const searchRegex = new RegExp(query, "i"); // For text-based search (case-insensitive)
-    const queryNumber = isNaN(query) ? null : Number(query); // If the query is a number (e.g., for mobile, grnNo)
+    // Add grnNo condition (exact match)
+    if (grnNo && !isNaN(Number(grnNo))) {
+      orConditions.push({ grnNo: Number(grnNo) });
+    }
 
-    // Adjust search based on the field type
-    const searchCondition = searchField === 'senderMobile' || searchField === 'receiverMobile' || searchField === 'grnNo' || searchField === 'lrNumber'
-      ? { [searchField]: queryNumber }
-      : { [searchField]: searchRegex };
+    // Add lrNumber condition (exact or regex match)
+    if (lrNumber) {
+      const lrRegex = new RegExp(lrNumber, "i");
+      orConditions.push({ lrNumber: lrRegex });
+    }
 
-    // Find bookings based on the specific search condition
-    const bookings = await Booking.find(searchCondition);
+    if (!orConditions.length) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one valid search field is required",
+      });
+    }
 
-    res.status(200).json({ success: true, data: bookings });
+    const bookings = await Booking.find({ $or: orConditions });
+
+    res.status(200).json(bookings);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
