@@ -8,7 +8,8 @@ const cfVoucher=new mongoose.Schema({
     creditForAgent:{type:String,required:true},
     fromBranch:{type:String,required:true},
     toBranch:{type:String,required:true},
-    consignor:{type:String,required:true},
+    // consignor:{type:String,required:true},
+    consignor: { type: String, required: true },
     bookingStatus: { type: Number },
     charge:{type:String,required:true},
     generateDate:{type:Date,default:()=>new Date()}

@@ -71,5 +71,5 @@ router.post("/grnNolrNo", bookingController.getBookingByGrnOrLrNumber);
 
 router.get("/get-above700",bookingController.getAllBookingsAbove700)
 router.get("/get-branchwise",bookingController.getBranchWiseBookings)
-
+router.post("/summary-report",bookingController.collectionSummaryReport)
 export default router

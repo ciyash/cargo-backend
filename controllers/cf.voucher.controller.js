@@ -53,8 +53,6 @@ const creditForVoucherGenerate = async (req, res) => {
   }
 };
 
-
-
 const generateVoucher = async () => {
 
     const lastVoucher = await CFVoucher.findOne().sort({ voucherNo: -1 });
@@ -66,39 +64,81 @@ const generateVoucher = async () => {
     return lastVoucher.voucherNo + 1; // Increment the last voucher number
 };
 
+//  const createCFVoucher = async (req, res) => {
+//     try {
+//         const { grnNo,lrNumber, creditForAgent, fromBranch, toBranch, consignor, bookingStatus, charge } = req.body;
+
+//         const voucherNo = await generateVoucher();
+//         const newVoucher = new CFVoucher({
+//             voucherNo, 
+//             grnNo, 
+//             lrNumber,
+//             creditForAgent, 
+//             fromBranch, 
+//             toBranch, 
+//             consignor, 
+//             bookingStatus, 
+//             charge
+//         });
+
+//         await newVoucher.save();
+
+//         await CFMaster.updateOne(
+//             { grnNo: grnNo },
+//             { $set: { bookingStatus: 1 } }
+//         );
+
+//         res.status(201).json({ message: "CF Voucher created successfully", newVoucher });
+//     } catch (error) {
+//         res.status(500).json({ error: error.message });
+//     }
+// };
 
 
- const createCFVoucher = async (req, res) => {
-    try {
-        const { grnNo,lrNumber, creditForAgent, fromBranch, toBranch, consignor, bookingStatus, charge } = req.body;
+const createCFVoucher = async (req, res) => {
+  try {
+    const {
+      grnNo,
+      lrNumber,
+      creditForAgent,
+      fromBranch,
+      toBranch,
+      consignor, // <-- MUST BE HERE
+      bookingStatus,
+      charge
+    } = req.body;
 
-        const voucherNo = await generateVoucher();
-        const newVoucher = new CFVoucher({
-            voucherNo, 
-            grnNo, 
-            lrNumber,
-            creditForAgent, 
-            fromBranch, 
-            toBranch, 
-            consignor, 
-            bookingStatus, 
-            charge
-        });
+    const voucherNo = await generateVoucher();
 
-        await newVoucher.save();
+    const newVoucher = new CFVoucher({
+      voucherNo,
+      grnNo,
+      lrNumber,
+      creditForAgent,
+      fromBranch,
+      toBranch,
+      consignor, // <-- MUST BE HERE TOO
+      bookingStatus,
+      charge
+    });
 
-        await CFMaster.updateOne(
-            { grnNo: grnNo },
-            { $set: { bookingStatus: 1 } }
-        );
+    await newVoucher.save();
 
-        res.status(201).json({ message: "CF Voucher created successfully", newVoucher });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    await CFMaster.updateMany(
+      { grnNo: { $in: grnNo } },
+      { $set: { bookingStatus: 1 } }
+    );
+
+    res.status(201).json({ message: "CF Voucher created successfully", newVoucher });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
 };
 
-// ✅ Get All CFVouchers
+
+
  const getAllCFVouchers = async (req, res) => {
     try {
         const vouchers = await CFVoucher.find();
@@ -108,7 +148,7 @@ const generateVoucher = async () => {
     }
 };
 
-// ✅ Get Single CFVoucher by ID
+
  const getCFVoucherById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -124,7 +164,7 @@ const generateVoucher = async () => {
     }
 };
 
-// ✅ Update CFVoucher
+
  const updateCFVoucher = async (req, res) => {
     try {
         const { id } = req.params;
@@ -140,7 +180,6 @@ const generateVoucher = async () => {
     }
 };
 
-// ✅ Delete CFVoucher
  const deleteCFVoucher = async (req, res) => {
     try {
         const { id } = req.params;
@@ -179,7 +218,7 @@ const generateVoucher = async () => {
 //       generateDate: { $gte: start, $lte: end },
 //     };
 //     if (senderName) {
-//       cfVoucherQuery.senderName = senderName;
+//       cfVoucherQuery.consignor = senderName;
 //     }
 
 //     // Fetch vouchers
@@ -207,15 +246,21 @@ const generateVoucher = async () => {
 //     const bookingMap = new Map();
 //     bookings.forEach(b => bookingMap.set(b.grnNo, b));
 
+//     let totalGrandTotal = 0;
+
 //     // Merge vouchers with booking info
 //     const result = cfVouchers.map(voucher => {
 //       const matchedGrns = voucher.grnNo.map(grn => {
 //         const booking = bookingMap.get(grn);
+//         const grandTotal = booking?.grandTotal || 0;
+//         totalGrandTotal += grandTotal;
+
 //         return {
 //           grnNo: grn,
 //           senderName: booking?.senderName || null,
-//           grandTotal: booking?.grandTotal || null,
+//           grandTotal: grandTotal,
 //           numberOfPackages: booking?.packages?.length || 0,
+//           packages: booking?.packages || [],
 //           bookingDate: booking?.bookingDate || null,
 //           fromCity: booking?.fromCity || null,
 //           toCity: booking?.toCity || null,
@@ -229,8 +274,7 @@ const generateVoucher = async () => {
 //     });
 
 //     return res.status(200).json({
-//       success: true,
-//       totalRecords: result.length,
+//       totalGrandTotal,
 //       data: result,
 //     });
 
@@ -248,7 +292,6 @@ const voucherDetails = async (req, res) => {
   try {
     const { fromDate, toDate, senderName } = req.body;
 
-    // Validate input
     if (!fromDate || !toDate) {
       return res.status(400).json({
         success: false,
@@ -262,18 +305,17 @@ const voucherDetails = async (req, res) => {
     const end = new Date(toDate);
     end.setHours(23, 59, 59, 999);
 
-    // Build CFVoucher query
     const cfVoucherQuery = {
       generateDate: { $gte: start, $lte: end },
     };
+
     if (senderName) {
       cfVoucherQuery.consignor = senderName;
     }
 
-    // Fetch vouchers
     const cfVouchers = await CFVoucher
       .find(cfVoucherQuery)
-      .select("grnNo voucherNo")
+      .select("grnNo voucherNo consignor")
       .sort({ generateDate: -1 });
 
     if (!cfVouchers.length) {
@@ -283,130 +325,111 @@ const voucherDetails = async (req, res) => {
       });
     }
 
-    // Flatten grnNos from vouchers
     const grnNos = cfVouchers.flatMap(v => v.grnNo);
 
-    // Get corresponding bookings
     const bookings = await Booking
       .find({ grnNo: { $in: grnNos } })
-      .select("grnNo bookingDate fromCity toCity senderName packages grandTotal");
+      .select("grnNo packages grandTotal");
 
-    // Create a map for quick lookup
     const bookingMap = new Map();
     bookings.forEach(b => bookingMap.set(b.grnNo, b));
 
     let totalGrandTotal = 0;
 
-    // Merge vouchers with booking info
     const result = cfVouchers.map(voucher => {
-      const matchedGrns = voucher.grnNo.map(grn => {
-        const booking = bookingMap.get(grn);
-        const grandTotal = booking?.grandTotal || 0;
-        totalGrandTotal += grandTotal;
+      let totalAmount = 0;
+      let totalPackages = 0;
 
-        return {
-          grnNo: grn,
-          senderName: booking?.senderName || null,
-          grandTotal: grandTotal,
-          numberOfPackages: booking?.packages?.length || 0,
-          packages: booking?.packages || [],
-          bookingDate: booking?.bookingDate || null,
-          fromCity: booking?.fromCity || null,
-          toCity: booking?.toCity || null,
-        };
+      voucher.grnNo.forEach(grn => {
+        const booking = bookingMap.get(grn);
+        if (booking) {
+          totalAmount += booking.grandTotal || 0;
+          totalPackages += booking.packages?.length || 0;
+        }
       });
+
+      totalGrandTotal += totalAmount;
 
       return {
         voucherNo: voucher.voucherNo,
-        grns: matchedGrns,
+        agentName: voucher.consignor,
+        noOfParcel: totalPackages,
+        amount: totalAmount
       };
     });
 
     return res.status(200).json({
-      totalGrandTotal,
-      data: result,
+      totalAmount: totalGrandTotal,
+      data: result
     });
 
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
 
 
-  const voucherDetailsPrint = async (req, res) => {
-    try {
-      const { fromDate, toDate, senderName } = req.body;
-  
-      if (!fromDate || !toDate) {
-        return res.status(400).json({
-          success: false,
-          message: "fromDate and toDate are required"
-        });
-      }
-  
-      const start = new Date(fromDate);
-      start.setHours(0, 0, 0, 0);
-  
-      const end = new Date(toDate);
-      end.setHours(23, 59, 59, 999);
-  
-      // Build query
-      let query = {
-        bookingDate: {
-          $gte: start,
-          $lte: end
-        }
-      };
-  
-      if (senderName) {
-        query.senderName = senderName;
-      }
-  
-      const bookings = await Booking.find(query).select(
-        "grnNo bookingDate fromCity toCity packages parcelGstAmount grandTotal"
-      );
-  
-      let allGrandTotal = 0;
-  
-      const result = bookings.map(b => {
-        const totalWeight = b.packages.reduce((sum, pkg) => sum + (pkg.weight || 0), 0);
-        const totalPackages = b.packages.length;
-  
-        allGrandTotal += b.grandTotal || 0;
-  
-        return {
-          grnNo: b.grnNo,
-          bookingDate: b.bookingDate,
-          fromCity: b.fromCity,
-          toCity: b.toCity,
-          packageDetails: b.packages,
-          totalPackages,
-          parcelGstAmount: b.parcelGstAmount || 0,
-          totalWeight,
-          grandTotal: b.grandTotal || 0
-        };
-      });
-  
-      res.status(200).json({
-        success: true,
-        totalRecords: bookings.length,
-        data: result,
-        allGrandTotal
-      });
-  
-    } catch (error) {
-      console.error("Error fetching voucher details:", error);
-      res.status(500).json({
+const voucherDetailsPrint = async (req, res) => {
+  try {
+    const { senderName } = req.body;
+
+    // Validate required field
+    if (!senderName) {
+      return res.status(400).json({
         success: false,
-        message: "Server Error",
-        error: error.message
+        message: "senderName is required"
       });
     }
-  };
+
+    const query = { senderName };
+
+    const bookings = await Booking.find(query).select(
+      "grnNo bookingDate fromCity toCity packages parcelGstAmount grandTotal"
+    );
+
+    let allGrandTotal = 0;
+
+    const result = bookings.map(b => {
+      const totalWeight = b.packages.reduce((sum, pkg) => sum + (pkg.weight || 0), 0);
+      const totalPackages = b.packages.length;
+
+      allGrandTotal += b.grandTotal || 0;
+
+      return {
+        grnNo: b.grnNo,
+        bookingDate: b.bookingDate,
+        fromCity: b.fromCity,
+        toCity: b.toCity,
+        packageDetails: b.packages,
+        totalPackages,
+        parcelGstAmount: b.parcelGstAmount || 0,
+        totalWeight,
+        grandTotal: b.grandTotal || 0
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      totalRecords: bookings.length,
+      data: result,
+      allGrandTotal
+    });
+
+  } catch (error) {
+    console.error("Error fetching voucher details:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+      error: error.message
+    });
+  }
+};
+
+
   
   
 export default {

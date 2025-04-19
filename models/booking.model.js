@@ -10,7 +10,7 @@ const packageSchema = new mongoose.Schema({
   actulWeight:{type:String,default:0}
 });
  
-const bookingSchema = new mongoose.Schema(
+const bookingSchema = new mongoose.Schema( 
   {  
     grnNo: { type: Number, unique: true },                //auto  generate
     lrNumber: { type: String,required:true },             //auto  generate
@@ -108,7 +108,7 @@ bookingSchema.index({ grnNumber: 1, adminUniqueId: 1, bookingStatus: 1 });
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: { type: String, required: true ,unique: true},
-  address: { type: String, required: true },
+  address: { type: String },
   gst: { type: String, required: null }
 });
  

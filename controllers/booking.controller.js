@@ -2114,7 +2114,99 @@ const getBranchWiseBookings = async (req, res) => {
 };
 
 
+const collectionSummaryReport = async (req, res) => {
+  try {
+    const { selectedDate } = req.body;
 
+    if (!selectedDate) {
+      return res.status(400).json({ message: "selectedDate is required" });
+    }
+
+    // Convert selectedDate from 'DD-MM-YYYY' to 'YYYY-MM-DD' format
+    const [day, month, year] = selectedDate.split("-");
+    const formattedDate = `${year}-${month}-${day}`;
+
+    // Parse the formatted date
+    const selectedDateStart = new Date(formattedDate);
+    selectedDateStart.setHours(0, 0, 0, 0); // Start of the selected day
+    const selectedDateEnd = new Date(formattedDate);
+    selectedDateEnd.setHours(23, 59, 59, 999); // End of the selected day
+
+    // Base filter (only selected date, exact match)
+    const filters = {
+      bookingDate: { $gte: selectedDateStart, $lte: selectedDateEnd },
+    };
+
+    const bookings = await Booking.find(filters).lean();
+
+    // Group by paymentType
+    const groupedByPayment = {
+      paid: [],
+      toPay: [],
+      credit: [],
+      CLR: [],
+      FOC: [],
+    };
+
+    let totalBookings = 0;
+    let overallTotal = 0;
+    let overallGst = 0;
+    let overallOtherCharges = 0;
+
+    bookings.forEach((booking) => {
+      const {
+        paymentType = "unknown",
+        grandTotal = 0,
+        gst = 0,
+        otherCharges = 0,
+      } = booking;
+
+      if (!groupedByPayment[paymentType]) {
+        groupedByPayment[paymentType] = [];
+      }
+
+      groupedByPayment[paymentType].push(booking);
+
+      totalBookings++;
+      overallTotal += grandTotal;
+      overallGst += gst;
+      overallOtherCharges += otherCharges;
+    });
+
+    // Prepare summary
+    const summary = Object.entries(groupedByPayment).map(([type, records]) => {
+      const typeSummary = {
+        paymentType: type,
+        bookings: records,
+        totalCount: records.length,
+        totalGrandTotal: 0,
+        totalGst: 0,
+        totalOtherCharges: 0,
+      };
+
+      records.forEach(({ grandTotal = 0, gst = 0, otherCharges = 0 }) => {
+        typeSummary.totalGrandTotal += grandTotal;
+        typeSummary.totalGst += gst;
+        typeSummary.totalOtherCharges += otherCharges;
+      });
+
+      return typeSummary;
+    });
+
+    res.status(200).json({
+      summary,
+      totalBookings,
+      overallTotals: {
+        grandTotal: overallTotal,
+        gst: overallGst,
+        otherCharges: overallOtherCharges,
+      },
+    });
+  } catch (error) {
+    console.error("Error in collectionSummaryReport:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
 
 
@@ -2165,7 +2257,7 @@ getBookingByGrnOrLrNumber,
 // dashboard reports
 getAllBookingsAbove700,
 getBranchWiseBookings,
-
+collectionSummaryReport
 }
  
  
