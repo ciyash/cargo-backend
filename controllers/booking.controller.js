@@ -2026,7 +2026,7 @@ const getBookingByGrnOrLrNumber = async (req, res) => {
 };
 
 
-// dashborad reports 
+// dashborad reports   
 
 
 const getAllBookingsAbove700 = async (req, res) => {
@@ -2048,12 +2048,28 @@ const getAllBookingsAbove700 = async (req, res) => {
 };
 
 
-const getBranchWiseBookings = async (req, res) => {
+const salesSummaryByBranchWise = async (req, res) => {
   try {
+    const { date } = req.body;
+
+    if (!date) {
+      return res.status(400).json({ message: "Date is required in request body." });
+    }
+
+    // Parse the date from dd-mm-yyyy format to a Date range
+    const [day, month, year] = date.split("-");
+    const start = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+    const end = new Date(`${year}-${month}-${day}T23:59:59.999Z`);
+
     const bookings = await Booking.aggregate([
       {
+        $match: {
+          bookingDate: { $gte: start, $lte: end }
+        }
+      },
+      {
         $group: {
-          _id: "$pickUpBranch", // This holds the branchUniqueId
+          _id: "$pickUpBranch",
           credit: {
             $sum: { $cond: [{ $eq: ["$bookingType", "credit"] }, 1, 0] }
           },
@@ -2075,15 +2091,15 @@ const getBranchWiseBookings = async (req, res) => {
       {
         $lookup: {
           from: "branches",
-          localField: "_id", // this is pickUpBranch (e.g., "VIVI2960")
-          foreignField: "branchUniqueId", // in branches collection
+          localField: "_id",
+          foreignField: "branchUniqueId",
           as: "branchDetails"
         }
       },
       {
         $unwind: {
           path: "$branchDetails",
-          preserveNullAndEmptyArrays: true // if no match, fallback to "No branch"
+          preserveNullAndEmptyArrays: true
         }
       },
       {
@@ -2106,6 +2122,10 @@ const getBranchWiseBookings = async (req, res) => {
       }
     ]);
 
+    if (bookings.length === 0) {
+      return res.status(200).json({ message: "No bookings found for the given date." });
+    }
+
     res.status(200).json(bookings);
   } catch (err) {
     console.error("Error fetching branch-wise bookings:", err);
@@ -2116,100 +2136,169 @@ const getBranchWiseBookings = async (req, res) => {
 
 const collectionSummaryReport = async (req, res) => {
   try {
-    const { selectedDate } = req.body;
+      const { selectedDate } = req.body;
 
-    if (!selectedDate) {
-      return res.status(400).json({ message: "selectedDate is required" });
-    }
+      // Parse the selectedDate to a proper ISO Date
+      const startDate = moment(selectedDate, 'DD-MM-YYYY').startOf('day').toDate();
+      const endDate = moment(selectedDate, 'DD-MM-YYYY').endOf('day').toDate();
 
-    // Convert selectedDate from 'DD-MM-YYYY' to 'YYYY-MM-DD' format
-    const [day, month, year] = selectedDate.split("-");
-    const formattedDate = `${year}-${month}-${day}`;
+      // Query the database to aggregate bookings by bookingType
+      const summary = await Booking.aggregate([
+          {
+              $match: {
+                  bookingDate: { $gte: startDate, $lte: endDate }
+              }
+          },
+          {
+              $group: {
+                  _id: '$bookingType',
+                  totalBookings: { $sum: 1 }
+              }
+          },
+          {
+              $project: {
+                  bookingType: '$_id',
+                  totalBookings: 1,
+                  _id: 0
+              }
+          }
+      ]);
 
-    // Parse the formatted date
-    const selectedDateStart = new Date(formattedDate);
-    selectedDateStart.setHours(0, 0, 0, 0); // Start of the selected day
-    const selectedDateEnd = new Date(formattedDate);
-    selectedDateEnd.setHours(23, 59, 59, 999); // End of the selected day
-
-    // Base filter (only selected date, exact match)
-    const filters = {
-      bookingDate: { $gte: selectedDateStart, $lte: selectedDateEnd },
-    };
-
-    const bookings = await Booking.find(filters).lean();
-
-    // Group by paymentType
-    const groupedByPayment = {
-      paid: [],
-      toPay: [],
-      credit: [],
-      CLR: [],
-      FOC: [],
-    };
-
-    let totalBookings = 0;
-    let overallTotal = 0;
-    let overallGst = 0;
-    let overallOtherCharges = 0;
-
-    bookings.forEach((booking) => {
-      const {
-        paymentType = "unknown",
-        grandTotal = 0,
-        gst = 0,
-        otherCharges = 0,
-      } = booking;
-
-      if (!groupedByPayment[paymentType]) {
-        groupedByPayment[paymentType] = [];
-      }
-
-      groupedByPayment[paymentType].push(booking);
-
-      totalBookings++;
-      overallTotal += grandTotal;
-      overallGst += gst;
-      overallOtherCharges += otherCharges;
-    });
-
-    // Prepare summary
-    const summary = Object.entries(groupedByPayment).map(([type, records]) => {
-      const typeSummary = {
-        paymentType: type,
-        bookings: records,
-        totalCount: records.length,
-        totalGrandTotal: 0,
-        totalGst: 0,
-        totalOtherCharges: 0,
-      };
-
-      records.forEach(({ grandTotal = 0, gst = 0, otherCharges = 0 }) => {
-        typeSummary.totalGrandTotal += grandTotal;
-        typeSummary.totalGst += gst;
-        typeSummary.totalOtherCharges += otherCharges;
+      // Add missing booking types if no bookings are found
+      const bookingTypes = ['paid', 'toPay', 'credit', 'FOC', 'CLR'];
+      bookingTypes.forEach(type => {
+          if (!summary.find(item => item.bookingType === type)) {
+              summary.push({ bookingType: type, totalBookings: 0 });
+          }
       });
 
-      return typeSummary;
+      // Calculate the total bookings for the entire day
+      const totalBookingsForDay = summary.reduce((acc, item) => acc + item.totalBookings, 0);
+
+      // Include the totalBookingsForDay in the response
+      res.json({
+          summary,
+          totalBookingsForDay
+      });
+
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Error fetching booking summary' });
+  }
+};
+
+const branchAccount = async (req, res) => {
+  try {
+    const { data } = req.body;
+
+    const matchStage = {};
+
+    // If `data` (date filter) is provided
+    if (data) {
+      const [day, month, year] = data.split("-"); // e.g., "16-04-2025"
+      const start = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+      const end = new Date(`${year}-${month}-${day}T23:59:59.999Z`);
+      matchStage.bookingDate = { $gte: start, $lte: end };
+    }
+
+    const result = await Booking.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: {
+            pickUpBranch: "$pickUpBranch",
+            pickUpBranchname: "$pickUpBranchname"
+          },
+          grandTotal: { $sum: "$grandTotal" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          pickUpBranch: "$_id.pickUpBranch",
+          pickUpBranchname: "$_id.pickUpBranchname",
+          grandTotal: 1
+        }
+      }
+    ]);
+
+    const totalAmount = result.reduce((sum, item) => sum + item.grandTotal, 0);
+
+    res.json({
+      branchwise: result,
+      totalAmount
     });
 
-    res.status(200).json({
-      summary,
-      totalBookings,
-      overallTotals: {
-        grandTotal: overallTotal,
-        gst: overallGst,
-        otherCharges: overallOtherCharges,
-      },
-    });
   } catch (error) {
-    console.error("Error in collectionSummaryReport:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error(error);
+    res.status(500).json({ message: 'Error fetching branch totals' });
   }
 };
 
 
+const acPartyAccount = async (req, res) => {
+  try {
+    const { date } = req.body;
 
+    if (!date) {
+      return res.status(400).json({ message: "Date is required in request body." });
+    }
+
+    // Parse the date into start and end time
+    const [day, month, year] = date.split("-");
+    const start = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+    const end = new Date(`${year}-${month}-${day}T23:59:59.999Z`);
+
+    // Step 1: Get senderNames from the Booking model based on the date
+    const bookings = await Booking.aggregate([
+      {
+        $match: {
+          bookingDate: { $gte: start, $lte: end }
+        }
+      },
+      {
+        $group: {
+          _id: "$senderName",
+          grandTotal: { $sum: "$grandTotal" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          senderName: "$_id",
+          grandTotal: 1
+        }
+      }
+    ]);
+
+    if (bookings.length === 0) {
+      return res.json({ message: "No bookings found for the given date." });
+    }
+
+    // Step 2: Get valid senderNames (name field) from CFMaster
+    const cfMasters = await CFMaster.find({}, { name: 1 });
+    const validSenderNames = cfMasters.map(cf => cf.name);
+
+    // Step 3: Filter bookings to only include those matching senderNames from CFMaster
+    const filtered = bookings.filter(b => validSenderNames.includes(b.senderName));
+
+    if (filtered.length === 0) {
+      return res.json({ message: "No matching senderName found in CFMaster for this date." });
+    }
+
+    // Step 4: Calculate totalAmount
+    const totalAmount = filtered.reduce((sum, item) => sum + item.grandTotal, 0);
+
+    res.json({
+      parties: filtered,
+      totalAmount
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error while processing party accounts." });
+  }
+};
 
 
 
@@ -2256,8 +2345,10 @@ getBookingByGrnOrLrNumber,
 
 // dashboard reports
 getAllBookingsAbove700,
-getBranchWiseBookings,
-collectionSummaryReport
+salesSummaryByBranchWise,
+collectionSummaryReport,
+branchAccount,
+acPartyAccount
 }
  
  

@@ -70,6 +70,8 @@ router.post("/grnNolrNo", bookingController.getBookingByGrnOrLrNumber);
 //dashboard booking
 
 router.get("/get-above700",bookingController.getAllBookingsAbove700)
-router.get("/get-branchwise",bookingController.getBranchWiseBookings)
+router.post("/sales-summary-branchwise",bookingController.salesSummaryByBranchWise)
 router.post("/summary-report",bookingController.collectionSummaryReport)
+router.post("/branch-account",bookingController.branchAccount)
+router.post("/acparty-account",bookingController.acPartyAccount)
 export default router
