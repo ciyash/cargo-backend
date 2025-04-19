@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
  
 const packageSchema = new mongoose.Schema({
-  quantity: { type: Number, required: true, default: 1 },
+  quantity: { type: Number, default: 1 },
   packageType: { type: String, required: true },
   contains: { type: String, default:null},
-  weight: { type: Number, required: true },
+  weight: { type: Number },
   unitPrice: { type: Number, required: true },
   totalPrice: { type: Number, required:true },
   actulWeight:{type:String,default:0}
@@ -17,7 +17,7 @@ const bookingSchema = new mongoose.Schema(
     adminUniqueId: { type: Number,required:true},         //auto entered
     bookedBy: { type:mongoose.Schema.Types.ObjectId,ref:"Subadmin",required:true},  // auto entered  // employee or subadmin or accountant
     bookingTime: { type: Date, default: Date.now, required: true }, //auto entered
-    bookbranchid: { type: String,required:true },
+    bookbranchid: {type: mongoose.Schema.Types.ObjectId,ref: "Branch", required: true},
     fromCity: { type: String,required:true },
     toCity: { type: String,required:true },
     pickUpBranch: { type: String,required:true },
@@ -37,16 +37,14 @@ const bookingSchema = new mongoose.Schema(
  
     senderName: { type: String },
     senderMobile: {
-      type: Number,  
-      // validate: { validator: (v) => /^\d{10}$/.test(v), message: "Invalid mobile number" }
+      type: Number
     },
     senderAddress: { type: String },
     senderGst: { type: String, default: null },  
  
     receiverName: { type: String },  
     receiverMobile: {
-      type: Number,
-      // validate: { validator: (v) => /^\d{10}$/.test(v), message: "Invalid mobile number" }
+      type: Number
     },
     receiverAddress: { type: String },
     receiverGst: { type: String, default: null },

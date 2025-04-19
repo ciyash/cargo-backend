@@ -85,7 +85,7 @@ const sanitizeInput = (input) => {
   }
   return input;
 };
- 
+
 const createBooking = async (req, res) => {
   try {
     // console.log(req.user)
@@ -104,32 +104,22 @@ const createBooking = async (req, res) => {
     );
  
    
-    if (!fromCity || !toCity || !pickUpBranch || !dropBranch || !dispatchType || !bookingType) {
+    if (!fromCity || !toCity || !pickUpBranch || !dropBranch  || !bookingType) {
       return res.status(400).json({ success: false, message: 'Missing required booking fields' });
     }
  
     //Validate package details
-    if (!Array.isArray(packages) || packages.length === 0) {
-      return res.status(400).json({ success: false, message: "At least one package is required" });
-    }
+    // if (!Array.isArray(packages) || packages.length === 0) {
+    //   return res.status(400).json({ success: false, message: "At least one package is required" });
+    // }
  
-    for (const pkg of packages) {
-      if (!pkg.quantity || !pkg.packageType || !pkg.weight || !pkg.unitPrice) {
-        return res.status(400).json({ success: false, message: "Each package must have quantity, packageType, weight, and unitPrice" });
-      }
-    }
-    for (const { quantity, packageType, weight, unitPrice,actulWeight } of packages) {
-      if (!Number.isInteger(quantity) || quantity < 1 || !packageType || !weight || !unitPrice) {
-        return res.status(400).json({ success: false, message: 'Each package must have valid quantity, packageType, weight, and unitPrice' });
-      }
-    }
-    if (!senderName || !senderMobile || !senderAddress || !receiverName || !receiverMobile || !receiverAddress) {
+   
+   
+    
+    if (!senderName || !senderMobile  || !receiverName || !receiverMobile ) {
       return res.status(400).json({ success: false, message: 'Sender and receiver details are required' });
     }
  
-    if (![senderMobile, receiverMobile].every(m => /^\d{10}$/.test(m))) {
-      return res.status(400).json({ success: false, message: 'Mobile numbers must be 10 digits' });
-    }
     const [pickUpBranchdata, dropBranchdata] = await Promise.all([
       Branch.findOne({ branchUniqueId: pickUpBranch }).lean(),
       Branch.findOne({ branchUniqueId: dropBranch }).lean(),
@@ -140,13 +130,14 @@ const createBooking = async (req, res) => {
     }
     const pickUpBranchname = pickUpBranchdata.name;
     const dropBranchname = dropBranchdata.name;
+    const pickUpBranchId = pickUpBranchdata._id;
  
     const location = req.user.location;
     console.log("location", location);
     const bookedBy = req.user.id;
     const bookingStatus=0;
     const adminUniqueId = req.user.subadminUniqueId;
-    const bookbranchid= req.user.branchId;
+    
  
  
     const [grnNo, lrNumber, eWayBillNo, generatedReceiptNo] = await Promise.all([
@@ -202,7 +193,7 @@ const createBooking = async (req, res) => {
       vehicalNumber,
       actulWeight,
       bookingDate: new Date(),
-      bookbranchid,
+      bookbranchid: pickUpBranchId,  
       pickUpBranchname,
       dropBranchname
     });
@@ -234,6 +225,7 @@ const createBooking = async (req, res) => {
   }
 };
  
+
 const getAllBookings = async (req, res) => {
   try {
     const booking=await Booking.find()
@@ -2034,6 +2026,96 @@ const getBookingByGrnOrLrNumber = async (req, res) => {
 };
 
 
+// dashborad reports 
+
+
+const getAllBookingsAbove700 = async (req, res) => {
+  try {
+    // Find bookings with grandTotal greater than 700
+    const bookings = await Booking.find({ grandTotal: { $gt: 700 } });
+
+    // If no bookings found
+    if (bookings.length === 0) {
+      return res.status(404).json({ message: "No bookings found with grandTotal above 700" });
+    }
+
+    // Return the found bookings
+    return res.status(200).json(bookings);
+  } catch (error) {
+    console.error("Error fetching bookings above 700:", error);
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+
+const getBranchWiseBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.aggregate([
+      {
+        $group: {
+          _id: "$pickUpBranch", // This holds the branchUniqueId
+          credit: {
+            $sum: { $cond: [{ $eq: ["$bookingType", "credit"] }, 1, 0] }
+          },
+          toPay: {
+            $sum: { $cond: [{ $eq: ["$bookingType", "toPay"] }, 1, 0] }
+          },
+          paid: {
+            $sum: { $cond: [{ $eq: ["$bookingType", "paid"] }, 1, 0] }
+          },
+          CLR: {
+            $sum: { $cond: [{ $eq: ["$bookingType", "CLR"] }, 1, 0] }
+          },
+          freeSample: {
+            $sum: { $cond: [{ $eq: ["$bookingType", "Free Sample"] }, 1, 0] }
+          },
+          totalBookings: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: "branches",
+          localField: "_id", // this is pickUpBranch (e.g., "VIVI2960")
+          foreignField: "branchUniqueId", // in branches collection
+          as: "branchDetails"
+        }
+      },
+      {
+        $unwind: {
+          path: "$branchDetails",
+          preserveNullAndEmptyArrays: true // if no match, fallback to "No branch"
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          credit: 1,
+          toPay: 1,
+          paid: 1,
+          CLR: 1,
+          freeSample: 1,
+          totalBookings: 1,
+          pickUpBranchName: {
+            $cond: [
+              { $ifNull: ["$branchDetails.name", false] },
+              "$branchDetails.name",
+              "No branch"
+            ]
+          }
+        }
+      }
+    ]);
+
+    res.status(200).json(bookings);
+  } catch (err) {
+    console.error("Error fetching branch-wise bookings:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
 
 
 
@@ -2078,7 +2160,12 @@ deliveredStockReport,
 pendingDispatchStockReport,
 dispatchedMemoReport,
 parcelIncomingLuggagesReport,
-getBookingByGrnOrLrNumber
+getBookingByGrnOrLrNumber,
+
+// dashboard reports
+getAllBookingsAbove700,
+getBranchWiseBookings,
+
 }
  
  

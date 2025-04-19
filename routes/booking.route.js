@@ -67,5 +67,9 @@ router.post("/dispatched-memo-report",bookingController.dispatchedMemoReport)
 router.post("/parcel-incoming-luggages-report",bookingController.parcelIncomingLuggagesReport)
 router.post("/grnNolrNo", bookingController.getBookingByGrnOrLrNumber);
 
+//dashboard booking
+
+router.get("/get-above700",bookingController.getAllBookingsAbove700)
+router.get("/get-branchwise",bookingController.getBranchWiseBookings)
 
 export default router
