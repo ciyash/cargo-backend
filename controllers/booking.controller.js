@@ -98,7 +98,7 @@ const createBooking = async (req, res) => {
       fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
       packages, senderName, senderMobile, senderAddress, senderGst,actulWeight,
       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,vehicalNumber,
-      serviceCharge = 0, hamaliCharge = 0, doorDeliveryCharge = 0, doorPickupCharge = 0, valueOfGoods = 0, items
+      serviceCharge, hamaliCharge , doorDeliveryCharge , doorPickupCharge , valueOfGoods , items
     } = Object.fromEntries(
       Object.entries(req.body).map(([key, value]) => [key, sanitizeInput(value)])
     );
