@@ -86,70 +86,192 @@ const sanitizeInput = (input) => {
   return input;
 };
 
-const createBooking = async (req, res) => {
-  try {
-    // console.log(req.user)
-    if (!req.user) {
+// const createBooking = async (req, res) => {
+//   try {
+//     // console.log(req.user)
+//     if (!req.user) {
      
-      return res.status(401).json({ success: false, message: "Unauthorized: User data missing" });
-    }
+//       return res.status(401).json({ success: false, message: "Unauthorized: User data missing" });
+//     }
  
-    const {
-      fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
-      packages, senderName, senderMobile, senderAddress, senderGst,actulWeight,
-      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,vehicalNumber,
-      serviceCharge, hamaliCharge , doorDeliveryCharge , doorPickupCharge , valueOfGoods , items
-    } = Object.fromEntries(
-      Object.entries(req.body).map(([key, value]) => [key, sanitizeInput(value)])
-    );
+//     const {
+//       fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
+//       packages, senderName, senderMobile, senderAddress, senderGst,actulWeight,
+//       receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount,vehicalNumber,
+//       serviceCharge, hamaliCharge , doorDeliveryCharge , doorPickupCharge , valueOfGoods , items
+//     } = Object.fromEntries(
+//       Object.entries(req.body).map(([key, value]) => [key, sanitizeInput(value)])
+//     );
  
    
-    if (!fromCity || !toCity || !pickUpBranch || !dropBranch  || !bookingType) {
-      return res.status(400).json({ success: false, message: 'Missing required booking fields' });
-    }
+//     if (!fromCity || !toCity || !pickUpBranch || !dropBranch  || !bookingType) {
+//       return res.status(400).json({ success: false, message: 'Missing required booking fields' });
+//     }
  
  
    
     
-    if (!senderName || !senderMobile  || !receiverName || !receiverMobile ) {
+//     if (!senderName || !senderMobile  || !receiverName || !receiverMobile ) {
+//       return res.status(400).json({ success: false, message: 'Sender and receiver details are required' });
+//     }
+ 
+//     const [pickUpBranchdata, dropBranchdata] = await Promise.all([
+//       Branch.findOne({ branchUniqueId: pickUpBranch }).lean(),
+//       Branch.findOne({ branchUniqueId: dropBranch }).lean(),
+//     ]);
+ 
+//     if (!pickUpBranchdata || !dropBranchdata) {
+//       return res.status(404).json({ message: "Invalid branch provided" });
+//     }
+//     const pickUpBranchname = pickUpBranchdata.name;
+//     const dropBranchname = dropBranchdata.name;
+//     const pickUpBranchId = pickUpBranchdata._id;
+ 
+//     const location = req.user.location;
+//     console.log("location", location);
+//     const bookedBy = req.user.id;
+//     const bookingStatus=0;
+//     const adminUniqueId = req.user.subadminUniqueId;
+    
+ 
+ 
+//     const [grnNo, lrNumber, eWayBillNo, generatedReceiptNo] = await Promise.all([
+//       generateGrnNumber(),
+//       generateLrNumber(fromCity, location),
+//       generateEWayBillNo(),
+//       generateReceiptNumber()
+//     ]);
+ 
+//     //  Calculate `totalQuantity` from `packages`
+//     const totalQuantity = packages.reduce((sum, pkg) => sum + Number(pkg.quantity), 0);
+ 
+//     //  Calculate Grand Total
+//     let packageTotal = packages.reduce((sum, pkg) => sum + Number(pkg.unitPrice) * Number(pkg.quantity), 0);
+//     let grandTotal = Number(packageTotal) + Number(serviceCharge) + Number(hamaliCharge) + Number(doorDeliveryCharge) + Number(doorPickupCharge) + Number(valueOfGoods);
+ 
+//     //  Create new booking object
+//     const booking = new Booking({
+//       grnNo,
+//       lrNumber,
+//       location,
+//       adminUniqueId,
+//       bookingTime: Date.now(),
+//       fromCity,
+//       toCity,
+//       pickUpBranch,
+//       dropBranch,
+//       dispatchType,
+//       bookingType,
+//       packages,  
+//       totalQuantity,  // Auto-filled field
+//       senderName,
+//       senderMobile,  
+//       senderAddress,
+//       senderGst,
+//       receiverName,
+//       receiverMobile,
+//       receiverAddress,
+//       receiverGst,
+//       parcelGstAmount,
+//       receiptNo: generatedReceiptNo,
+//       totalPrice,
+//       grandTotal,
+//       serviceCharge,
+//       hamaliCharge,
+//       doorDeliveryCharge,
+//       doorPickupCharge,
+//       valueOfGoods,
+//       bookingStatus,
+//       bookedBy,
+//       items,
+//       eWayBillNo,
+//       vehicalNumber,
+//       actulWeight,
+//       bookingDate: new Date(),
+//       bookbranchid: pickUpBranchId,  
+//       pickUpBranchname,
+//       dropBranchname
+//     });
+ 
+//     const savedBooking = await booking.save();
+ 
+//     if (savedBooking) {
+//       await Promise.all([
+//         (async () => {
+//           const senderExists = await User.findOne({ phone: senderMobile });
+//           if (!senderExists) {
+//             await User.create({ name: senderName, phone: senderMobile, address: senderAddress, gst: senderGst });
+//           }
+//         })(),
+//         (async () => {
+//           const receiverExists = await User.findOne({ phone: receiverMobile });
+//           if (!receiverExists) {
+//             await User.create({ name: receiverName, phone: receiverMobile, address: receiverAddress, gst: receiverGst });
+//           }
+//         })(),
+//       ]);
+//     }
+   
+ 
+//     res.status(201).json({ success: true, message: "Booking created successfully", data: booking });
+//   } catch (error) {
+//     console.log(error.message);
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+ 
+const createBooking = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized: User data missing" });
+    }
+
+    const {
+      fromCity, toCity, pickUpBranch, dropBranch, totalPrice, dispatchType, bookingType,
+      packages, senderName, senderMobile, senderAddress, senderGst, actualWeight,
+      receiverName, receiverMobile, receiverAddress, receiverGst, parcelGstAmount, vehicleNumber,
+      serviceCharges, hamaliCharges, doorDeliveryCharges, doorPickupCharges, valueOfGoods, items
+    } = Object.fromEntries(
+      Object.entries(req.body).map(([key, value]) => [key, sanitizeInput(value)])
+    );
+
+    if (!fromCity || !toCity || !pickUpBranch || !dropBranch || !bookingType) {
+      return res.status(400).json({ success: false, message: 'Missing required booking fields' });
+    }
+
+    if (!senderName || !senderMobile || !receiverName || !receiverMobile) {
       return res.status(400).json({ success: false, message: 'Sender and receiver details are required' });
     }
- 
+
     const [pickUpBranchdata, dropBranchdata] = await Promise.all([
       Branch.findOne({ branchUniqueId: pickUpBranch }).lean(),
       Branch.findOne({ branchUniqueId: dropBranch }).lean(),
     ]);
- 
+
     if (!pickUpBranchdata || !dropBranchdata) {
       return res.status(404).json({ message: "Invalid branch provided" });
     }
+
     const pickUpBranchname = pickUpBranchdata.name;
     const dropBranchname = dropBranchdata.name;
     const pickUpBranchId = pickUpBranchdata._id;
- 
+
     const location = req.user.location;
-    console.log("location", location);
     const bookedBy = req.user.id;
-    const bookingStatus=0;
+    const bookingStatus = 0;
     const adminUniqueId = req.user.subadminUniqueId;
-    
- 
- 
+
     const [grnNo, lrNumber, eWayBillNo, generatedReceiptNo] = await Promise.all([
       generateGrnNumber(),
       generateLrNumber(fromCity, location),
       generateEWayBillNo(),
       generateReceiptNumber()
     ]);
- 
-    //  Calculate `totalQuantity` from `packages`
+
     const totalQuantity = packages.reduce((sum, pkg) => sum + Number(pkg.quantity), 0);
- 
-    //  Calculate Grand Total
     let packageTotal = packages.reduce((sum, pkg) => sum + Number(pkg.unitPrice) * Number(pkg.quantity), 0);
-    let grandTotal = Number(packageTotal) + Number(serviceCharge) + Number(hamaliCharge) + Number(doorDeliveryCharge) + Number(doorPickupCharge) + Number(valueOfGoods);
- 
-    //  Create new booking object
+    let grandTotal = Number(packageTotal) + Number(serviceCharges) + Number(hamaliCharges) + Number(doorDeliveryCharges) + Number(doorPickupCharges) + Number(valueOfGoods);
+
     const booking = new Booking({
       grnNo,
       lrNumber,
@@ -162,10 +284,10 @@ const createBooking = async (req, res) => {
       dropBranch,
       dispatchType,
       bookingType,
-      packages,  
-      totalQuantity,  // Auto-filled field
+      packages,
+      totalQuantity,
       senderName,
-      senderMobile,  
+      senderMobile,
       senderAddress,
       senderGst,
       receiverName,
@@ -176,25 +298,25 @@ const createBooking = async (req, res) => {
       receiptNo: generatedReceiptNo,
       totalPrice,
       grandTotal,
-      serviceCharge,
-      hamaliCharge,
-      doorDeliveryCharge,
-      doorPickupCharge,
+      serviceCharges,
+      hamaliCharges,
+      doorDeliveryCharges,
+      doorPickupCharges,
       valueOfGoods,
       bookingStatus,
       bookedBy,
       items,
       eWayBillNo,
-      vehicalNumber,
-      actulWeight,
+      vehicleNumber,
+      actualWeight,
       bookingDate: new Date(),
-      bookbranchid: pickUpBranchId,  
+      bookbranchid: pickUpBranchId,
       pickUpBranchname,
       dropBranchname
     });
- 
+
     const savedBooking = await booking.save();
- 
+
     if (savedBooking) {
       await Promise.all([
         (async () => {
@@ -211,15 +333,14 @@ const createBooking = async (req, res) => {
         })(),
       ]);
     }
-   
- 
+
     res.status(201).json({ success: true, message: "Booking created successfully", data: booking });
   } catch (error) {
     console.log(error.message);
     res.status(500).json({ error: error.message });
   }
 };
- 
+
 
 const getAllBookings = async (req, res) => {
   try {
