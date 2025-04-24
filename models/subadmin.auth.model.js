@@ -1,14 +1,14 @@
 import mongoose from "mongoose";
 
 const adminSchema = new mongoose.Schema(
-  {
+  {  
     subadminUniqueId: { type: Number, required: true }, 
     branchId: { type: mongoose.Schema.Types.ObjectId,ref:"Branch",required:true},  
     name: { type: String, required: true },
     email: { type: String, required: true },
     password: { type: String, required: true },
     role: { type: String, enum: ["admin","subadmin", "employee","accountant","superviser","driver"], required: true },
-    companyName:{type:String},
+    companyName:{type:String,default:""},
     address:{type:String},
     ipAddress: { type: String },
     username: { type: String},

@@ -108,12 +108,7 @@ const createBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing required booking fields' });
     }
  
-    //Validate package details
-    // if (!Array.isArray(packages) || packages.length === 0) {
-    //   return res.status(400).json({ success: false, message: "At least one package is required" });
-    // }
  
-   
    
     
     if (!senderName || !senderMobile  || !receiverName || !receiverMobile ) {
@@ -1049,7 +1044,7 @@ const regularCustomerBooking = async (req, res) => {
 
 const branchWiseCollectionReport = async (req, res) => {
   try {
-    const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;  
+    const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;    
 
     // Validate required query parameters
     if (!fromDate || !toDate) {
