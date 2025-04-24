@@ -51,11 +51,11 @@ const bookingSchema = new mongoose.Schema(
  
     parcelGstAmount: { type: Number, default:0 },
     grandTotal: { type: Number, required:true },
-    serviceCharges: { type: Number, required:true },
-    hamaliCharges: { type: Number, required:true },
-    doorDeliveryCharges: { type: Number, required:true },  
-    doorPickupCharges: { type: Number, drequired:true},
-    valueOfGoods: { type: Number, required:true },
+    serviceCharges: { type: Number, default: 0 },
+    hamaliCharges: { type: Number, default: 0 },
+    doorDeliveryCharges: { type: Number, default: 0 },  
+    doorPickupCharges: { type: Number, default: 0 },
+    valueOfGoods: { type: Number, default: 0 },
 
         
     bookingStatus: { type: Number, enum: [0, 1, 2, 3, 4, 5], default: 0 },
