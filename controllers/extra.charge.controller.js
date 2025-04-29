@@ -62,7 +62,7 @@ const getChargeFromCityToCity = async (req, res) => {
   
       const charges = await Charge.find({
         fromCity: { $regex: new RegExp(`^${fromCity}$`, "i") }, // Case-insensitive match
-        toCity: { $regex: new RegExp(`^${toCity}$`, "i") }      // Case-insensitive match
+        toCity: { $regex: new RegExp(`^${toCity}$`, "i") }      // Case
       });
   
       if (charges.length === 0) {
