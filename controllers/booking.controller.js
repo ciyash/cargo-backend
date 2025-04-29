@@ -270,9 +270,17 @@ const createBooking = async (req, res) => {
 
     const totalQuantity = packages.reduce((sum, pkg) => sum + Number(pkg.quantity), 0);
  
+const totalCharge = packages.reduce((sum, pkg) => {
+  const price = Number(pkg.totalPrice) || 0; 
+  return sum + price;
+}, 0);
+
+
+
     const booking = new Booking({
       grnNo,
       lrNumber,
+      totalCharge,
       location,
       adminUniqueId,
       bookingTime: Date.now(),

@@ -7,7 +7,7 @@ const packageSchema = new mongoose.Schema({
   weight: { type: Number },
   unitPrice: { type: Number, required: true },
   totalPrice: { type: Number, required:true },
-  actulWeight:{type:String,default:0}
+  actulWeight:{type:String},
 });
  
 const bookingSchema = new mongoose.Schema( 
@@ -51,6 +51,7 @@ const bookingSchema = new mongoose.Schema(
  
     parcelGstAmount: { type: Number, default:0 },
     grandTotal: { type: Number, required:true },
+    totalCharge: { type: Number, default: 0 },
     serviceCharges: { type: Number, default: 0 },
     hamaliCharges: { type: Number, default: 0 },
     doorDeliveryCharges: { type: Number, default: 0 },  
