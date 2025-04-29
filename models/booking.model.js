@@ -86,7 +86,6 @@ const bookingSchema = new mongoose.Schema(
     ltEmployee: { type: String, default: null },
    
    
- 
   
     cancelDate: { type: Date, default: null },
     cancelByUser: { type: String, default: null },
@@ -107,7 +106,7 @@ bookingSchema.index({ grnNumber: 1, adminUniqueId: 1, bookingStatus: 1 });
  
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  phone: { type: String, required: true ,unique: true},
+  phone: { type: String, required: true },
   address: { type: String },
   gst: { type: String, required: null }
 });
