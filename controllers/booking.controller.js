@@ -1034,7 +1034,7 @@ const parcelBookingReports = async (req, res) => {
 //     });
 //   }
 // };
-
+   
 
 const allParcelBookingReport = async (req, res) => {
   try {
@@ -1073,7 +1073,7 @@ const allParcelBookingReport = async (req, res) => {
     const userRole = req.user.role;
     const userBranchId = req.user.branchId;
 
-    // Base query
+    //
     let query = {
       bookingDate: {
         $gte: new Date(startDate + "T00:00:00.000Z"),
