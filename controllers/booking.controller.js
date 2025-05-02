@@ -275,7 +275,7 @@ const totalCharge = packages.reduce((sum, pkg) => {
   return sum + price;
 }, 0);
 
-
+const totalPackages = packages.length;
 
     const booking = new Booking({
       grnNo,
@@ -292,6 +292,7 @@ const totalCharge = packages.reduce((sum, pkg) => {
       bookingType,
       packages,
       totalQuantity,
+      totalPackages,
       senderName,
       senderMobile,
       senderAddress,
@@ -813,10 +814,77 @@ const cancelBooking = async (req, res) => {
 
 // all booking reports 
 
+
+// const parcelBookingReports = async (req, res) => {
+//   try {
+//     let { fromDate, toDate, fromCity, toCity, bookingStatus } = req.body;
+
+//     // Common query
+//     let query = {};
+
+//     if (fromDate && toDate) {
+//       query.bookingDate = {
+//         $gte: new Date(fromDate + "T00:00:00.000Z"),
+//         $lte: new Date(toDate + "T23:59:59.999Z"),
+//       };
+//     }
+
+//     if (fromCity) query.fromCity = fromCity;
+//     if (toCity) query.toCity = toCity;
+//     if (bookingStatus) query.bookingStatus = Number(bookingStatus);
+
+//     // All possible booking types
+//     const bookingTypes = ["paid", "credit", "toPay", "FOC", "CLR"];
+
+//     const result = {};
+
+//     for (const type of bookingTypes) {
+//       const typeQuery = { ...query, bookingType: type };
+
+//       const bookings = await Booking.find(typeQuery)
+//         .sort({ bookingDate: -1 })
+//         .select('grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo')
+//         .populate({
+//           path: 'bookedBy',
+//           select: 'name'
+//         });
+//       let allGrandTotal = 0;
+//       let allTotalQuantity = 0;
+
+//       bookings.forEach(b => {
+//         allGrandTotal += b.grandTotal || 0;
+//         allTotalQuantity += b.totalQuantity || 0;
+//       });
+
+//       result[type] = {
+//         bookings,
+//         allGrandTotal,
+//         allTotalQuantity
+//       };
+//     }
+
+//     res.status(200).json({
+//       data: result
+//     });
+
+//   } catch (error) {
+//     res.status(500).json({ success: false, message: "Error fetching bookings", error: error.message });
+//   }
+// };
+
+
 const parcelBookingReports = async (req, res) => {
   try {
-    let { fromDate, toDate, fromCity, toCity, bookingStatus, bookingType } = req.body;
+    let { fromDate, toDate, fromCity, toCity, bookingStatus } = req.body;
 
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized: User data missing" });
+    }
+
+    const userRole = req.user.role;
+    const userBranchId = req.user.branchId;
+
+    // Base query
     let query = {};
 
     if (fromDate && toDate) {
@@ -826,37 +894,147 @@ const parcelBookingReports = async (req, res) => {
       };
     }
 
-    if (fromCity) query.fromCity = fromCity;
-    if (toCity) query.toCity = toCity;
-    if (bookingStatus) query.bookingStatus = Number(bookingStatus); 
-    if (bookingType) query.bookingType = bookingType;
-
-    const bookings = await Booking.find(query)
-      .sort({ bookingDate: -1 })
-      .select('grnNo bookingStatus bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo');
-
-    if (!bookings.length) {
-      return res.status(404).json({ message: "No parcels found" });
+    // Role-specific logic
+    if (userRole === "employee") {
+      query.pickUpBranch = userBranchId;
+    } else {
+      // For admins/subadmins, allow optional filtering by branch from request body
+      if (req.body.branch) {
+        query.pickUpBranch = req.body.branch;
+      }
     }
 
-    let allGrandTotal = 0;
-    let allTotalQuantity = 0;
+    if (fromCity) query.fromCity = fromCity;
+    if (toCity) query.toCity = toCity;
+    if (bookingStatus) query.bookingStatus = Number(bookingStatus);
 
-    bookings.forEach(b => {
-      allGrandTotal += b.grandTotal || 0;
-      allTotalQuantity += b.totalQuantity || 0;
-    });
+    // All possible booking types
+    const bookingTypes = ["paid", "credit", "toPay", "FOC", "CLR"];
+
+    const result = {};
+   
+    for (const type of bookingTypes) {
+      const typeQuery = { ...query, bookingType: type };
+
+      const bookings = await Booking.find(typeQuery)
+        .sort({ bookingDate: -1 })
+        .select('grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo')
+        .populate({
+          path: 'bookedBy',
+          select: 'name'
+        });
+
+      let allGrandTotal = 0;
+      let allTotalQuantity = 0;
+
+      bookings.forEach(b => {
+        allGrandTotal += b.grandTotal || 0;
+        allTotalQuantity += b.totalQuantity || 0;
+      });
+
+      result[type] = {
+        bookings,
+        allGrandTotal,
+        allTotalQuantity
+      };
+    }
 
     res.status(200).json({
-      success: true,
-      data: bookings,
-      allGrandTotal,
-      allTotalQuantity
+      data: result
     });
+
   } catch (error) {
     res.status(500).json({ success: false, message: "Error fetching bookings", error: error.message });
   }
 };
+
+
+// const allParcelBookingReport = async (req, res) => {
+//   try {
+//     const {
+//       startDate,
+//       endDate,
+//       fromCity,
+//       toCity,
+//       pickUpBranch,
+//       dropBranch,
+//       bookingStatus,
+//       vehicalNumber,
+//     } = req.body;
+
+//     // Required date checks
+//     if (!startDate || !endDate) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Both startDate and endDate are required.",
+//       });
+//     }
+
+//     if (new Date(startDate) > new Date(endDate)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "startDate should be before or equal to endDate.",
+//       });
+//     }
+
+//     // Base query
+//     let query = {
+//       bookingDate: {
+//         $gte: new Date(startDate + "T00:00:00.000Z"),
+//         $lte: new Date(endDate + "T23:59:59.999Z"),
+//       },
+//     };
+
+//     // Optional filters
+//     if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
+//     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
+//     if (pickUpBranch) query.pickUpBranchname = { $regex: new RegExp(pickUpBranch, "i") };
+//     if (dropBranch) query.dropBranchname = { $regex: new RegExp(dropBranch, "i") };
+//     if (bookingStatus !== undefined) query.bookingStatus = Number(bookingStatus);
+//     if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") };
+
+//     // Fetch matching bookings
+//     const bookings = await Booking.find(query).select(
+//       "grnNo bookingDate bookingStatus fromCity toCity bookingType pickUpBranchname dropBranchname senderName receiverName totalQuantity grandTotal hamaliCharge"
+//     );
+
+//     if (bookings.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "No bookings found matching the criteria.",
+//       });
+//     }
+
+//     // Totals calculation
+//     let allGrandTotal = 0;
+//     let allTotalQuantity = 0;
+//     let allTotalHamaliCharge = 0;
+
+//     bookings.forEach((booking) => {
+//       allGrandTotal += Number(booking.grandTotal || 0);
+//       allTotalQuantity += Number(booking.totalQuantity || 0);
+//       allTotalHamaliCharge += Number(booking.hamaliCharge || 0);
+//     });
+
+//     // Final response
+//     res.status(200).json({
+//       success: true,
+//       message: "Bookings fetched successfully.",
+//       allGrandTotal,
+//       allTotalQuantity,
+//       allTotalHamaliCharge,
+//       data: bookings,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching bookings:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error.",
+//       error: error.message,
+//     });
+//   }
+// };
+
 
 const allParcelBookingReport = async (req, res) => {
   try {
@@ -871,7 +1049,6 @@ const allParcelBookingReport = async (req, res) => {
       vehicalNumber,
     } = req.body;
 
-    // Required date checks
     if (!startDate || !endDate) {
       return res.status(400).json({
         success: false,
@@ -886,6 +1063,16 @@ const allParcelBookingReport = async (req, res) => {
       });
     }
 
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: User data missing.",
+      });
+    }
+
+    const userRole = req.user.role;
+    const userBranchId = req.user.branchId;
+
     // Base query
     let query = {
       bookingDate: {
@@ -894,7 +1081,14 @@ const allParcelBookingReport = async (req, res) => {
       },
     };
 
-    // Optional filters
+    if (userRole === "employee") {
+      query.pickUpBranch = userBranchId;
+    } else {
+      if (req.body.branch) {
+        query.pickUpBranch = req.body.branch;
+      }
+    }
+
     if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
     if (pickUpBranch) query.pickUpBranchname = { $regex: new RegExp(pickUpBranch, "i") };
@@ -902,9 +1096,8 @@ const allParcelBookingReport = async (req, res) => {
     if (bookingStatus !== undefined) query.bookingStatus = Number(bookingStatus);
     if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") };
 
-    // Fetch matching bookings
     const bookings = await Booking.find(query).select(
-      "grnNo bookingDate bookingStatus fromCity toCity bookingType pickUpBranchname dropBranchname senderName receiverName totalQuantity grandTotal hamaliCharge"
+      "grnNo bookingDate bookingStatus fromCity toCity bookingType pickUpBranchname dropBranchname senderName receiverName totalQuantity grandTotal hamaliCharges vehicalNumber"
     );
 
     if (bookings.length === 0) {
@@ -914,25 +1107,34 @@ const allParcelBookingReport = async (req, res) => {
       });
     }
 
-    // Totals calculation
-    let allGrandTotal = 0;
-    let allTotalQuantity = 0;
-    let allTotalHamaliCharge = 0;
+    // Group bookings by vehicalNumber
+    const vehicleGrouped = {};
 
     bookings.forEach((booking) => {
-      allGrandTotal += Number(booking.grandTotal || 0);
-      allTotalQuantity += Number(booking.totalQuantity || 0);
-      allTotalHamaliCharge += Number(booking.hamaliCharge || 0);
+      const vNo = booking.vehicalNumber || "Unknown";
+
+      if (!vehicleGrouped[vNo]) {
+        vehicleGrouped[vNo] = {
+          vehicalNumber: vNo,
+          bookings: [],
+          totalQuantity: 0,
+          totalGrandTotal: 0,
+          totalHamaliCharge: 0,
+        };
+      }
+
+      vehicleGrouped[vNo].bookings.push(booking);
+      vehicleGrouped[vNo].totalQuantity += Number(booking.totalQuantity || 0);
+      vehicleGrouped[vNo].totalGrandTotal += Number(booking.grandTotal || 0);
+      vehicleGrouped[vNo].totalHamaliCharge += Number(booking.hamaliCharges || 0);
     });
 
-    // Final response
+    // Convert to array
+    const groupedResult = Object.values(vehicleGrouped);
+
     res.status(200).json({
-      success: true,
-      message: "Bookings fetched successfully.",
-      allGrandTotal,
-      allTotalQuantity,
-      allTotalHamaliCharge,
-      data: bookings,
+      message: "Bookings grouped by vehicle number.",
+      data: groupedResult,
     });
   } catch (error) {
     console.error("Error fetching bookings:", error);
@@ -943,6 +1145,7 @@ const allParcelBookingReport = async (req, res) => {
     });
   }
 };
+
 
 
 const parcelReportSerialNo = async (req, res) => {

@@ -16,7 +16,7 @@ const bookingSchema = new mongoose.Schema(
     lrNumber: { type: String,required:true },             //auto  generate
     adminUniqueId: { type: Number,required:true},         //auto entered
     bookedBy: { type:mongoose.Schema.Types.ObjectId,ref:"Subadmin",required:true},  // auto entered  // employee or subadmin or accountant
-  
+    totalPackages:{type:Number,required:true},
     bookbranchid: {type: mongoose.Schema.Types.ObjectId,ref: "Branch", required: true},
     fromCity: { type: String,required:true },
     toCity: { type: String,required:true },
@@ -103,7 +103,7 @@ const bookingSchema = new mongoose.Schema(
   { timestamps: true }
 );
  
-bookingSchema.index({ grnNumber: 1, adminUniqueId: 1, bookingStatus: 1 });
+bookingSchema.index({ grnNo: 1, adminUniqueId: 1, bookingStatus: 1 });
  
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
