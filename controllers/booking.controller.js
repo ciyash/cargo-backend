@@ -1242,7 +1242,7 @@ const parcelBookingMobileNumber = async (req, res) => {
       query.pickUpBranch = req.user.branchId;
     }
 
-    // Date range filter
+    // Date rang
     if (fromDate && toDate) {
       query.bookingDate = {
         $gte: new Date(`${fromDate}T00:00:00.000Z`),
@@ -1250,7 +1250,7 @@ const parcelBookingMobileNumber = async (req, res) => {
       };
     }
 
-    // Mobile filter based on reportType
+    // Mobile filter based on reportTypeee
     if (mobile && reportType) {
       if (reportType === 'Sender') {
         query.senderMobile = mobile;
@@ -2594,7 +2594,8 @@ const acPartyAccount = async (req, res) => {
 
 
 
-export default {createBooking,
+export default {
+  createBooking,
   getAllBookings,
   getBookingByGrnNo,
   deleteBookings,
