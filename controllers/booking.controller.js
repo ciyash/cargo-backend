@@ -8,7 +8,7 @@ import moment from "moment";
 const generateGrnNumber = async () => {
   const lastBooking = await Booking.findOne().sort({ createdAt: -1 });
   return lastBooking ? lastBooking.grnNo + 1 : 1000;
-};
+};  
  
 const generateLrNumber = async (fromCity, location) => {
   try {
@@ -770,7 +770,7 @@ const receivedBooking = async (req, res) => {
 const cancelBooking = async (req, res) => {
   try {
     const { grnNo } = req.params;
-    const { refundCharge, refundAmount, date } = req.body; // 'date' sent from frontend
+    const { refundCharge, refundAmount, date } = req.body;
 
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -783,18 +783,27 @@ const cancelBooking = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    // Already received
     if (booking.bookingStatus === 4) {
-      return res.status(400).json({ message: "Booking cannot be cancelled. Parcel already received." });
+      return res.status(400).json({
+        message: "Booking cannot be cancelled. Parcel already received.",
+      });
     }
 
-    // Update cancellation details
-    booking.bookingStatus = 5; // '5' = Cancelled
+    // Already cancelled
+    if (booking.bookingStatus === 5) {
+      return res.status(400).json({
+        message: "Booking is already cancelled.",
+      });
+    }
+
+    // ✅ Proceed to cancel
+    booking.bookingStatus = 5; // Cancelled
     booking.cancelByUser = name;
     booking.cancelBranch = branch;
     booking.cancelCity = city;
-    booking.cancelDate = date ? new Date(date) : new Date(); // use frontend date if provided
+    booking.cancelDate = date ? new Date(date) : new Date();
 
-    // Update refund details
     if (refundCharge !== undefined) {
       booking.refundCharge = refundCharge;
     }
@@ -804,73 +813,17 @@ const cancelBooking = async (req, res) => {
 
     await booking.save({ validateBeforeSave: false });
 
-    res.status(200).json({ message: "Booking cancelled successfully", booking });
+    res.status(200).json({
+      message: "Booking cancelled successfully",
+      booking,
+    });
   } catch (error) {
     console.error("Error cancelling booking:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-
 // all booking reports 
-
-
-// const parcelBookingReports = async (req, res) => {
-//   try {
-//     let { fromDate, toDate, fromCity, toCity, bookingStatus } = req.body;
-
-//     // Common query
-//     let query = {};
-
-//     if (fromDate && toDate) {
-//       query.bookingDate = {
-//         $gte: new Date(fromDate + "T00:00:00.000Z"),
-//         $lte: new Date(toDate + "T23:59:59.999Z"),
-//       };
-//     }
-
-//     if (fromCity) query.fromCity = fromCity;
-//     if (toCity) query.toCity = toCity;
-//     if (bookingStatus) query.bookingStatus = Number(bookingStatus);
-
-//     // All possible booking types
-//     const bookingTypes = ["paid", "credit", "toPay", "FOC", "CLR"];
-
-//     const result = {};
-
-//     for (const type of bookingTypes) {
-//       const typeQuery = { ...query, bookingType: type };
-
-//       const bookings = await Booking.find(typeQuery)
-//         .sort({ bookingDate: -1 })
-//         .select('grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo')
-//         .populate({
-//           path: 'bookedBy',
-//           select: 'name'
-//         });
-//       let allGrandTotal = 0;
-//       let allTotalQuantity = 0;
-
-//       bookings.forEach(b => {
-//         allGrandTotal += b.grandTotal || 0;
-//         allTotalQuantity += b.totalQuantity || 0;
-//       });
-
-//       result[type] = {
-//         bookings,
-//         allGrandTotal,
-//         allTotalQuantity
-//       };
-//     }
-
-//     res.status(200).json({
-//       data: result
-//     });
-
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: "Error fetching bookings", error: error.message });
-//   }
-// };
 
 
 const parcelBookingReports = async (req, res) => {
@@ -949,93 +902,6 @@ const parcelBookingReports = async (req, res) => {
 };
 
 
-// const allParcelBookingReport = async (req, res) => {
-//   try {
-//     const {
-//       startDate,
-//       endDate,
-//       fromCity,
-//       toCity,
-//       pickUpBranch,
-//       dropBranch,
-//       bookingStatus,
-//       vehicalNumber,
-//     } = req.body;
-
-//     // Required date checks
-//     if (!startDate || !endDate) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Both startDate and endDate are required.",
-//       });
-//     }
-
-//     if (new Date(startDate) > new Date(endDate)) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "startDate should be before or equal to endDate.",
-//       });
-//     }
-
-//     // Base query
-//     let query = {
-//       bookingDate: {
-//         $gte: new Date(startDate + "T00:00:00.000Z"),
-//         $lte: new Date(endDate + "T23:59:59.999Z"),
-//       },
-//     };
-
-//     // Optional filters
-//     if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
-//     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
-//     if (pickUpBranch) query.pickUpBranchname = { $regex: new RegExp(pickUpBranch, "i") };
-//     if (dropBranch) query.dropBranchname = { $regex: new RegExp(dropBranch, "i") };
-//     if (bookingStatus !== undefined) query.bookingStatus = Number(bookingStatus);
-//     if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") };
-
-//     // Fetch matching bookings
-//     const bookings = await Booking.find(query).select(
-//       "grnNo bookingDate bookingStatus fromCity toCity bookingType pickUpBranchname dropBranchname senderName receiverName totalQuantity grandTotal hamaliCharge"
-//     );
-
-//     if (bookings.length === 0) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "No bookings found matching the criteria.",
-//       });
-//     }
-
-//     // Totals calculation
-//     let allGrandTotal = 0;
-//     let allTotalQuantity = 0;
-//     let allTotalHamaliCharge = 0;
-
-//     bookings.forEach((booking) => {
-//       allGrandTotal += Number(booking.grandTotal || 0);
-//       allTotalQuantity += Number(booking.totalQuantity || 0);
-//       allTotalHamaliCharge += Number(booking.hamaliCharge || 0);
-//     });
-
-//     // Final response
-//     res.status(200).json({
-//       success: true,
-//       message: "Bookings fetched successfully.",
-//       allGrandTotal,
-//       allTotalQuantity,
-//       allTotalHamaliCharge,
-//       data: bookings,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching bookings:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Internal server error.",
-//       error: error.message,
-//     });
-//   }
-// };
-   
-
 const allParcelBookingReport = async (req, res) => {
   try {
     const {
@@ -1091,8 +957,8 @@ const allParcelBookingReport = async (req, res) => {
 
     if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
-    if (pickUpBranch) query.pickUpBranchname = { $regex: new RegExp(pickUpBranch, "i") };
-    if (dropBranch) query.dropBranchname = { $regex: new RegExp(dropBranch, "i") };
+    if (pickUpBranch) query.pickUpBranch = { $regex: new RegExp(pickUpBranch, "i") };
+    if (dropBranch) query.dropBranch = { $regex: new RegExp(dropBranch, "i") };
     if (bookingStatus !== undefined) query.bookingStatus = Number(bookingStatus);
     if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") };
 
@@ -1147,14 +1013,22 @@ const allParcelBookingReport = async (req, res) => {
 };
 
 
-
 const parcelReportSerialNo = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, toCity } = req.body;
 
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized: User data missing" });
+    }
+
     let query = {};
 
-    // Date range filtering
+    // Apply branch filter only if user is an employee
+    if (req.user.role === 'employee') {
+      query.pickUpBranch = req.user.branchId;
+    }
+
+    // Date range filter
     if (fromDate && toDate) {
       query.bookingDate = {
         $gte: new Date(fromDate + "T00:00:00.000Z"),
@@ -1162,28 +1036,86 @@ const parcelReportSerialNo = async (req, res) => {
       };
     }
 
-    // Case-insensitive search for cities
+    // Case-insensitive city filters
     if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
 
-    // Fetch data from the Booking collection
-    const bookings = await Booking.find(query).sort({ bookingDate: 1 });
+    const bookingTypes = ["paid", "credit", "toPay", "FOC", "CLR"];
 
+    const result = {};
+    let finalGrandTotal = 0;
+    let finalTotalPackages = 0;
+    let finalTotalQuantity = 0;
 
-    res.status(200).json(bookings);
+    for (const type of bookingTypes) {
+      const typeQuery = { ...query, bookingType: type };
+
+      const bookings = await Booking.find(typeQuery)
+        .sort({ bookingDate: 1 })
+        .select('grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname totalPackages senderName receiverName packages totalQuantity grandTotal');
+
+      let allGrandTotal = 0;
+      let allTotalPackages = 0;
+      let allTotalQuantity = 0;
+
+      bookings.forEach(b => {
+        allGrandTotal += b.grandTotal || 0;
+        allTotalPackages += b.totalPackages || 0;
+        allTotalQuantity += b.totalQuantity || 0;
+      });
+
+      finalGrandTotal += allGrandTotal;
+      finalTotalPackages += allTotalPackages;
+      finalTotalQuantity += allTotalQuantity;
+
+      result[type] = {
+        bookings,
+        allGrandTotal,
+        allTotalPackages,
+        allTotalQuantity
+      };
+    }
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      finalSummary: {
+        finalGrandTotal,
+        finalTotalPackages,
+        finalTotalQuantity
+      }
+    });
+
   } catch (error) {
     console.error("Error fetching bookings:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
+
+
 const parcelCancelReport = async (req, res) => {
   try {
-    const { fromDate, toDate, fromCity, toCity, bookingType, toPay } = req.body;
+    const { fromDate, toDate, fromCity, toCity, bookingType } = req.body;
 
-    let query = { bookingStatus: 5 }; // 5 = Cancelled
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: User data missing",
+      });
+    }
 
-    // Date range filtering
+    const userRole = req.user.role;
+    const userBranchId = req.user.branchId;
+
+    let query = {
+      bookingStatus: 5, // Cancelled
+    };
+
+    if (userRole === "employee") {
+      query.pickUpBranch = userBranchId;
+    }
+
     if (fromDate && toDate) {
       query.bookingDate = {
         $gte: new Date(`${fromDate}T00:00:00.000Z`),
@@ -1191,31 +1123,65 @@ const parcelCancelReport = async (req, res) => {
       };
     }
 
-    // Case-insensitive city filtering
-    if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
-    if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
-
-    // Booking type filter
-    if (bookingType) query.bookingType = { $regex: new RegExp(bookingType, "i") };
-
-    // Future: Add `toPay` filter if needed
-
-    // Fetch matching bookings
-    const bookings = await Booking.find(query).sort({ bookingDate: 1 });
-
-    if (bookings.length === 0) {
-      return res.status(200).json({ success: true, message: "No cancelled bookings found." });
+    if (fromCity) {
+      query.fromCity = { $regex: new RegExp(fromCity, "i") };
     }
 
-    res.status(200).json({
-      data: bookings
+    if (toCity) {
+      query.toCity = { $regex: new RegExp(toCity, "i") };
+    }
+
+    if (bookingType) {
+      query.bookingType = { $regex: new RegExp(bookingType, "i") };
+    }
+
+    const bookings = await Booking.find(query)
+      .select("bookingDate cancelDate fromCity toCity senderName reciverName totalQuantity grandTotal refundCharge refundAmount cancelByUser")
+      .sort({ bookingDate: 1 });
+
+    let allTotalQuantity = 0;
+    let allGrandTotal = 0;
+
+    const formattedData = bookings.map((booking) => {
+      allTotalQuantity += booking.totalQuantity || 0;
+      allGrandTotal += booking.grandTotal || 0;
+
+      return {
+        bookingDate: booking.bookingDate,
+        cancelDate: booking.cancelDate,
+        fromCity: booking.fromCity,
+        toCity: booking.toCity,
+        senderName: booking.senderName,
+        reciverName: booking.reciverName,
+        totalQuantity: booking.totalQuantity || 0,
+        grandTotal: booking.grandTotal || 0,
+        cancelCharge: booking.refundCharge || 0,
+        refundAmount: booking.refundAmount || 0,
+        cancelBy: booking.cancelByUser || "",
+      };
     });
 
+    return res.status(200).json({
+      success: true,
+      data: formattedData,
+      count: bookings.length,
+      allTotalQuantity,
+      allGrandTotal,
+      message:
+        bookings.length > 0
+          ? "Cancelled bookings fetched successfully."
+          : "No cancelled bookings found.",
+    });
   } catch (error) {
     console.error("Error in parcelCancelReport:", error);
-    res.status(500).json({error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching cancelled bookings.",
+      error: error.message,
+    });
   }
 };
+
 
 
 const parcelBookingSummaryReport = async (req, res) => {
@@ -1260,15 +1226,21 @@ const parcelBookingMobileNumber = async (req, res) => {
     const {
       fromDate,
       toDate,
-      fromCity,
-      toCity,
-      pickUpBranch,
-      dropBranch,
       mobile,
+      bookingType,
+      bookingStatus,
       reportType
     } = req.body;
 
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized: User data missing" });
+    }
+
     let query = {};
+
+    if (req.user.role === 'employee') {
+      query.pickUpBranch = req.user.branchId;
+    }
 
     // Date range filter
     if (fromDate && toDate) {
@@ -1278,38 +1250,32 @@ const parcelBookingMobileNumber = async (req, res) => {
       };
     }
 
-    // From/To City
-    if (fromCity) query.fromCity = new RegExp(`^${fromCity}$`, 'i');
-    if (toCity) query.toCity = new RegExp(`^${toCity}$`, 'i');
-
-    // Pickup/Drop Branch
-    if (pickUpBranch) query.pickUpBranch = new RegExp(`^${pickUpBranch}$`, 'i');
-    if (dropBranch) query.dropBranch = new RegExp(`^${dropBranch}$`, 'i');
-
-    // Mobile filtering logic
+    // Mobile filter based on reportType
     if (mobile && reportType) {
       if (reportType === 'Sender') {
-        query.senderNumber = mobile;
+        query.senderMobile = mobile;
       } else if (reportType === 'Receiver') {
-        query.receiverNumber = mobile;
+        query.receiverMobile = mobile;
       } else if (reportType === 'ALL') {
         query.$or = [
-          { senderNumber: mobile },
-          { receiverNumber: mobile }
+          { senderMobile: mobile },
+          { receiverMobile: mobile }
         ];
       }
     }
 
-    // Fetch only selected fields
+    // Optional filters
+    if (bookingType) query.bookingType = bookingType;
+    if (bookingStatus) query.bookingStatus = bookingStatus;
+
     const bookings = await Booking.find(query).select(
-      "grnNo lrNumber bookingDate fromCity toCity senderName senderMobile receiverName receiverMobile deliveryDate bookingType totalQuantity grandTotal"
+      "grnNo lrNumber bookingDate pickUpBranchname fromCity toCity senderName senderMobile receiverName receiverMobile deliveryDate bookingType totalQuantity grandTotal"
     );
 
     if (!bookings.length) {
       return res.status(200).json({ success: true, message: "No customer bookings found." });
     }
 
-    // Calculate allGrandTotal and allTotalQuantity
     const allGrandTotal = bookings.reduce((sum, b) => sum + (b.grandTotal || 0), 0);
     const allTotalQuantity = bookings.reduce((sum, b) => sum + (b.totalQuantity || 0), 0);
 
@@ -1327,6 +1293,7 @@ const parcelBookingMobileNumber = async (req, res) => {
 };
 
 
+  
 const regularCustomerBooking = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;

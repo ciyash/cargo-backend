@@ -47,10 +47,10 @@ router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)
 
 router.post("/parcel-booking-reports",auth,bookingController.parcelBookingReports)
 router.post("/all-parcel-booking-report",auth,bookingController.allParcelBookingReport)
-router.post("/parcel-report-serialNo",bookingController.parcelReportSerialNo)
-router.post('/parcel-cancel-report',bookingController.parcelCancelReport)
+router.post("/parcel-report-serialNo",auth,bookingController.parcelReportSerialNo)
+router.post('/parcel-cancel-report',auth,bookingController.parcelCancelReport)
 router.post("/parcel-booking-summary-report",bookingController.parcelBookingSummaryReport)
-router.post("/parcel-booking-mobileNumber",bookingController.parcelBookingMobileNumber)
+router.post("/parcel-booking-mobileNumber",auth,bookingController.parcelBookingMobileNumber)
 router.post("/regular-customer-booking",bookingController.regularCustomerBooking)
 
 router.post("/branch-Wise-collection-report",bookingController.branchWiseCollectionReport)
