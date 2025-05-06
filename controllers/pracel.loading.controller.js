@@ -65,128 +65,13 @@ const getParcelByGrnNo = async (req, res) => {
 };
 
 
-// const createParcel = async (req, res) => {
-//   const session = await ParcelLoading.startSession(); // Start a transaction session
-//   session.startTransaction();
-
-//   try {
-//     const {
-//       loadingType,
-//       fromBranch,
-//       toBranch,
-//       senderName,
-//       parcelStatus,
-//       vehicalNumber,
-//       driverName,
-//       driverNo,
-//       fromBookingDate,
-//       toBookingDate,
-//       fromCity,
-//       toCity,
-//       remarks,
-//       grnNo,
-//       lrNumber,
-//     } = req.body;
-
-//     //  Validate required fields
-//     if (
-      
-//       !fromBranch ||
-//       !vehicalNumber ||
-//       !driverName ||
-//       !senderName ||
-//       !driverNo ||
-//       !fromBookingDate ||
-//       !toBookingDate ||
-//       !Array.isArray(grnNo) ||
-//       grnNo.length === 0 ||
-//       !Array.isArray(lrNumber) ||
-//       lrNumber.length === 0
-//     ) {
-//       return res
-//         .status(400)
-//         .json({ message: "All required fields must be provided" });
-//     }
-
-//     //  Ensure that GRN numbers exist in Booking collection before proceeding
-//     const existingBookings = await Booking.find({
-//       grnNo: { $in: grnNo },
-//     }).session(session);
-//     if (existingBookings.length === 0) {
-//       throw new Error("No matching GRN numbers found in Booking collection.");
-//     }
-
-//     const vocherNoUnique = generateVocherNoUnique();
-//     const loadingBy = req.user.id;
-//     const loadingDate = new Date();
-
-//     // Create the parcel record
-//     const parcel = await new ParcelLoading({
-//       loadingType,
-//       vehicalNumber,
-//       parcelStatus,
-//       loadingBy,
-//       senderName,
-//       vocherNoUnique,
-//       fromBranch,
-//       toBranch,
-//       loadingDate,
-//       driverName,
-//       driverNo,
-//       fromBookingDate,
-//       toBookingDate,
-//       fromCity,
-//       toCity,
-//       remarks,
-//       grnNo,
-//       lrNumber,
-//       loadingDate : new Date()
-//     }).save({ session });
-
-//     //  Update all bookings in a single query
-//     const updateResult = await Booking.updateMany(
-//       { grnNo: { $in: grnNo } },
-//       {
-//         $set: {
-//           bookingStatus: 1,
-//           loadingDate: loadingDate,
-//           vehicalNumber: vehicalNumber,
-//           ltDate: new Date(),
-//           ltCity: fromCity,
-//           ltBranch: fromBranch,
-//           ltEmployee: loadingBy
-//         },
-//       },
-//       { session }
-//     );
-    
-
-//     await session.commitTransaction(); //  Commit transaction
-//     res
-//       .status(201)
-//       .json({
-//         message: "Parcel created successfully and bookings updated",
-//         parcel,
-//       });
-//   } catch (error) {
-//     if (session.inTransaction()) {
-//       await session.abortTransaction(); //  Abort transaction only if active
-//     }
-//     console.error("Error creating parcel:", error);
-//     res
-//       .status(500)
-//       .json({ message: "Internal Server Error", error: error.message });
-//   } finally {
-//     session.endSession(); // Always end session
-//   }
-// };
-
 const createParcel = async (req, res) => {
   const session = await ParcelLoading.startSession(); // Start a transaction session
   session.startTransaction();
 
   try {
     const {
+     
       senderName,
       parcelStatus,
       vehicalNumber,
@@ -195,11 +80,16 @@ const createParcel = async (req, res) => {
       remarks,
       grnNo,
       lrNumber,
+      fromCity,
+      toCity,
+      fromBranch
     } = req.body;
 
     //  Validate required fields
     if (
-      
+      !fromCity ||
+      !toCity ||
+      !fromBranch   ||
       !vehicalNumber ||
       !driverName ||
       !driverNo ||
@@ -229,6 +119,9 @@ const createParcel = async (req, res) => {
     const parcel = await new ParcelLoading({
       loadingType:"offload",
       vehicalNumber,
+      fromCity,
+      toCity,
+      fromBranch,
       parcelStatus,
       loadingBy,
       senderName,
@@ -280,6 +173,9 @@ const createParcel = async (req, res) => {
 const createBranchToBranch = async (req, res) => {
   try {
     const {
+      fromCity,
+      toCity,
+      fromBranch,
       lrNumber,
       grnNo,
       vehicalNumber,
@@ -292,6 +188,9 @@ const createBranchToBranch = async (req, res) => {
     const parcel = new ParcelLoading({
       loadingType:"branchLoad",
       vocherNoUnique,
+      fromCity,
+      toCity,
+      fromBranch,
       loadingBy,
       lrNumber,
       grnNo,
@@ -628,8 +527,7 @@ const getBookingsByDateAndBranch = async (req, res) => {
   }
 };
 
-
-const offlineParcelVoucherDetails = async (req, res) => {
+const offlineParcelVoucherDetailsPrint = async (req, res) => {
   try {
     const { fromBookingDate, toBookingDate, vehicalNumber, fromCity, toCity, fromBranch } = req.body;
 
@@ -737,6 +635,99 @@ const offlineParcelVoucherDetails = async (req, res) => {
 };
 
 
+const offlineParcelVoucherDetails = async (req, res) => {
+  try {
+    const { fromDate, toDate, vehicalNumber, fromCity, toCity, fromBranch } = req.body;
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ message: "fromBookingDate and toBookingDate are required!" });
+    }
+
+    const startDate = new Date(fromDate);
+    const endDate = new Date(toDate);
+
+  
+    if (isNaN(startDate) || isNaN(endDate)) {
+      return res.status(400).json({ message: "Invalid date format!" });
+    }
+
+    endDate.setHours(23, 59, 59, 999);
+
+    // Build the query filter
+    const filter = {
+      loadingDate: { $gte: startDate, $lte: endDate }, // Adjust field name if needed
+    };
+
+    if (vehicalNumber) filter.vehicalNumber = vehicalNumber;
+    if (fromCity) filter.fromCity = fromCity;
+    if (toCity) filter.toCity = toCity;
+    if (fromBranch) filter.fromBranch = fromBranch;
+
+    // Fetch parcels from ParcelLoading
+    const parcels = await ParcelLoading.find(filter);
+
+    if (!parcels.length) {
+      return res.status(404).json({ message: "No parcels found in the given date range!" });
+    }
+
+    // Extract all grnNos from the parcels
+    const grnNos = parcels.flatMap((parcel) => parcel.grnNo); // Flatten array
+
+    // Fetch all matching bookings
+    const bookings = await Booking.find({ grnNo: { $in: grnNos } });
+
+    // Initialize overall totals
+    let totalParcels = parcels.length;
+    let totalPackages = 0;
+    let totalCharge = 0;
+
+    // Process parcels
+    const result = parcels.map((parcel) => {
+      // Get matching bookings for this parcel
+      const matchingBookings = bookings.filter((booking) => parcel.grnNo.includes(booking.grnNo));
+
+      // Initialize totals for this parcel
+      let parcelPackages = 0;
+      let parcelCharge = 0;
+
+      // Loop through matched bookings
+      matchingBookings.forEach((booking) => {
+        parcelCharge += booking.grandTotal || 0;
+
+        // Ensure packages exist before iterating
+        if (booking.packages && Array.isArray(booking.packages)) {
+          parcelPackages += booking.packages.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0);
+        }
+      });
+
+      // Update overall totals
+      totalPackages += parcelPackages;
+      totalCharge += parcelCharge;
+
+      return {
+        ...parcel.toObject(),
+        bookingDetails: matchingBookings,
+        parcelPackages, // Total packages for this parcel
+        parcelCharge,   // Total charge for this parcel
+      };
+    });
+
+    // Final response with totalParcels, totalPackages, and totalCharge
+    res.status(200).json({
+      totalParcels,   // Total number of parcels
+      totalPackages,  // Total number of packages across all parcels
+      totalCharge,    // Total charge across all parcels
+      parcels: result // Detailed parcel data
+    });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+//reports
 
 const dispatchedStockReport = async (req, res) => {
   try {

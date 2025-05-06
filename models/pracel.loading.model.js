@@ -17,16 +17,10 @@ const parcelSchema = new mongoose.Schema({
     lrNumber: [{ type: String, required: true }],
     parcelStatus: { type: Number, default: 0 },
     remarks: { type: String, default: "" },
+    fromCity: { type: String, required: true },
+    toCity: [{ type: String, required: true }], 
+    fromBranch: { type: String ,required: true },
 
-// optional
-    // fromBookingDate: { type: Date },
-    // toBookingDate: { type: Date },
-    // fromCity: { type: String },
-    // toCity: [{ type: String}],  
-    // fromBranch: { type: String },
-    // toBranch: { type: String },
-    
-    
 });
 
 export default mongoose.model("ParcelLoading", parcelSchema);
