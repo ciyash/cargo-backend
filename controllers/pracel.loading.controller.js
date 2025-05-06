@@ -640,79 +640,95 @@ const offlineParcelVoucherDetails = async (req, res) => {
     const startDate = new Date(fromBookingDate);
     const endDate = new Date(toBookingDate);
 
-    // Validate date formats
     if (isNaN(startDate) || isNaN(endDate)) {
       return res.status(400).json({ message: "Invalid date format!" });
     }
 
-    // Extend end date to include the full day
     endDate.setHours(23, 59, 59, 999);
 
-    // Build the query filter
-    const filter = {
-      fromBookingDate: { $gte: startDate, $lte: endDate }, // Adjust field name if needed
+    const parcelFilter = {
+      bookingDate: { $gte: startDate, $lte: endDate },
+      bookingStatus: 2,
     };
 
-    if (vehicalNumber) filter.vehicalNumber = vehicalNumber;
-    if (fromCity) filter.fromCity = fromCity;
-    if (toCity) filter.toCity = toCity;
-    if (fromBranch) filter.fromBranch = fromBranch;
+    if (vehicalNumber) parcelFilter.vehicalNumber = vehicalNumber;
+    if (fromCity) parcelFilter.fromCity = fromCity;
+    if (toCity) parcelFilter.toCity = toCity;
+    if (fromBranch) parcelFilter.fromBranch = fromBranch;
 
-    // Fetch parcels from ParcelLoading
-    const parcels = await ParcelLoading.find(filter);
+    const bookings = await Booking.find(parcelFilter);
 
-    if (!parcels.length) {
-      return res.status(404).json({ message: "No parcels found in the given date range!" });
+    if (!bookings.length) {
+      return res.status(404).json({ message: "No bookings found in the given date range!" });
     }
 
-    // Extract all grnNos from the parcels
-    const grnNos = parcels.flatMap((parcel) => parcel.grnNo); // Flatten array
-
-    // Fetch all matching bookings
-    const bookings = await Booking.find({ grnNo: { $in: grnNos } });
-
-    // Initialize overall totals
-    let totalParcels = parcels.length;
+    let totalParcels = bookings.length;
     let totalPackages = 0;
     let totalCharge = 0;
 
-    // Process parcels
-    const result = parcels.map((parcel) => {
-      // Get matching bookings for this parcel
-      const matchingBookings = bookings.filter((booking) => parcel.grnNo.includes(booking.grnNo));
+    const bookingTypeCount = {
+      paid: { count: 0, amount: 0 },
+      toPay: { count: 0, amount: 0 },
+      credit: { count: 0, amount: 0 },
+      others: { count: 0, amount: 0 },
+    };
 
-      // Initialize totals for this parcel
-      let parcelPackages = 0;
-      let parcelCharge = 0;
+    const result = bookings.map((booking) => {
+      const totalQty = booking.packages?.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0) || 0;
+      const grandTotal = booking.grandTotal || 0;
 
-      // Loop through matched bookings
-      matchingBookings.forEach((booking) => {
-        parcelCharge += booking.grandTotal || 0;
+      totalPackages += totalQty;
+      totalCharge += grandTotal;
 
-        // Ensure packages exist before iterating
-        if (booking.packages && Array.isArray(booking.packages)) {
-          parcelPackages += booking.packages.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0);
-        }
-      });
+      const type = (booking.bookingType || '').toLowerCase();
 
-      // Update overall totals
-      totalPackages += parcelPackages;
-      totalCharge += parcelCharge;
+      if (type === 'paid') {
+        bookingTypeCount.paid.count += 1;
+        bookingTypeCount.paid.amount += grandTotal;
+      } else if (type === 'topay' || type === 'to pay') {
+        bookingTypeCount.toPay.count += 1;
+        bookingTypeCount.toPay.amount += grandTotal;
+      } else if (type === 'credit') {
+        bookingTypeCount.credit.count += 1;
+        bookingTypeCount.credit.amount += grandTotal;
+      } else {
+        bookingTypeCount.others.count += 1;
+        bookingTypeCount.others.amount += grandTotal;
+      }
 
       return {
-        ...parcel.toObject(),
-        bookingDetails: matchingBookings,
-        parcelPackages, // Total packages for this parcel
-        parcelCharge,   // Total charge for this parcel
+        fromCity: booking.fromCity,
+        pickUpBranchname: booking.pickUpBranchname || '',
+        toCity: booking.toCity,
+        dropBranchname: booking.dropBranchname || '',
+        grnNo: booking.grnNo,
+        bookingDate: booking.bookingDate,
+        lrNumber: booking.lrNumber,
+        vehicalNumber: booking.vehicalNumber,
+        senderName: booking.senderName,
+        receiverName: booking.receiverName,
+        receiverMobile: booking.receiverMobile,
+        packageDetails: booking.packages || [],
+        totalQuantity: totalQty,
+        grandTotal,
+        bookingType: booking.bookingType,
       };
     });
 
-    // Final response with totalParcels, totalPackages, and totalCharge
+    const bookingTypeTable = [
+      { category: 'Paid', total: bookingTypeCount.paid.count, amount: bookingTypeCount.paid.amount },
+      { category: 'ToPay', total: bookingTypeCount.toPay.count, amount: bookingTypeCount.toPay.amount },
+      { category: 'Credit', total: bookingTypeCount.credit.count, amount: bookingTypeCount.credit.amount },
+      { category: 'Others', total: bookingTypeCount.others.count, amount: bookingTypeCount.others.amount },
+      { category: 'Total', total: totalParcels, amount: totalCharge },
+    ];
+
     res.status(200).json({
-      totalParcels,   // Total number of parcels
-      totalPackages,  // Total number of packages across all parcels
-      totalCharge,    // Total charge across all parcels
-      parcels: result // Detailed parcel data
+      totalParcels,
+      totalPackages,
+      totalCharge,
+      bookingTypeTable,
+      parcels: result,
     });
 
   } catch (error) {
@@ -720,7 +736,7 @@ const offlineParcelVoucherDetails = async (req, res) => {
   }
 };
 
-//reports
+
 
 const dispatchedStockReport = async (req, res) => {
   try {

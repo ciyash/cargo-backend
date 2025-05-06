@@ -38,6 +38,8 @@ router.patch("/:id",bookingController.updateBookings)
 router.patch("/grnNoUnique/:grnNoUnique",bookingController.updateGRNBookings)
  
 router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
+
+router.post("/unreceived-booking",bookingController.unReceivedBookings)
   
 router.post("/receivedBooking",auth,bookingController.receivedBooking)
 

@@ -8,7 +8,7 @@ const adminSchema = new mongoose.Schema(
     email: { type: String, required: true },
     password: { type: String, required: true },
     role: { type: String, enum: ["admin","subadmin", "employee","accountant","superviser","driver"], required: true },
-    companyName:{type:String,default:""},
+    companyName:{type:String,default:"Sree Kaleswari Logistics"},
     address:{type:String},
     ipAddress: { type: String },
     username: { type: String},

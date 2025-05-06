@@ -728,6 +728,48 @@ const getUsersBySearch = async (req, res) => {
   }
 };
 
+const unReceivedBookings = async (req, res) => {
+  try {
+    const { fromDate, toDate, fromCity, toCity, fromBranch, toBranch } = req.body;
+    
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ message: "fromDate and toDate are required!" });
+    }
+
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999); // Ensure the full day is included
+
+    // Build query for unreceived bookings with bookingStatus === 2
+    const query = {
+      bookingDate: { $gte: start, $lte: end },
+      bookingStatus: 2 // Only bookings with status 2 (e.g., "Unreceived")
+    };
+
+    if (fromCity) query.fromCity = fromCity;
+    if (toCity) query.toCity = toCity;
+    if (fromBranch) query.pickUpBranch = fromBranch;
+    if (toBranch) query.dropBranch = toBranch;
+
+    // Fetch unreceived bookings
+    const bookings = await Booking.find(query); // Assuming `Booking` is your Mongoose model
+
+    // Check if no bookings were found
+    if (bookings.length === 0) {
+      return res.status(404).json({ message: "No unreceived bookings found!" });
+    }
+
+    return res.status(200).json({
+      data: bookings
+    });
+
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+
+
 const receivedBooking = async (req, res) => {
   try {
     const { grnNo } = req.body;
@@ -1292,8 +1334,6 @@ const parcelBookingMobileNumber = async (req, res) => {
   }
 };
 
-
-  
 const regularCustomerBooking = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;
@@ -1341,38 +1381,71 @@ const regularCustomerBooking = async (req, res) => {
 
 const branchWiseCollectionReport = async (req, res) => {
   try {
-    const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;    
+    const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
 
-    // Validate required query parameters
     if (!fromDate || !toDate) {
       return res.status(400).json({ error: "fromDate and toDate are required" });
     }
 
-    // Convert string dates to JavaScript Date objects
     const start = new Date(fromDate);
     const end = new Date(toDate);
-    end.setHours(23, 59, 59, 999); // Ensure the full day is included
+    end.setHours(23, 59, 59, 999);
 
-    // Create a filter object for MongoDB query
     let filter = {
-      bookingDate: { $gte: start, $lte: end }, // Filter by bookingDate range
+      bookingDate: { $gte: start, $lte: end },
     };
 
     if (fromCity) filter.fromCity = fromCity;
     if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
     if (bookedBy) filter.bookedBy = bookedBy;
 
-    // Fetch data from MongoDB collection
-    const reportData = await Booking.find(filter);
+    const reportData = await Booking.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: "$pickUpBranchname",
+          grandTotal: { $sum: "$grandTotal" },
+          cancelAmount: { $sum: "$refundAmount" },
+          totalQuantity: { $sum: "$totalQuantity" },
+          refundCharge: { $sum: "$refundCharge" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          pickupBranchName: "$_id",
+          grandTotal: 1,
+          cancelAmount: 1,
+          totalQuantity: 1,
+          refundCharge: 1,
+        },
+      },
+    ]);
 
     if (reportData.length === 0) {
       return res.status(404).json({ message: "No bookings found." });
     }
-    
 
-    // Send response
-    res.status(200).json(reportData);
+    // Calculate final totals
+    const finalTotals = reportData.reduce(
+      (totals, item) => {
+        totals.finalGrandTotal += item.grandTotal || 0;
+        totals.finalTotalQuantity += item.totalQuantity || 0;
+        totals.finalRefundCharge += item.refundCharge || 0;
+        totals.finalCancelAmount += item.cancelAmount || 0;
+        return totals;
+      },
+      {
+        finalGrandTotal: 0,
+        finalTotalQuantity: 0,
+        finalRefundCharge: 0,
+        finalCancelAmount: 0,
+      }
+    );
+
+    res.status(200).json({ branches: reportData, totals: finalTotals });
   } catch (error) {
+    console.error("Error generating report:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -1380,60 +1453,82 @@ const branchWiseCollectionReport = async (req, res) => {
 
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
-    const { fromDate, toDate, pickUpBranch, fromCity, bookedBy, filter: bookingStatus } = req.body;
-    
-    // Validate required fields
+    const {
+      fromDate,
+      toDate,
+      pickUpBranch,
+      fromCity,
+      bookedBy,
+      filter: bookingStatus
+    } = req.body;
+
     if (!fromDate || !toDate) {
       return res.status(400).json({ error: "fromDate and toDate are required." });
     }
 
-    // Convert dates to JavaScript Date objects
     const start = new Date(fromDate);
     const end = new Date(toDate);
-    
     if (end < start) {
       return res.status(400).json({ error: "toDate must be greater than or equal to fromDate." });
     }
+    end.setHours(23, 59, 59, 999);
 
-    end.setHours(23, 59, 59, 999); // Ensure full-day inclusion
-
-    // Build the filter object for all bookings
+    // Base filters
     let filters = { bookingDate: { $gte: start, $lte: end } };
-
     if (pickUpBranch) filters.pickUpBranch = pickUpBranch;
     if (fromCity) filters.fromCity = fromCity;
     if (bookedBy) filters.bookedBy = bookedBy;
     if (bookingStatus !== undefined) filters.bookingStatus = bookingStatus;
 
-    // Fetch all bookings matching the filters
-    const reportData = await Booking.find(filters);
+    // Aggregate bookings grouped by bookingType and pickupBranchName
+    const reportData = await Booking.aggregate([
+      { $match: filters },
+      {
+        $group: {
+          _id: {
+            bookingType: "$bookingType",
+            pickupBranchName: "$pickUpBranchname"
+          },
+          grandTotal: { $sum: "$grandTotal" },
+          refundCharge: { $sum: "$refundCharge" },
+          refundAmount: { $sum: "$refundAmount" },
+          gst: { $sum: "$gst" }
+        }
+      },
+      {
+        $group: {
+          _id: "$_id.bookingType",
+          branches: {
+            $push: {
+              pickupBranchName: "$_id.pickupBranchName",
+              grandTotal: "$grandTotal",
+              refundCharge: "$refundCharge",
+              refundAmount: "$refundAmount",
+              gst: "$gst"
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          bookingType: "$_id",
+          branches: 1
+        }
+      }
+    ]);
 
-    // Get total count of bookings
-    const totalBookings = reportData.length;
-
-    // Fetch count of canceled bookings (bookingStatus = 5)
-    const canceledBookings = await Booking.countDocuments({ ...filters, bookingStatus: 5 });
-
-    // Check if any records exist
-    if (totalBookings === 0) {
-      return res.status(404).json({ 
-        message: "No bookings found for the given criteria.", 
-        totalBookings: 0, 
-        canceledBookings: 0 
-      });
+    if (!reportData.length) {
+      return res.status(404).json({ message: "No bookings found with the given criteria." });
     }
 
-    // Return response with total and canceled bookings
-    res.status(200).json({
-      totalBookings,
-      canceledBookings,
-      bookings: reportData
-    });
+    res.status(200).json({ data: reportData });
   } catch (error) {
-    console.error("Error fetching parcel branch consolidated report:", error);
+    console.error("Error generating parcel branch consolidated report:", error);
     res.status(500).json({ error: "Internal server error." });
   }
 };
+
 
 // gst report
 
@@ -1816,43 +1911,44 @@ const pendingDeliveryStockReport = async (req, res) => {
 };
 
 
-const parcelStatusDateDifferenceReport = async (req, res) => {
+const parcelStatusDateDifferenceReport = async (req, res) => {  
   try {
-    const { startDate, endDate, fromCity, toCity, bookingStatus } = req.body; // Use req.query for GET requests
+    const { startDate, endDate, fromCity, toCity } = req.body;
 
-    // Validate required parameters
     if (!startDate || !endDate) {
       return res.status(400).json({ message: "startDate and endDate are required" });
     }
 
-    // Convert dates for querying
     const start = new Date(startDate);
     const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999); // Include the full day
+    end.setHours(23, 59, 59, 999); // Include full day
 
-    // Build query
-    let query = { bookingDate: { $gte: start, $lte: end } };
+    let query = {
+      bookingDate: { $gte: start, $lte: end },
+      bookingStatus: 4  
+    };
+
     if (fromCity) query.fromCity = fromCity;
     if (toCity) query.toCity = toCity;
-    if (bookingStatus) query.bookingStatus = bookingStatus;
 
-    // Fetch data
     const bookings = await Booking.find(query).select(
-      "grnNo bookingDate loadingDate unLoadingDate deliveryDate fromCity toCity bookingStatus parcelGstAmount"
+      "grnNo bookingDate loadingDate unloadingDate deliveryDate fromCity toCity bookingStatus parcelGstAmount"
     );
 
     if (bookings.length === 0) {
-      return res.status(404).json({ message: "No bookings found for the given criteria" });
+      return res.status(404).json({ message: "No delivered bookings found for the given criteria" });
     }
 
     res.status(200).json({
       data: bookings,
-      message: "Parcel status date difference report generated successfully"
+      message: "Delivered parcel bookings report generated successfully"
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 const pendingDeliveryLuggageReport = async (req, res) => {
   try {
@@ -2610,6 +2706,7 @@ export default {
   getAllUsers,
   getUsersBySearch,
   getBookingBydate,
+  unReceivedBookings,
   receivedBooking,
   cancelBooking,
 
