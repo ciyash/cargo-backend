@@ -2112,7 +2112,7 @@ const deliveredStockReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryEmployee senderName senderMobile bookingType receiverName packages.packageType packages.quantity parcelGstAmount serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
+        "grnNo lrNumber deliveryEmployee senderName senderMobile bookingType receiverName packages.packageType packages.quantity parcelGstAmount totalPackages serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
       )
       .lean();
 
@@ -2173,6 +2173,7 @@ const deliveredStockReport = async (req, res) => {
   }
 };
 
+
 const pendingDispatchStockReport = async (req, res) => {
   try {
     const { fromCity, toCity, pickUpBranch } = req.body;
@@ -2184,64 +2185,76 @@ const pendingDispatchStockReport = async (req, res) => {
     if (pickUpBranch && pickUpBranch !== "all") query.pickUpBranch = pickUpBranch;
 
     const dispatchReport = await Booking.find(query)
-      .select("grnNo lrNumber packages deliveryEmployee vehicalNumber senderName bookingStatus senderMobile bookingType receiverName hamaliCharge grandTotal")
-      .lean(); // Convert documents to plain objects
+      .select("grnNo lrNumber totalPackages deliveryEmployee vehicalNumber senderName bookingStatus senderMobile bookingType receiverName hamaliCharge grandTotal packages")
+      .lean();
 
-    if (dispatchReport.length === 0) {
+    if (!dispatchReport.length) {
       return res.status(404).json({ message: "No pending deliveries found for the given criteria" });
     }
 
-    // Initialize variables
-    let totalPackages = 0;
+    let allTotalPackages = 0; // renamed here
     let totalGrandTotalAmount = 0;
     let allTotalWeight = 0;
 
-    let bookingTypeData = {
+    const bookingTypeData = {
       paid: [],
       toPay: [],
       credit: [],
       foc: [],
       freeSample: [],
       other: [],
-
     };
 
-    const formattedReport = dispatchReport.map((item) => {
-      const packageCount = item.packages ? item.packages.length : 0;
-      const totalWeight = item.packages ? item.packages.reduce((sum, pkg) => sum + (pkg.weight || 0), 0) : 0;
-      
-      totalPackages += packageCount;
-      totalGrandTotalAmount += item.grandTotal || 0;
-      allTotalWeight += totalWeight;
+    const bookings = dispatchReport.map((item) => {
+      const weight = item.packages?.reduce((sum, pkg) => sum + (pkg.weight || 0), 0) || 0;
 
-      // Organize by bookingType
-      if (item.bookingType === "paid" || item.bookingType === "toPay" || item.bookingType === "credit") {
-        bookingTypeData[item.bookingType].push({
-          lrNumber: item.lrNumber,
-          totalWeight,
-          grandTotal: item.grandTotal || 0,
-        });
+      allTotalPackages += item.totalPackages || 0;
+      totalGrandTotalAmount += item.grandTotal || 0;
+      allTotalWeight += weight;
+
+      const bookingSummary = {
+        lrNumber: item.lrNumber,
+        totalWeight: weight,
+        grandTotal: item.grandTotal || 0,
+      };
+
+      const type = item.bookingType || "other";
+      if (bookingTypeData[type]) {
+        bookingTypeData[type].push(bookingSummary);
+      } else {
+        bookingTypeData.other.push(bookingSummary);
       }
 
       return {
-        ...item,
-        packageCount, // Number of packages
-        packages: undefined, // Remove the full `packages` array
+        _id: item._id,
+        grnNo: item.grnNo,
+        lrNumber: item.lrNumber,
+        bookingType: item.bookingType,
+        senderName: item.senderName,
+        senderMobile: item.senderMobile,
+        receiverName: item.receiverName,
+        grandTotal: item.grandTotal || 0,
+        bookingStatus: item.bookingStatus,
+        vehicalNumber: item.vehicalNumber,
+        deliveryEmployee: item.deliveryEmployee,
+        totalPackages: item.totalPackages || 0,
       };
     });
 
-    return res.status(200).json({ 
-      totalPackages, 
-      totalGrandTotalAmount, 
-      allTotalWeight, 
-      data: formattedReport,
-      bookingType: bookingTypeData
+    return res.status(200).json({
+      bookings,
+      allTotalPackages, // renamed in the response
+      totalGrandTotalAmount,
+      allTotalWeight,
+      bookingType: bookingTypeData,
     });
-
   } catch (error) {
+    console.error("Error in pendingDispatchStockReport:", error);
     return res.status(500).json({ error: error.message });
   }
 };
+
+
 
 const dispatchedMemoReport = async (req, res) => {
   try {
