@@ -1989,134 +1989,6 @@ const pendingDeliveryLuggageReport = async (req, res) => {
   }
 };
 
-// const parcelReceivedStockReport = async (req, res) => {
-//   try {
-//     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch, receiverName } = req.body;
-
-//     if (!fromDate || !toDate) {
-//       return res.status(400).json({ message: "fromDate and toDate are required" });
-//     }
-
-//     const start = new Date(fromDate);
-//     const end = new Date(toDate);
-//     end.setHours(23, 59, 59, 999);
-
-//     let query = {
-//       bookingDate: { $gte: start, $lte: end },
-//       bookingStatus: 4,
-//     };
-
-//     if (fromCity) query.fromCity = fromCity;
-//     if (toCity) query.toCity = toCity;
-//     if (pickUpBranch) query.pickUpBranch = pickUpBranch;
-//     if (dropBranch) query.dropBranch = dropBranch;
-//     if (receiverName) query.receiverName = receiverName;
-
-//     // Fetch required fields
-//     const pendingDeliveries = await Booking.find(query)
-//       .select(
-//         "grnNo lrNumber deliveryDate unloadingDate senderName senderMobile bookingType bookingStatus receiverName"
-//       )
-//       .lean();
-
-//     if (pendingDeliveries.length === 0) {
-//       return res.status(404).json({ message: "No pending deliveries found for the given criteria" });
-//     }
-
-//     let totalGrandTotal = 0;
-//     const updatedDeliveries = pendingDeliveries.map(delivery => {
-//       const grandTotal = delivery.packages?.reduce((sum, pkg) => sum + (pkg.totalPrice || 0), 0) || 0;
-//       totalGrandTotal += grandTotal;
-
-//       return {
-//         ...delivery,
-//         totalPackages: delivery.packages?.length || 0,
-//         grandTotal,
-//       };
-//     });
-
-//     // Compute city-wise paid & to-pay amounts
-//   // Aggregation grouped by bookingType, fromCity, and pickUpBranchname
-// const citywiseAggregation = await Booking.aggregate([
-//   { $match: query },
-//   { $unwind: { path: "$packages", preserveNullAndEmptyArrays: true } },
-//   {
-//     $group: {
-//       _id: {
-//         bookingType: "$bookingType",
-//         fromCity: "$fromCity",
-//         pickupbranchname: "$pickUpBranchname",
-//       },
-//       totalAmount: { $sum: "$packages.totalPrice" },
-//     },
-//   },
-// ]);
-
-// // Transform it to match your required structure
-// const bookingTypeData = {};
-// let finalTotalPaid = 0;
-// let finalTotalToPay = 0;
-
-// citywiseAggregation.forEach(entry => {
-//   const { bookingType, fromCity, pickupbranchname } = entry._id;
-//   const totalAmount = entry.totalAmount;
-
-//   bookingTypeData[bookingType] = {
-//     fromCity,
-//     pickupbranchname,
-//     totalAmount,
-//   };
-
-//   if (bookingType === "paid") {
-//     finalTotalPaid += totalAmount;
-//   } else if (bookingType === "toPay") {
-//     finalTotalToPay += totalAmount;
-//   }
-// });
-
-
-//     // Transform citywiseAggregation to merge bookingType amounts
-//     const mergeCitywiseAggregation = (data) => {
-//       const result = {};
-
-//       data.forEach(entry => {
-//         const { city, branch, bookingType } = entry._id;
-//         const key = `${city}-${branch}`;
-
-//         if (!result[key]) {
-//           result[key] = {
-//             _id: { city, branch },
-//             totalPaid: 0,
-//             totalToPay: 0,
-//             totalCredit: 0
-//           };
-//         }
-
-//         if (bookingType === "paid") {
-//           result[key].totalPaid += entry.totalAmount;
-//         } else if (bookingType === "toPay") {
-//           result[key].totalToPay += entry.totalAmount;
-//         } else if (bookingType === "credit") {
-//           result[key].totalCredit += entry.totalAmount;
-//         }
-//       });
-
-//       return Object.values(result);
-//     };
-
-//     const transformedCitywiseAggregation = mergeCitywiseAggregation(citywiseAggregation);
-
-//     return res.status(200).json({
-//       data: updatedDeliveries,
-//       totalGrandTotal,
-//       citywiseAggregation: transformedCitywiseAggregation,
-//     });
-//   } catch (error) {
-//     return res.status(500).json({ error: error.message });
-//   }
-// };
-
-
 
 const parcelReceivedStockReport = async (req, res) => {
   try {
@@ -2132,7 +2004,7 @@ const parcelReceivedStockReport = async (req, res) => {
 
     let query = {
       bookingDate: { $gte: start, $lte: end },
-      bookingStatus: 4,
+      bookingStatus: 4, // Delivered
     };
 
     if (fromCity) query.fromCity = fromCity;
@@ -2141,39 +2013,80 @@ const parcelReceivedStockReport = async (req, res) => {
     if (dropBranch) query.dropBranch = dropBranch;
     if (receiverName) query.receiverName = receiverName;
 
-    // Fetch required fields
-    const pendingDeliveries = await Booking.find(query)
-      .select(
-        "grnNo lrNumber deliveryDate unloadingDate senderName senderMobile bookingType bookingStatus receiverName packages"
-      )
+    const bookings = await Booking.find(query)
+      .select("grnNo lrNumber deliveryDate unloadingDate senderName senderMobile bookingType bookingStatus receiverName fromCity pickUpBranch packages")
       .lean();
 
-    if (pendingDeliveries.length === 0) {
-      return res.status(404).json({ message: "No pending deliveries found for the given criteria" });
+    if (!bookings.length) {
+      return res.status(404).json({ message: "No deliveries found for the given criteria" });
     }
 
     let totalGrandTotal = 0;
-    const updatedDeliveries = pendingDeliveries.map(delivery => {
+    const updatedDeliveries = [];
+
+    // Initialize bookingType summary for both types
+    const bookingTypeSummary = {
+      paid: {
+        fromCity: '',
+        pickupbranchname: '',
+        totalAmount: 0,
+      },
+      toPay: {
+        fromCity: '',
+        pickupbranchname: '',
+        totalAmount: 0,
+      }
+    };
+
+    let finalTotalTopay = 0;
+    let finalTotalpaid = 0;
+
+    for (const delivery of bookings) {
       const grandTotal = delivery.packages?.reduce((sum, pkg) => sum + (pkg.totalPrice || 0), 0) || 0;
       totalGrandTotal += grandTotal;
 
-      return {
-        ...delivery,
+      updatedDeliveries.push({
+        _id: delivery._id,
+        grnNo: delivery.grnNo,
+        lrNumber: delivery.lrNumber,
+        bookingType: delivery.bookingType,
+        senderName: delivery.senderName,
+        senderMobile: delivery.senderMobile,
+        receiverName: delivery.receiverName,
+        bookingStatus: delivery.bookingStatus,
+        unloadingDate: delivery.unloadingDate,
+        deliveryDate: delivery.deliveryDate,
         totalPackages: delivery.packages?.length || 0,
         grandTotal,
-      };
-    });
+      });
+
+      const type = delivery.bookingType;
+      if (bookingTypeSummary[type]) {
+        if (!bookingTypeSummary[type].fromCity) {
+          bookingTypeSummary[type].fromCity = delivery.fromCity || '';
+        }
+        if (!bookingTypeSummary[type].pickupbranchname) {
+          bookingTypeSummary[type].pickupbranchname = delivery.pickUpBranch || '';
+        }
+        bookingTypeSummary[type].totalAmount += grandTotal;
+      }
+
+      if (type === 'toPay') finalTotalTopay += grandTotal;
+      if (type === 'paid') finalTotalpaid += grandTotal;
+    }
 
     return res.status(200).json({
       data: updatedDeliveries,
       totalGrandTotal,
+      bookingType: bookingTypeSummary,
+      finalTotalTopay,
+      finalTotalpaid,
     });
   } catch (error) {
+    console.error("Error in parcelReceivedStockReport:", error);
     return res.status(500).json({ error: error.message });
   }
 };
-
-
 
 const deliveredStockReport = async (req, res) => {
   try {
@@ -2199,7 +2112,7 @@ const deliveredStockReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryEmployee senderName senderMobile bookingType receiverName packages parcelGstAmount serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
+        "grnNo lrNumber deliveryEmployee senderName senderMobile bookingType receiverName packages.packageType packages.quantity parcelGstAmount serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
       )
       .lean();
 
