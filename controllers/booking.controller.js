@@ -1768,18 +1768,15 @@ const pendingDeliveryStockReport = async (req, res) => {
   try {
     const { fromCity, toCity, pickUpBranch, dropBranch } = req.body;
 
-    // Define filters based on conditions
+    // Define filters
     const isFromCityAll = fromCity === 'all' || !fromCity;
     const isToCityAll = toCity === 'all' || !toCity;
     const isPickUpBranchAll = pickUpBranch === 'all' || !pickUpBranch;
     const isDropBranchAll = dropBranch === 'all' || !dropBranch;
 
-    // Build query for pending deliveries
+    // Base query for pending deliveries
     const query = {
-      $or: [
-        { bookingStatus: 2 },
-        { deliveryDate: null },
-      ],
+      $or: [{ bookingStatus: 2 }, { deliveryDate: null }],
     };
 
     if (!isFromCityAll) query.fromCity = fromCity;
@@ -1787,11 +1784,9 @@ const pendingDeliveryStockReport = async (req, res) => {
     if (!isPickUpBranchAll) query.pickUpBranch = pickUpBranch;
     if (!isDropBranchAll) query.dropBranch = dropBranch;
 
-    // Fetch raw booking data and count
     const bookings = await Booking.find(query).lean();
     const bookingRecords = bookings.length;
 
-    // Aggregation pipeline for totals and booking type-wise data
     const [result] = await Booking.aggregate([
       { $match: query },
       {
@@ -1820,20 +1815,21 @@ const pendingDeliveryStockReport = async (req, res) => {
       },
     ]);
 
-    // Process aggregation results
-    const totalData = result.totalData[0] || { totalRecords: 0, totalQuantity: 0, grandTotalSum: 0 };
-    const byBookingTypeRaw = result.byBookingType || [];
+    const totalData = result.totalData[0] || {
+      totalRecords: 0,
+      totalQuantity: 0,
+      grandTotalSum: 0,
+    };
 
-    // Define case-sensitive booking types
+    const byBookingTypeRaw = result.byBookingType || [];
     const bookingTypes = ['credit', 'toPay', 'paid', 'foc', 'Free Sample'];
 
-    // Format byBookingType data (case-sensitive)
     const byBookingType = {};
     bookingTypes.forEach(type => {
       const data = byBookingTypeRaw.find(item => item._id === type) || {
         totalRecords: 0,
         totalQuantity: 0,
-        grandTotal: 0,
+        grandTotalSum: 0,
       };
       byBookingType[type] = {
         totalRecords: data.totalRecords,
@@ -1842,9 +1838,9 @@ const pendingDeliveryStockReport = async (req, res) => {
       };
     });
 
-    // Include any additional case variations from the data
+    // Add any other booking types not in predefined list
     byBookingTypeRaw.forEach(item => {
-      if (!bookingTypes.includes(item._id)) {
+      if (!byBookingType[item._id]) {
         byBookingType[item._id] = {
           totalRecords: item.totalRecords,
           totalQuantity: item.totalQuantity,
@@ -1853,12 +1849,13 @@ const pendingDeliveryStockReport = async (req, res) => {
       }
     });
 
-    // Format the bookings with only required fields
     const formattedBookings = bookings.map((booking, index) => ({
       "Sr. No": index + 1,
       "WB No.": booking.eWayBillNo,
       "Manual TicketNo.": booking.receiptNo,
-      "Received Date": booking.bookingDate ? new Date(booking.bookingDate).toLocaleDateString() : '',
+      "Received Date": booking.bookingDate
+        ? new Date(booking.bookingDate).toLocaleDateString()
+        : '',
       "Source": booking.fromCity,
       "Destination": booking.toCity,
       "Consignor": booking.senderName,
@@ -1866,7 +1863,9 @@ const pendingDeliveryStockReport = async (req, res) => {
       "WB Type": booking.bookingType,
       "Amt": booking.grandTotal,
       "Pkgs": booking.totalQuantity,
-      "Days": booking.bookingDate ? Math.floor((new Date() - new Date(booking.bookingDate)) / (1000 * 3600 * 24)) : 0, // Days since booking
+      "Days": booking.bookingDate
+        ? Math.floor((new Date() - new Date(booking.bookingDate)) / (1000 * 3600 * 24))
+        : 0,
     }));
 
     res.status(200).json({
@@ -1886,7 +1885,10 @@ const pendingDeliveryStockReport = async (req, res) => {
           dropBranch: dropBranch || 'all',
         },
       },
-      message: totalData.totalRecords > 0 ? 'Pending delivery stock report generated' : 'No pending deliveries found',
+      message:
+        totalData.totalRecords > 0
+          ? 'Pending delivery stock report generated'
+          : 'No pending deliveries found',
     });
   } catch (error) {
     console.error('Error generating pending delivery report:', error);
@@ -1896,6 +1898,7 @@ const pendingDeliveryStockReport = async (req, res) => {
     });
   }
 };
+
 
 
 const pendingDeliveryLuggageReport = async (req, res) => {
@@ -1986,6 +1989,133 @@ const pendingDeliveryLuggageReport = async (req, res) => {
   }
 };
 
+// const parcelReceivedStockReport = async (req, res) => {
+//   try {
+//     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch, receiverName } = req.body;
+
+//     if (!fromDate || !toDate) {
+//       return res.status(400).json({ message: "fromDate and toDate are required" });
+//     }
+
+//     const start = new Date(fromDate);
+//     const end = new Date(toDate);
+//     end.setHours(23, 59, 59, 999);
+
+//     let query = {
+//       bookingDate: { $gte: start, $lte: end },
+//       bookingStatus: 4,
+//     };
+
+//     if (fromCity) query.fromCity = fromCity;
+//     if (toCity) query.toCity = toCity;
+//     if (pickUpBranch) query.pickUpBranch = pickUpBranch;
+//     if (dropBranch) query.dropBranch = dropBranch;
+//     if (receiverName) query.receiverName = receiverName;
+
+//     // Fetch required fields
+//     const pendingDeliveries = await Booking.find(query)
+//       .select(
+//         "grnNo lrNumber deliveryDate unloadingDate senderName senderMobile bookingType bookingStatus receiverName"
+//       )
+//       .lean();
+
+//     if (pendingDeliveries.length === 0) {
+//       return res.status(404).json({ message: "No pending deliveries found for the given criteria" });
+//     }
+
+//     let totalGrandTotal = 0;
+//     const updatedDeliveries = pendingDeliveries.map(delivery => {
+//       const grandTotal = delivery.packages?.reduce((sum, pkg) => sum + (pkg.totalPrice || 0), 0) || 0;
+//       totalGrandTotal += grandTotal;
+
+//       return {
+//         ...delivery,
+//         totalPackages: delivery.packages?.length || 0,
+//         grandTotal,
+//       };
+//     });
+
+//     // Compute city-wise paid & to-pay amounts
+//   // Aggregation grouped by bookingType, fromCity, and pickUpBranchname
+// const citywiseAggregation = await Booking.aggregate([
+//   { $match: query },
+//   { $unwind: { path: "$packages", preserveNullAndEmptyArrays: true } },
+//   {
+//     $group: {
+//       _id: {
+//         bookingType: "$bookingType",
+//         fromCity: "$fromCity",
+//         pickupbranchname: "$pickUpBranchname",
+//       },
+//       totalAmount: { $sum: "$packages.totalPrice" },
+//     },
+//   },
+// ]);
+
+// // Transform it to match your required structure
+// const bookingTypeData = {};
+// let finalTotalPaid = 0;
+// let finalTotalToPay = 0;
+
+// citywiseAggregation.forEach(entry => {
+//   const { bookingType, fromCity, pickupbranchname } = entry._id;
+//   const totalAmount = entry.totalAmount;
+
+//   bookingTypeData[bookingType] = {
+//     fromCity,
+//     pickupbranchname,
+//     totalAmount,
+//   };
+
+//   if (bookingType === "paid") {
+//     finalTotalPaid += totalAmount;
+//   } else if (bookingType === "toPay") {
+//     finalTotalToPay += totalAmount;
+//   }
+// });
+
+
+//     // Transform citywiseAggregation to merge bookingType amounts
+//     const mergeCitywiseAggregation = (data) => {
+//       const result = {};
+
+//       data.forEach(entry => {
+//         const { city, branch, bookingType } = entry._id;
+//         const key = `${city}-${branch}`;
+
+//         if (!result[key]) {
+//           result[key] = {
+//             _id: { city, branch },
+//             totalPaid: 0,
+//             totalToPay: 0,
+//             totalCredit: 0
+//           };
+//         }
+
+//         if (bookingType === "paid") {
+//           result[key].totalPaid += entry.totalAmount;
+//         } else if (bookingType === "toPay") {
+//           result[key].totalToPay += entry.totalAmount;
+//         } else if (bookingType === "credit") {
+//           result[key].totalCredit += entry.totalAmount;
+//         }
+//       });
+
+//       return Object.values(result);
+//     };
+
+//     const transformedCitywiseAggregation = mergeCitywiseAggregation(citywiseAggregation);
+
+//     return res.status(200).json({
+//       data: updatedDeliveries,
+//       totalGrandTotal,
+//       citywiseAggregation: transformedCitywiseAggregation,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ error: error.message });
+//   }
+// };
+
 
 
 const parcelReceivedStockReport = async (req, res) => {
@@ -2034,58 +2164,15 @@ const parcelReceivedStockReport = async (req, res) => {
       };
     });
 
-    // Compute city-wise paid & to-pay amounts
-    const citywiseAggregation = await Booking.aggregate([
-      { $match: query },
-      { $unwind: { path: "$packages", preserveNullAndEmptyArrays: true } },
-      {
-        $group: {
-          _id: { city: "$fromCity", branch: "$pickUpBranchname", bookingType: "$bookingType" },
-          totalAmount: { $sum: "$packages.totalPrice" },
-        },
-      },
-    ]);
-
-    // Transform citywiseAggregation to merge bookingType amounts
-    const mergeCitywiseAggregation = (data) => {
-      const result = {};
-
-      data.forEach(entry => {
-        const { city, branch, bookingType } = entry._id;
-        const key = `${city}-${branch}`;
-
-        if (!result[key]) {
-          result[key] = {
-            _id: { city, branch },
-            totalPaid: 0,
-            totalToPay: 0,
-            totalCredit: 0
-          };
-        }
-
-        if (bookingType === "paid") {
-          result[key].totalPaid += entry.totalAmount;
-        } else if (bookingType === "toPay") {
-          result[key].totalToPay += entry.totalAmount;
-        } else if (bookingType === "credit") {
-          result[key].totalCredit += entry.totalAmount;
-        }
-      });
-
-      return Object.values(result);
-    };
-
-    const transformedCitywiseAggregation = mergeCitywiseAggregation(citywiseAggregation);
-
     return res.status(200).json({
       data: updatedDeliveries,
       totalGrandTotal,
-      citywiseAggregation: transformedCitywiseAggregation,
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
 };
+
 
 
 const deliveredStockReport = async (req, res) => {
@@ -2184,7 +2271,7 @@ const pendingDispatchStockReport = async (req, res) => {
     if (pickUpBranch && pickUpBranch !== "all") query.pickUpBranch = pickUpBranch;
 
     const dispatchReport = await Booking.find(query)
-      .select("grnNo lrNumber packages deliveryEmployee senderName bookingStatus senderMobile bookingType receiverName hamaliCharge grandTotal")
+      .select("grnNo lrNumber packages deliveryEmployee vehicalNumber senderName bookingStatus senderMobile bookingType receiverName hamaliCharge grandTotal")
       .lean(); // Convert documents to plain objects
 
     if (dispatchReport.length === 0) {
@@ -2200,6 +2287,10 @@ const pendingDispatchStockReport = async (req, res) => {
       paid: [],
       toPay: [],
       credit: [],
+      foc: [],
+      freeSample: [],
+      other: [],
+
     };
 
     const formattedReport = dispatchReport.map((item) => {
