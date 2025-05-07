@@ -103,13 +103,16 @@ const createParcel = async (req, res) => {
         .json({ message: "All required fields must be provided" });
     }
 
-    //  Ensure that GRN numbers exist in Booking collection before proceeding
+
     const existingBookings = await Booking.find({
       grnNo: { $in: grnNo },
     }).session(session);
     if (existingBookings.length === 0) {
       throw new Error("No matching GRN numbers found in Booking collection.");
     }
+
+    
+    const uniqueToCity = [...new Set(toCity.map(city => city.trim().toLowerCase()))];
 
     const vocherNoUnique = generateVocherNoUnique();
     const loadingBy = req.user.id;
@@ -120,7 +123,7 @@ const createParcel = async (req, res) => {
       loadingType:"offload",
       vehicalNumber,
       fromCity,
-      toCity,
+      toCity:uniqueToCity,
       fromBranch,
       parcelStatus,
       loadingBy,
@@ -151,12 +154,7 @@ const createParcel = async (req, res) => {
     
 
     await session.commitTransaction(); //  Commit transaction
-    res
-      .status(201)
-      .json({
-        message: "Parcel created successfully and bookings updated",
-        parcel,
-      });
+    res.status(201).json({ message: "Parcel created successfully and bookings updated", parcel });
   } catch (error) {
     if (session.inTransaction()) {
       await session.abortTransaction(); //  Abort transaction only if active
@@ -184,12 +182,12 @@ const createBranchToBranch = async (req, res) => {
 
     const vocherNoUnique = generateVocherNoUnique();
     const loadingBy = req.user.id;
-
+    const uniqueToCity = [...new Set(toCity.map(city => city.trim().toLowerCase()))];
     const parcel = new ParcelLoading({
       loadingType:"branchLoad",
       vocherNoUnique,
       fromCity,
-      toCity,
+      toCity: uniqueToCity,
       fromBranch,
       loadingBy,
       lrNumber,

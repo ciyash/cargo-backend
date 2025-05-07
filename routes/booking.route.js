@@ -43,7 +43,7 @@ router.post("/unreceived-booking",bookingController.unReceivedBookings)
   
 router.post("/receivedBooking",auth,bookingController.receivedBooking)
 
-router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)
+router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)   
 
 // reports 
 
