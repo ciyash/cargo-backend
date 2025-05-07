@@ -1747,7 +1747,7 @@ const parcelStatusDateDifferenceReport = async (req, res) => {
     if (toCity) query.toCity = toCity;
 
     const bookings = await Booking.find(query).select(
-      "grnNo bookingDate loadingDate unloadingDate deliveryDate deliveryEmployee  fromCity toCity bookingStatus parcelGstAmount"
+      "grnNo lrNumber bookingDate loadingDate unloadingDate deliveryDate deliveryEmployee  fromCity toCity bookingStatus parcelGstAmount"
     );
 
     if (bookings.length === 0) {
@@ -1897,8 +1897,6 @@ const pendingDeliveryStockReport = async (req, res) => {
   }
 };
 
-
-  
 
 const pendingDeliveryLuggageReport = async (req, res) => {
   try {
