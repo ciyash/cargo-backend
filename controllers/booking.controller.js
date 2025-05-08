@@ -2311,7 +2311,7 @@ const pendingDispatchStockReport = async (req, res) => {
     }, {});
 
     return res.status(200).json({
-      bookings, // detailed table rows
+      bookings, 
       summary: bookingSummary, // top grouped summary
       allTotalPackages,
       allTotalWeight,
@@ -2324,7 +2324,6 @@ const pendingDispatchStockReport = async (req, res) => {
 };
 
 
-
 const dispatchedMemoReport = async (req, res) => {
   try {
     const {
@@ -2335,7 +2334,7 @@ const dispatchedMemoReport = async (req, res) => {
       pickUpBranch,
       dropBranch,
       vehicalNumber,
-      bookingStatus, // New field
+      bookingStatus,
     } = req.body;
 
     if (!fromDate || !toDate) {
@@ -2375,42 +2374,81 @@ const dispatchedMemoReport = async (req, res) => {
       credit: [],
     };
 
+    let cityWise = {}; // { cityName: { paidQty, paidAmount, toPayQty, toPayAmount, creditQty, creditAmount } }
+
     for (const item of stockReport) {
       const type = item.bookingType?.toLowerCase();
+      const city = item.toCity || "Unknown";
 
       item.serviceCharge = item.serviceCharge || 0;
       item.hamaliCharge = item.hamaliCharge || 0;
+      const totalAmount = item.grandTotal || 0;
+      const qty = item.totalPackages || 1;
+
+      // Initialize city if not exists
+      if (!cityWise[city]) {
+        cityWise[city] = {
+          paidQty: 0,
+          paidAmount: 0,
+          toPayQty: 0,
+          toPayAmount: 0,
+          creditQty: 0,
+          creditAmount: 0,
+        };
+      }
 
       if (type === "paid") {
         groupedData.paid.push(item);
-        totalPaid.grandTotal += item.grandTotal || 0;
+        totalPaid.grandTotal += totalAmount;
         totalPaid.serviceCharge += item.serviceCharge;
         totalPaid.hamaliCharge += item.hamaliCharge;
+
+        cityWise[city].paidQty += qty;
+        cityWise[city].paidAmount += totalAmount;
+
       } else if (type === "topay" || type === "to pay") {
         groupedData.toPay.push(item);
-        totalToPay.grandTotal += item.grandTotal || 0;
+        totalToPay.grandTotal += totalAmount;
         totalToPay.serviceCharge += item.serviceCharge;
         totalToPay.hamaliCharge += item.hamaliCharge;
+
+        cityWise[city].toPayQty += qty;
+        cityWise[city].toPayAmount += totalAmount;
+
       } else if (type === "credit") {
         groupedData.credit.push(item);
-        totalCredit.grandTotal += item.grandTotal || 0;
+        totalCredit.grandTotal += totalAmount;
         totalCredit.serviceCharge += item.serviceCharge;
         totalCredit.hamaliCharge += item.hamaliCharge;
+
+        cityWise[city].creditQty += qty;
+        cityWise[city].creditAmount += totalAmount;
       }
     }
+
+    const cityWiseArray = Object.entries(cityWise).map(([city, values], index) => ({
+      srNo: index + 1,
+      cityName: city,
+      paidQty: values.paidQty,
+      paidAmount: values.paidAmount,
+      toPayQty: values.toPayQty,
+      toPayAmount: values.toPayAmount,
+      creditForQty: values.creditQty,
+      creditForAmount: values.creditAmount,
+    }));
 
     return res.status(200).json({
       data: groupedData,
       totalPaid,
       totalToPay,
       totalCredit,
+      cityWiseDetails: cityWiseArray,
     });
   } catch (error) {
     console.error("Error in dispatchedMemoReport:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
 
 
 
