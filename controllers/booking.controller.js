@@ -2243,80 +2243,86 @@ const pendingDispatchStockReport = async (req, res) => {
       });
     }
 
-    let allTotalPackages = 0;
-    let totalGrandTotalAmount = 0;
-    let allTotalWeight = 0;
-
     const bookingTypeData = {
+      foc: [],
       paid: [],
       toPay: [],
       credit: [],
-      foc: [],
       freeSample: [],
       other: [],
     };
 
-    const bookings = dispatchReport.map((item) => {
-      const weight =
-        item.packages?.reduce((sum, pkg) => sum + (pkg.weight || 0), 0) || 0;
+    const bookings = [];
+    let allTotalPackages = 0;
+    let allTotalWeight = 0;
+    let totalGrandTotalAmount = 0;
 
+    for (const item of dispatchReport) {
+      const weight = item.packages?.reduce((sum, pkg) => sum + (pkg.weight || 0), 0) || 0;
       allTotalPackages += item.totalPackages || 0;
-      totalGrandTotalAmount += item.grandTotal || 0;
       allTotalWeight += weight;
+      totalGrandTotalAmount += item.grandTotal || 0;
 
-      const bookingSummary = {
+      const bookingType = (item.bookingType || "other").toLowerCase();
+      const bookingRow = {
         lrNumber: item.lrNumber,
         totalWeight: weight,
         grandTotal: item.grandTotal || 0,
       };
 
-      const type = item.bookingType || "other";
-      if (bookingTypeData[type]) {
-        bookingTypeData[type].push(bookingSummary);
+      if (bookingTypeData[bookingType]) {
+        bookingTypeData[bookingType].push(bookingRow);
       } else {
-        bookingTypeData.other.push(bookingSummary);
+        bookingTypeData.other.push(bookingRow);
       }
 
-      return {
-        _id: item._id,
-        grnNo: item.grnNo,
-        lrNumber: item.lrNumber,
-        bookingType: item.bookingType,
-        senderName: item.senderName,
-        fromCity: item.fromCity,
+      // Prepare booking detail row
+      bookings.push({
+        wbNo: item.lrNumber,
+        pkgs: item.totalPackages || 0,
+        destination: item.toCity,
+        sender: item.senderName,
+        receiver: item.receiverName,
+        receiverNo: item.receiverMobile,
+        wbType: bookingType.charAt(0).toUpperCase() + bookingType.slice(1),
+        amount: item.grandTotal || 0,
+        source: item.pickUpBranchname,
+        receiptNo: item.receiptNo || "-",
         bookingDate: item.bookingDate,
-        receiptNo: item.receiptNo,  
-        fromBranch: item.pickUpBranchname,
-        toCity: item.toCity,
-        receiverName: item.receiverName,
-        receiverMobile: item.receiverMobile,
-        grandTotal: item.grandTotal || 0,
-        bookingStatus: item.bookingStatus,
-        vehicalNumber: item.vehicalNumber,
-        deliveryEmployee: item.deliveryEmployee,
-        totalPackages: item.totalPackages || 0,
-      };
-    });
+        days: Math.max(0, Math.floor((new Date() - new Date(item.bookingDate)) / (1000 * 60 * 60 * 24)))
+      });
+    }
 
-    // Add total count fields for each booking type
-    const bookingTypeCounts = {};
-    Object.keys(bookingTypeData).forEach((type) => {
-      bookingTypeCounts[`${type}TotalBookings`] = bookingTypeData[type].length;
-    });
+    const bookingSummary = Object.entries(bookingTypeData).reduce((acc, [type, entries]) => {
+      const noa = entries.reduce((sum, e) => sum + 1, 0);
+      const totalLR = noa;
+      const actualWeight = entries.reduce((sum, e) => sum + (e.totalWeight || 0), 0);
+      const chargeWeight = 0; // Modify if you calculate it elsewhere
+      const totalAmount = entries.reduce((sum, e) => sum + (e.grandTotal || 0), 0);
+
+      acc[type] = {
+        noa,
+        totalLR,
+        actualWeight,
+        chargeWeight,
+        totalAmount
+      };
+      return acc;
+    }, {});
 
     return res.status(200).json({
-      bookings,
+      bookings, // detailed table rows
+      summary: bookingSummary, // top grouped summary
       allTotalPackages,
-      totalGrandTotalAmount,
       allTotalWeight,
-      bookingType: bookingTypeData,
-      ...bookingTypeCounts, // merged total count per type
+      totalGrandTotalAmount
     });
   } catch (error) {
     console.error("Error in pendingDispatchStockReport:", error);
     return res.status(500).json({ error: error.message });
   }
 };
+
 
 
 const dispatchedMemoReport = async (req, res) => {
