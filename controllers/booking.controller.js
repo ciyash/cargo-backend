@@ -2233,7 +2233,7 @@ const pendingDispatchStockReport = async (req, res) => {
 
     const dispatchReport = await Booking.find(query)
       .select(
-        "_id grnNo lrNumber totalPackages fromCity pickUpBranchname toCity deliveryEmployee vehicalNumber senderName bookingStatus receiverMobile bookingType receiverName hamaliCharge grandTotal packages"
+        "_id grnNo lrNumber totalPackages fromCity bookingDate pickUpBranchname toCity deliveryEmployee vehicalNumber senderName bookingStatus receiverMobile bookingType receiverName hamaliCharge grandTotal packages"
       )
       .lean();
 
@@ -2284,6 +2284,7 @@ const pendingDispatchStockReport = async (req, res) => {
         bookingType: item.bookingType,
         senderName: item.senderName,
         fromCity: item.fromCity,
+        bookingDate: item.bookingDate,
         fromBranch: item.pickUpBranchname,
         toCity: item.toCity,
         receiverName: item.receiverName,
@@ -2408,8 +2409,7 @@ const dispatchedMemoReport = async (req, res) => {
 
 const parcelIncomingLuggagesReport = async (req, res) => {
   try {
-    const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } =
-      req.body;
+    const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;
 
     if (!fromDate || !toDate) {
       return res
@@ -2433,7 +2433,7 @@ const parcelIncomingLuggagesReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryEmployee senderName senderMobile loadingDate bookingDate bookingType receiverName receiverMobile packages grandTotal"
+        "grnNo lrNumber deliveryEmployee senderName senderMobile vehicalNumber loadingDate bookingDate bookingType receiverName receiverMobile packages.packageType packages.quantity grandTotal"
       )
       .lean();
 
@@ -2443,15 +2443,25 @@ const parcelIncomingLuggagesReport = async (req, res) => {
         .json({ message: "No stock found for the given criteria" });
     }
 
-    // Calculate total grandTotal
     const totalGrandTotal = stockReport.reduce(
       (sum, record) => sum + (record.grandTotal || 0),
       0
     );
 
+    // Calculate total quantity
+    const totalQuantity = stockReport.reduce((total, record) => {
+      if (Array.isArray(record.packages)) {
+        for (const pkg of record.packages) {
+          total += pkg.quantity || 0;
+        }
+      }
+      return total;
+    }, 0);
+
     res.status(200).json({
       data: stockReport,
       totalGrandTotal,
+      totalQuantity,
     });
   } catch (error) {
     res
@@ -2459,6 +2469,7 @@ const parcelIncomingLuggagesReport = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
+
 
 const getBookingByGrnOrLrNumber = async (req, res) => {
   try {
