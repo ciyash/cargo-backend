@@ -2327,12 +2327,13 @@ const dispatchedMemoReport = async (req, res) => {
       pickUpBranch,
       dropBranch,
       vehicalNumber,
+      bookingStatus, // New field
     } = req.body;
 
     if (!fromDate || !toDate) {
-      return res
-        .status(400)
-        .json({ message: "fromDate and toDate are required" });
+      return res.status(400).json({
+        message: "fromDate and toDate are required",
+      });
     }
 
     const start = new Date(fromDate);
@@ -2341,7 +2342,7 @@ const dispatchedMemoReport = async (req, res) => {
 
     let query = {
       bookingDate: { $gte: start, $lte: end },
-      bookingStatus: 1,
+      bookingStatus: bookingStatus !== undefined ? bookingStatus : 1,
     };
 
     if (fromCity) query.fromCity = fromCity;
@@ -2352,7 +2353,7 @@ const dispatchedMemoReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "_id grnNo lrNumber vehicalNumber toCity serviceCharge hamaliCharge grandTotal senderName receiverName senderMobile loadingDate bookingDate bookingType packages"
+        "_id grnNo lrNumber vehicalNumber toCity serviceCharge hamaliCharge grandTotal senderName receiverName senderMobile loadingDate bookingDate bookingType packages.packageType packages.quantity parcelGstAmount totalPackages"
       )
       .lean();
 
@@ -2360,28 +2361,35 @@ const dispatchedMemoReport = async (req, res) => {
     let totalToPay = { grandTotal: 0, serviceCharge: 0, hamaliCharge: 0 };
     let totalCredit = { grandTotal: 0, serviceCharge: 0, hamaliCharge: 0 };
 
-    const groupedData = stockReport.reduce((acc, item) => {
-      const type = item.bookingType;
+    let groupedData = {
+      paid: [],
+      toPay: [],
+      credit: [],
+    };
 
-      if (!acc[type]) acc[type] = [];
-      acc[type].push(item);
+    for (const item of stockReport) {
+      const type = item.bookingType?.toLowerCase();
+
+      item.serviceCharge = item.serviceCharge || 0;
+      item.hamaliCharge = item.hamaliCharge || 0;
 
       if (type === "paid") {
+        groupedData.paid.push(item);
         totalPaid.grandTotal += item.grandTotal || 0;
-        totalPaid.serviceCharge += item.serviceCharge || 0;
-        totalPaid.hamaliCharge += item.hamaliCharge || 0;
-      } else if (type === "toPay") {
+        totalPaid.serviceCharge += item.serviceCharge;
+        totalPaid.hamaliCharge += item.hamaliCharge;
+      } else if (type === "topay" || type === "to pay") {
+        groupedData.toPay.push(item);
         totalToPay.grandTotal += item.grandTotal || 0;
-        totalToPay.serviceCharge += item.serviceCharge || 0;
-        totalToPay.hamaliCharge += item.hamaliCharge || 0;
+        totalToPay.serviceCharge += item.serviceCharge;
+        totalToPay.hamaliCharge += item.hamaliCharge;
       } else if (type === "credit") {
+        groupedData.credit.push(item);
         totalCredit.grandTotal += item.grandTotal || 0;
-        totalCredit.serviceCharge += item.serviceCharge || 0;
-        totalCredit.hamaliCharge += item.hamaliCharge || 0;
+        totalCredit.serviceCharge += item.serviceCharge;
+        totalCredit.hamaliCharge += item.hamaliCharge;
       }
-
-      return acc;
-    }, {});
+    }
 
     return res.status(200).json({
       data: groupedData,
@@ -2394,6 +2402,9 @@ const dispatchedMemoReport = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+
+
 
 const parcelIncomingLuggagesReport = async (req, res) => {
   try {
