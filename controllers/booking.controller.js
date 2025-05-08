@@ -1099,35 +1099,136 @@ const parcelReportSerialNo = async (req, res) => {
   }
 };
 
+// const parcelCancelReport = async (req, res) => {
+//   try {
+//     const { fromDate, toDate, fromCity, toCity, bookingType } = req.body;
+
+//     if (!req.user) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: User data missing",
+//       });
+//     }
+
+//     const userRole = req.user.role;
+//     const userBranchId = req.user.branchId;
+
+//     let query = {
+//       bookingStatus: 5, // Cancelled
+//     };
+
+//     if (userRole === "employee") {
+//       query.pickUpBranch = userBranchId;
+//     }
+
+//     if (fromDate && toDate) {
+//       query.bookingDate = {
+//         $gte: new Date(`${fromDate}T00:00:00.000Z`),
+//         $lte: new Date(`${toDate}T23:59:59.999Z`),
+//       };
+//     }
+
+//     if (fromCity) {
+//       query.fromCity = { $regex: new RegExp(fromCity, "i") };
+//     }
+
+//     if (toCity) {
+//       query.toCity = { $regex: new RegExp(toCity, "i") };
+//     }
+
+//     if (bookingType) {
+//       query.bookingType = { $regex: new RegExp(bookingType, "i") };
+//     }
+
+//     const bookings = await Booking.find(query)
+//       .select(
+//         "bookingDate cancelDate fromCity toCity senderName reciverName totalQuantity grandTotal refundCharge refundAmount cancelByUser"
+//       )
+//       .sort({ bookingDate: 1 });
+
+//     let allTotalQuantity = 0;
+//     let allGrandTotal = 0;
+
+//     const formattedData = bookings.map((booking) => {
+//       allTotalQuantity += booking.totalQuantity || 0;
+//       allGrandTotal += booking.grandTotal || 0;
+
+//       return {
+//         bookingDate: booking.bookingDate,
+//         cancelDate: booking.cancelDate,
+//         fromCity: booking.fromCity,
+//         toCity: booking.toCity,
+//         senderName: booking.senderName,
+//         reciverName: booking.reciverName,
+//         totalQuantity: booking.totalQuantity || 0,
+//         grandTotal: booking.grandTotal || 0,
+//         cancelCharge: booking.refundCharge || 0,
+//         refundAmount: booking.refundAmount || 0,
+//         cancelBy: booking.cancelByUser || "",
+//       };
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       data: formattedData,
+//       count: bookings.length,
+//       allTotalQuantity,
+//       allGrandTotal,
+//       message:
+//         bookings.length > 0
+//           ? "Cancelled bookings fetched successfully."
+//           : "No cancelled bookings found.",
+//     });
+//   } catch (error) {
+//     console.error("Error in parcelCancelReport:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error while fetching cancelled bookings.",
+//       error: error.message,
+//     });
+//   }
+// };
+
 const parcelCancelReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, toCity, bookingType } = req.body;
 
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: User data missing",
-      });
-    }
+    // if (!req.user) {
+    //   return res.status(401).json({
+    //     success: false,
+    //     message: "Unauthorized: User data missing",
+    //   });
+    // }
 
     const userRole = req.user.role;
     const userBranchId = req.user.branchId;
 
+    // Base query for cancelled bookings
     let query = {
       bookingStatus: 5, // Cancelled
     };
 
-    if (userRole === "employee") {
-      query.pickUpBranch = userBranchId;
-    }
+    // // Limit employee access to their branch
+    // if (userRole === "employee") {
+    //   query.pickUpBranch = userBranchId;
+    // }
 
+    // Validate and apply date range
     if (fromDate && toDate) {
-      query.bookingDate = {
-        $gte: new Date(`${fromDate}T00:00:00.000Z`),
-        $lte: new Date(`${toDate}T23:59:59.999Z`),
-      };
+      const start = new Date(fromDate);
+      const end = new Date(toDate);
+      if (isNaN(start) || isNaN(end)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date format provided.",
+        });
+      }
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      query.bookingDate = { $gte: start, $lte: end };
     }
 
+    // Optional filters
     if (fromCity) {
       query.fromCity = { $regex: new RegExp(fromCity, "i") };
     }
@@ -1140,15 +1241,18 @@ const parcelCancelReport = async (req, res) => {
       query.bookingType = { $regex: new RegExp(bookingType, "i") };
     }
 
+    // Fetch cancelled bookings
     const bookings = await Booking.find(query)
       .select(
-        "bookingDate cancelDate fromCity toCity senderName reciverName totalQuantity grandTotal refundCharge refundAmount cancelByUser"
+        "bookingDate cancelDate fromCity toCity senderName receiverName totalQuantity grandTotal refundCharge refundAmount cancelByUser"
       )
       .sort({ bookingDate: 1 });
 
+    // Totals
     let allTotalQuantity = 0;
     let allGrandTotal = 0;
 
+    // Format data
     const formattedData = bookings.map((booking) => {
       allTotalQuantity += booking.totalQuantity || 0;
       allGrandTotal += booking.grandTotal || 0;
@@ -1159,7 +1263,7 @@ const parcelCancelReport = async (req, res) => {
         fromCity: booking.fromCity,
         toCity: booking.toCity,
         senderName: booking.senderName,
-        reciverName: booking.reciverName,
+        receiverName: booking.receiverName,
         totalQuantity: booking.totalQuantity || 0,
         grandTotal: booking.grandTotal || 0,
         cancelCharge: booking.refundCharge || 0,
@@ -1168,6 +1272,7 @@ const parcelCancelReport = async (req, res) => {
       };
     });
 
+    // Response
     return res.status(200).json({
       success: true,
       data: formattedData,
@@ -1188,6 +1293,8 @@ const parcelCancelReport = async (req, res) => {
     });
   }
 };
+
+
 
 const parcelBookingSummaryReport = async (req, res) => {
   try {
