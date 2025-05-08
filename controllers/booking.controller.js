@@ -2233,7 +2233,7 @@ const pendingDispatchStockReport = async (req, res) => {
 
     const dispatchReport = await Booking.find(query)
       .select(
-        "_id grnNo lrNumber totalPackages fromCity bookingDate pickUpBranchname toCity deliveryEmployee vehicalNumber senderName bookingStatus receiverMobile bookingType receiverName hamaliCharge grandTotal packages"
+        "_id grnNo lrNumber totalPackages fromCity receiptNo bookingDate pickUpBranchname toCity deliveryEmployee vehicalNumber senderName bookingStatus receiverMobile bookingType receiverName hamaliCharge grandTotal packages"
       )
       .lean();
 
@@ -2285,6 +2285,7 @@ const pendingDispatchStockReport = async (req, res) => {
         senderName: item.senderName,
         fromCity: item.fromCity,
         bookingDate: item.bookingDate,
+        receiptNo: item.receiptNo,  
         fromBranch: item.pickUpBranchname,
         toCity: item.toCity,
         receiverName: item.receiverName,
