@@ -1276,19 +1276,22 @@ const parcelCancelReport = async (req, res) => {
     // }
 
     // Validate and apply date range
-    if (fromDate && toDate) {
-      const start = new Date(fromDate);
-      const end = new Date(toDate);
-      if (isNaN(start) || isNaN(end)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid date format provided.",
-        });
-      }
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      query.bookingDate = { $gte: start, $lte: end };
-    }
+    
+    // Validate and apply date range to cancelDate instead of bookingDate
+if (fromDate && toDate) {
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
+  if (isNaN(start) || isNaN(end)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid date format provided.",
+    });
+  }
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  query.cancelDate = { $gte: start, $lte: end }; // 👈 changed this line
+}
+
 
     // Optional filters
     if (fromCity) {
