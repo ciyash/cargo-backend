@@ -760,30 +760,91 @@ const receivedBooking = async (req, res) => {
   }
 };
 
+// const cancelBooking = async (req, res) => {
+//   try {
+//     const { grnNo } = req.params;
+//     const { refundCharge, refundAmount, date } = req.body;
+
+//     if (!req.user) {
+//       return res.status(401).json({ message: "Unauthorized" });
+//     }
+
+//     const { name, branch, city } = req.user;
+
+//     const booking = await Booking.findOne({ grnNo });
+//     if (!booking) {
+//       return res.status(404).json({ message: "Booking not found" });
+//     }
+
+//     // Already received
+//     if (booking.bookingStatus === 4) {
+//       return res.status(400).json({
+//         message: "Booking cannot be cancelled. Parcel already received.",
+//       });
+//     }
+
+//     // Already cancelled
+//     if (booking.bookingStatus === 5) {
+//       return res.status(400).json({
+//         message: "Booking is already cancelled.",
+//       });
+//     }
+
+//     // ✅ Proceed to cancel
+//     booking.bookingStatus = 5; // Cancelled
+//     booking.cancelByUser = name;
+//     booking.cancelBranch = branch;
+//     booking.cancelCity = city;
+//     booking.cancelDate = date ? new Date(date) : new Date();
+
+//     if (refundCharge !== undefined) {
+//       booking.refundCharge = refundCharge;
+//     }
+//     if (refundAmount !== undefined) {
+//       booking.refundAmount = refundAmount;
+//     }
+
+//     await booking.save({ validateBeforeSave: false });
+
+//     res.status(200).json({
+//       message: "Booking cancelled successfully",
+//       booking,
+//     });
+//   } catch (error) {
+//     console.error("Error cancelling booking:", error);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// };
+
+// all booking reports
+
 const cancelBooking = async (req, res) => {
   try {
     const { grnNo } = req.params;
-    const { refundCharge, refundAmount, date } = req.body;
+    const {
+      refundCharge,
+      refundAmount,
+      cancelDate,
+      cancelByUser,
+      cancelBranch,
+      cancelCity
+    } = req.body;
 
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-
-    const { name, branch, city } = req.user;
 
     const booking = await Booking.findOne({ grnNo });
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Already received
     if (booking.bookingStatus === 4) {
       return res.status(400).json({
         message: "Booking cannot be cancelled. Parcel already received.",
       });
     }
 
-    // Already cancelled
     if (booking.bookingStatus === 5) {
       return res.status(400).json({
         message: "Booking is already cancelled.",
@@ -791,11 +852,13 @@ const cancelBooking = async (req, res) => {
     }
 
     // ✅ Proceed to cancel
-    booking.bookingStatus = 5; // Cancelled
-    booking.cancelByUser = name;
-    booking.cancelBranch = branch;
-    booking.cancelCity = city;
-    booking.cancelDate = date ? new Date(date) : new Date();
+    booking.bookingStatus = 5;
+
+    // Use values from req.body if provided, otherwise fallback to req.user
+    booking.cancelByUser = cancelByUser || req.user.name;
+    booking.cancelBranch = cancelBranch || req.user.branch;
+    booking.cancelCity = cancelCity || req.user.city;
+    booking.cancelDate = cancelDate ? new Date(cancelDate) : new Date();
 
     if (refundCharge !== undefined) {
       booking.refundCharge = refundCharge;
@@ -816,7 +879,6 @@ const cancelBooking = async (req, res) => {
   }
 };
 
-// all booking reports
 
 const parcelBookingReports = async (req, res) => {
   try {
@@ -1244,7 +1306,7 @@ const parcelCancelReport = async (req, res) => {
     // Fetch cancelled bookings
     const bookings = await Booking.find(query)
       .select(
-        "bookingDate cancelDate fromCity toCity senderName receiverName totalQuantity grandTotal refundCharge refundAmount cancelByUser"
+        "bookingDate cancelDate fromCity toCity grnNo senderName receiverName totalQuantity grandTotal refundCharge refundAmount cancelByUser"
       )
       .sort({ bookingDate: 1 });
 
@@ -1262,6 +1324,7 @@ const parcelCancelReport = async (req, res) => {
         cancelDate: booking.cancelDate,
         fromCity: booking.fromCity,
         toCity: booking.toCity,
+        grnNo: booking.grnNo,
         senderName: booking.senderName,
         receiverName: booking.receiverName,
         totalQuantity: booking.totalQuantity || 0,
@@ -1293,8 +1356,6 @@ const parcelCancelReport = async (req, res) => {
     });
   }
 };
-
-
 
 const parcelBookingSummaryReport = async (req, res) => {
   try {
@@ -1619,32 +1680,75 @@ const branchWiseCollectionReport = async (req, res) => {
 // };
 
 
+
+// gst report
+
+
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const results = await Booking.aggregate([
       {
         $group: {
           _id: "$pickUpBranchname",
+
+          // Booking
           Paid: {
             $sum: {
-              $cond: [{ $eq: ["$bookingType", "Paid"] }, "$totalAmount", 0]
+              $cond: [{ $and: [{ $eq: ["$bookingType", "Paid"] }, { $eq: ["$isManual", false] }] }, "$totalAmount", 0]
+            }
+          },
+          PaidManual: {
+            $sum: {
+              $cond: [{ $and: [{ $eq: ["$bookingType", "Paid"] }, { $eq: ["$isManual", true] }] }, "$totalAmount", 0]
             }
           },
           ToPay: {
             $sum: {
-              $cond: [{ $eq: ["$bookingType", "ToPay"] }, "$totalAmount", 0]
+              $cond: [{ $and: [{ $eq: ["$bookingType", "ToPay"] }, { $eq: ["$isManual", false] }] }, "$totalAmount", 0]
+            }
+          },
+          ToPayManual: {
+            $sum: {
+              $cond: [{ $and: [{ $eq: ["$bookingType", "ToPay"] }, { $eq: ["$isManual", true] }] }, "$totalAmount", 0]
+            }
+          },
+          CreditFor: {
+            $sum: {
+              $cond: [{ $and: [{ $eq: ["$bookingType", "CreditFor"] }, { $eq: ["$isManual", false] }] }, "$totalAmount", 0]
+            }
+          },
+          CreditForManual: {
+            $sum: {
+              $cond: [{ $and: [{ $eq: ["$bookingType", "CreditFor"] }, { $eq: ["$isManual", true] }] }, "$totalAmount", 0]
             }
           },
           BookingTotal: { $sum: "$totalAmount" },
+
+          // Cancellation
           CancelTotal: {
             $sum: {
               $cond: [{ $eq: ["$status", "Cancelled"] }, "$totalAmount", 0]
             }
           },
-          DeliveryAuto: { $sum: "$deliveryAuto" },
+
+          // Delivery
+          Auto: {
+            $sum: {
+              $cond: [{ $eq: ["$deliveryMode", "Auto"] }, "$deliveryAmount", 0]
+            }
+          },
+          Manual: {
+            $sum: {
+              $cond: [{ $eq: ["$deliveryMode", "Manual"] }, "$deliveryAmount", 0]
+            }
+          },
+
+          // Total & Other Charges
           RefundCharge: { $sum: "$refundCharge" },
           Total: { $sum: "$paidAmount" },
           PendingIndents: { $sum: "$pendingIndents" },
+
+          // GST & Financials
           BaseFare: { $sum: "$baseFare" },
           CGST: { $sum: "$cgst" },
           SGST: { $sum: "$sgst" },
@@ -1656,12 +1760,21 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         $project: {
           _id: 0,
           branchName: "$_id",
+
           Paid: 1,
+          PaidManual: 1,
           ToPay: 1,
+          ToPayManual: 1,
+          CreditFor: 1,
+          CreditForManual: 1,
           BookingTotal: 1,
+
           CancelTotal: 1,
-          DeliveryAuto: 1,
+
+          Auto: 1,
+          Manual: 1,
           RefundCharge: 1,
+
           Total: 1,
           PendingIndents: 1,
           BaseFare: 1,
@@ -1673,7 +1786,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       }
     ]);
 
-    // Calculate grand totals
+    // Grand totals
     const totals = results.reduce((acc, item) => {
       for (const key in item) {
         if (key !== "branchName") {
@@ -1687,13 +1800,13 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       data: results,
       totals
     });
+
   } catch (err) {
-    console.error("Error generating booking summary:", err);
+    console.error("Error generating branch consolidated report:", err);
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
-// gst report
 
 const parcelBranchWiseGSTReport = async (req, res) => {
   try {
