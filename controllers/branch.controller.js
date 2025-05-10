@@ -8,7 +8,8 @@ const generateUniqueId = (city, name) => {
   return `${cityCode}${nameCode}${randomNum}`;
 };
 
-// Create Branch
+
+
 const createBranch = async (req, res) => {
   try {
     const {
@@ -25,32 +26,32 @@ const createBranch = async (req, res) => {
       state,
       country,
       alternateMobile,
-     
     } = req.body;
 
-    
     if (
-      
-      !name ||
-      !branchType ||
-      !city ||
-      !location ||
-      !address ||
-      !phone ||
-      !email ||
-      !pincode ||
-      !state ||
-      !country
+      !name || !branchType || !city || !location || !address ||
+      !phone || !email || !pincode || !state || !country
     ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Required fields are missing!" });
+      return res.status(400).json({
+        success: false,
+        message: "Required fields are missing!",
+      });
+    }
+
+    // ✅ Main branch check logic
+    if (branchType === "main") {
+      const existingMain = await Branch.findOne({ city, branchType: "main" });
+      if (existingMain) {
+        return res.status(400).json({
+          success: false,
+          message: "Main branch already exists in this city",
+        });
+      }
     }
 
     const branchUniqueId = generateUniqueId(city, name);
+    const createdBy = req.user.id;
 
-    const createdBy=req.user.id;
-    
     const newBranch = new Branch({
       branchUniqueId,
       createdBy,
@@ -67,19 +68,16 @@ const createBranch = async (req, res) => {
       state,
       country,
       alternateMobile,
-     
     });
 
     await newBranch.save();
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "Branch created successfully",
-        data: newBranch,
-      });
+    return res.status(201).json({
+      success: true,
+      message: "Branch created successfully",
+      data: newBranch,
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
