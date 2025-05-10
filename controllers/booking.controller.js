@@ -760,63 +760,6 @@ const receivedBooking = async (req, res) => {
   }
 };
 
-// const cancelBooking = async (req, res) => {
-//   try {
-//     const { grnNo } = req.params;
-//     const { refundCharge, refundAmount, date } = req.body;
-
-//     if (!req.user) {
-//       return res.status(401).json({ message: "Unauthorized" });
-//     }
-
-//     const { name, branch, city } = req.user;
-
-//     const booking = await Booking.findOne({ grnNo });
-//     if (!booking) {
-//       return res.status(404).json({ message: "Booking not found" });
-//     }
-
-//     // Already received
-//     if (booking.bookingStatus === 4) {
-//       return res.status(400).json({
-//         message: "Booking cannot be cancelled. Parcel already received.",
-//       });
-//     }
-
-//     // Already cancelled
-//     if (booking.bookingStatus === 5) {
-//       return res.status(400).json({
-//         message: "Booking is already cancelled.",
-//       });
-//     }
-
-//     // ✅ Proceed to cancel
-//     booking.bookingStatus = 5; // Cancelled
-//     booking.cancelByUser = name;
-//     booking.cancelBranch = branch;
-//     booking.cancelCity = city;
-//     booking.cancelDate = date ? new Date(date) : new Date();
-
-//     if (refundCharge !== undefined) {
-//       booking.refundCharge = refundCharge;
-//     }
-//     if (refundAmount !== undefined) {
-//       booking.refundAmount = refundAmount;
-//     }
-
-//     await booking.save({ validateBeforeSave: false });
-
-//     res.status(200).json({
-//       message: "Booking cancelled successfully",
-//       booking,
-//     });
-//   } catch (error) {
-//     console.error("Error cancelling booking:", error);
-//     res.status(500).json({ message: "Internal server error" });
-//   }
-// };
-
-// all booking reports
 
 const cancelBooking = async (req, res) => {
   try {
@@ -1598,217 +1541,200 @@ const branchWiseCollectionReport = async (req, res) => {
   }
 };
 
+
 // const parcelBranchConsolidatedReport = async (req, res) => {
 //   try {
-//     const {
-//       fromDate,
-//       toDate,
-//       pickUpBranch,
-//       fromCity,
-//       bookedBy,
-//       filter: bookingStatus,
-//     } = req.body;
-
-//     if (!fromDate || !toDate) {
-//       return res
-//         .status(400)
-//         .json({ error: "fromDate and toDate are required." });
-//     }
-
-//     const start = new Date(fromDate);
-//     const end = new Date(toDate);
-//     if (end < start) {
-//       return res
-//         .status(400)
-//         .json({ error: "toDate must be greater than or equal to fromDate." });
-//     }
-//     end.setHours(23, 59, 59, 999);
-
-//     // Base filters
-//     let filters = { bookingDate: { $gte: start, $lte: end } };
-//     if (pickUpBranch) filters.pickUpBranch = pickUpBranch;
-//     if (fromCity) filters.fromCity = fromCity;
-//     if (bookedBy) filters.bookedBy = bookedBy;
-//     if (bookingStatus !== undefined) filters.bookingStatus = bookingStatus;
-
-//     // Aggregate bookings grouped by bookingType and pickupBranchName
-//     const reportData = await Booking.aggregate([
-//       { $match: filters },
+//     const results = await Booking.aggregate([
 //       {
 //         $group: {
-//           _id: {
-//             bookingType: "$bookingType",
-//             pickupBranchName: "$pickUpBranchname",
+//           _id: "$pickUpBranchname",
+
+//           // Booking types
+//           paid: {
+//             $sum: {
+//               $cond: [{ $eq: ["$bookingType", "Paid"] }, "$totalAmount", 0]
+//             }
 //           },
-//           grandTotal: { $sum: "$grandTotal" },
+//           toPay: {
+//             $sum: {
+//               $cond: [{ $eq: ["$bookingType", "ToPay"] }, "$totalAmount", 0]
+//             }
+//           },
+//           credit: {
+//             $sum: {
+//               $cond: [{ $eq: ["$bookingType", "Credit"] }, "$totalAmount", 0]
+//             }
+//           },
+//           clr: {
+//             $sum: {
+//               $cond: [{ $eq: ["$bookingType", "CLR"] }, "$totalAmount", 0]
+//             }
+//           },
+//           foc: {
+//             $sum: {
+//               $cond: [{ $eq: ["$bookingType", "FOC"] }, "$totalAmount", 0]
+//             }
+//           },
+
+//           // Count totals based on booking status
+//           totalBookings: {
+//             $sum: {
+//               $cond: [{ $eq: ["$status", 0] }, 1, 0]
+//             }
+//           },
+//           totalDelivery: {
+//             $sum: {
+//               $cond: [{ $eq: ["$status", 4] }, 1, 0]
+//             }
+//           },
+//           totalCancel: {
+//             $sum: {
+//               $cond: [{ $eq: ["$status", 5] }, 1, 0]
+//             }
+//           },
+
 //           refundCharge: { $sum: "$refundCharge" },
-//           refundAmount: { $sum: "$refundAmount" },
-//           gst: { $sum: "$gst" },
-//         },
-//       },
-//       {
-//         $group: {
-//           _id: "$_id.bookingType",
-//           branches: {
-//             $push: {
-//               pickupBranchName: "$_id.pickupBranchName",
-//               grandTotal: "$grandTotal",
-//               refundCharge: "$refundCharge",
-//               refundAmount: "$refundAmount",
-//               gst: "$gst",
-//             },
-//           },
-//         },
+//           refundAmount: { $sum: "$refundAmount" }
+//         }
 //       },
 //       {
 //         $project: {
 //           _id: 0,
-//           bookingType: "$_id",
-//           branches: 1,
-//         },
-//       },
+//           branchName: "$_id",
+//           paid: 1,
+//           toPay: 1,
+//           credit: 1,
+//           clr: 1,
+//           foc: 1,
+//           BookingTotal: {
+//             $add: ["$totalBookings", "$totalDelivery", "$totalCancel"]
+//           },
+//           totalCancel: 1,
+//           totalDelivery: 1,
+//           refundCharge: 1,
+//           refundAmount: 1
+//         }
+//       }
 //     ]);
 
-//     if (!reportData.length) {
-//       return res
-//         .status(404)
-//         .json({ message: "No bookings found with the given criteria." });
-//     }
+//     // Final totals
+//     const totals = results.reduce(
+//       (acc, item) => {
+//         acc.finalPaid += item.paid || 0;
+//         acc.finalToPay += item.toPay || 0;
+//         acc.finalCredit += item.credit || 0;
+//         acc.finalCLR += item.clr || 0;
+//         acc.finalFOC += item.foc || 0;
+//         acc.finalBookingTotal += item.BookingTotal || 0;
+//         acc.finalTotalCancel += item.totalCancel || 0;
+//         acc.finalTotalDelivery += item.totalDelivery || 0;
+//         acc.finalRefundCharge += item.refundCharge || 0;
+//         acc.finalRefundAmount += item.refundAmount || 0;
+//         return acc;
+//       },
+//       {
+//         finalPaid: 0,
+//         finalToPay: 0,
+//         finalCredit: 0,
+//         finalCLR: 0,
+//         finalFOC: 0,
+//         finalBookingTotal: 0,
+//         finalTotalCancel: 0,
+//         finalTotalDelivery: 0,
+//         finalRefundCharge: 0,
+//         finalRefundAmount: 0
+//       }
+//     );
 
-//     res.status(200).json({ data: reportData });
-//   } catch (error) {
-//     console.error("Error generating parcel branch consolidated report:", error);
-//     res.status(500).json({ error: "Internal server error." });
+//     res.status(200).json({
+//       data: results,
+//       ...totals
+//     });
+//   } catch (err) {
+//     console.error("Error generating branch consolidated report:", err);
+//     res.status(500).json({ message: "Server error", error: err.message });
 //   }
 // };
 
 
 
-// gst report
-
-
-const parcelBranchConsolidatedReport = async (req, res) => {
+ const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const results = await Booking.aggregate([
       {
         $group: {
-          _id: "$pickUpBranchname",
+          _id: "$pickUpBranchname",  // Group by pickup branch name
 
-          // Booking
-          Paid: {
-            $sum: {
-              $cond: [{ $and: [{ $eq: ["$bookingType", "Paid"] }, { $eq: ["$isManual", false] }] }, "$totalAmount", 0]
-            }
-          },
-          PaidManual: {
-            $sum: {
-              $cond: [{ $and: [{ $eq: ["$bookingType", "Paid"] }, { $eq: ["$isManual", true] }] }, "$totalAmount", 0]
-            }
-          },
-          ToPay: {
-            $sum: {
-              $cond: [{ $and: [{ $eq: ["$bookingType", "ToPay"] }, { $eq: ["$isManual", false] }] }, "$totalAmount", 0]
-            }
-          },
-          ToPayManual: {
-            $sum: {
-              $cond: [{ $and: [{ $eq: ["$bookingType", "ToPay"] }, { $eq: ["$isManual", true] }] }, "$totalAmount", 0]
-            }
-          },
-          CreditFor: {
-            $sum: {
-              $cond: [{ $and: [{ $eq: ["$bookingType", "CreditFor"] }, { $eq: ["$isManual", false] }] }, "$totalAmount", 0]
-            }
-          },
-          CreditForManual: {
-            $sum: {
-              $cond: [{ $and: [{ $eq: ["$bookingType", "CreditFor"] }, { $eq: ["$isManual", true] }] }, "$totalAmount", 0]
-            }
-          },
-          BookingTotal: { $sum: "$totalAmount" },
-
-          // Cancellation
-          CancelTotal: {
-            $sum: {
-              $cond: [{ $eq: ["$status", "Cancelled"] }, "$totalAmount", 0]
+          // Total number of bookings by grnNo
+          totalBookings: { 
+            $sum: { 
+              $cond: [{ $ne: ["$grnNo", null] }, 1, 0] 
             }
           },
 
-          // Delivery
-          Auto: {
+          // Total deliveries based on deliveryDate being filled
+          totalDeliveries: {
             $sum: {
-              $cond: [{ $eq: ["$deliveryMode", "Auto"] }, "$deliveryAmount", 0]
-            }
-          },
-          Manual: {
-            $sum: {
-              $cond: [{ $eq: ["$deliveryMode", "Manual"] }, "$deliveryAmount", 0]
+              $cond: [{ $ne: ["$deliveryDate", null] }, 1, 0]  // Delivery is counted if `deliveryDate` is not null
             }
           },
 
-          // Total & Other Charges
-          RefundCharge: { $sum: "$refundCharge" },
-          Total: { $sum: "$paidAmount" },
-          PendingIndents: { $sum: "$pendingIndents" },
+          // Total cancellations based on cancelDate being filled
+          totalCancellations: {
+            $sum: {
+              $cond: [{ $ne: ["$cancelDate", null] }, 1, 0]  // Cancellation is counted if `cancelDate` is not null
+            }
+          },
 
-          // GST & Financials
-          BaseFare: { $sum: "$baseFare" },
-          CGST: { $sum: "$cgst" },
-          SGST: { $sum: "$sgst" },
-          IGST: { $sum: "$igst" },
-          Comm: { $sum: "$comm" }
+          // Refunds
+          refundCharge: { $sum: "$refundCharge" },
+          refundAmount: { $sum: "$refundAmount" }
         }
       },
       {
         $project: {
           _id: 0,
           branchName: "$_id",
-
-          Paid: 1,
-          PaidManual: 1,
-          ToPay: 1,
-          ToPayManual: 1,
-          CreditFor: 1,
-          CreditForManual: 1,
-          BookingTotal: 1,
-
-          CancelTotal: 1,
-
-          Auto: 1,
-          Manual: 1,
-          RefundCharge: 1,
-
-          Total: 1,
-          PendingIndents: 1,
-          BaseFare: 1,
-          CGST: 1,
-          SGST: 1,
-          IGST: 1,
-          Comm: 1
+          totalBookings: 1,
+          totalDeliveries: 1,
+          totalCancellations: 1,
+          refundCharge: 1,
+          refundAmount: 1
         }
       }
     ]);
 
-    // Grand totals
-    const totals = results.reduce((acc, item) => {
-      for (const key in item) {
-        if (key !== "branchName") {
-          acc[key] = (acc[key] || 0) + item[key];
-        }
+    // Accumulate overall totals
+    const totals = results.reduce(
+      (acc, item) => {
+        acc.finalTotalBookings += item.totalBookings || 0;
+        acc.finalTotalDeliveries += item.totalDeliveries || 0;
+        acc.finalTotalCancellations += item.totalCancellations || 0;
+        acc.finalRefundCharge += item.refundCharge || 0;
+        acc.finalRefundAmount += item.refundAmount || 0;
+        return acc;
+      },
+      {
+        finalTotalBookings: 0,
+        finalTotalDeliveries: 0,
+        finalTotalCancellations: 0,
+        finalRefundCharge: 0,
+        finalRefundAmount: 0
       }
-      return acc;
-    }, {});
+    );
 
-    return res.status(200).json({
+    res.status(200).json({
+      success: true,
       data: results,
-      totals
+      ...totals
     });
-
   } catch (err) {
     console.error("Error generating branch consolidated report:", err);
-    return res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+
 
 
 const parcelBranchWiseGSTReport = async (req, res) => {

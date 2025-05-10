@@ -26,9 +26,8 @@ const bookingSchema = new mongoose.Schema(
     dropBranchname: { type: String,required:true },
     location: { type: String,require:true},
     dispatchType: { type: String },  
-    bookingType: { type: String,required:true },
+    bookingType: { type: String,enum:["paid","toPay","credit","CLR","FOC"],required:true },
     totalQuantity:{type:Number,required:true},
-   
     packages: { type: [packageSchema], default: [] },  
  
     receiptNo: { type: Number, default: null },
