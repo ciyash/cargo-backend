@@ -2798,17 +2798,14 @@ const collectionSummaryReport = async (req, res) => {
   try {
     const { selectedDate } = req.body;
 
-    // Parse the selectedDate to a proper ISO Date
-    const startDate = moment(selectedDate, "DD-MM-YYYY")
-      .startOf("day")
-      .toDate();
+    const startDate = moment(selectedDate, "DD-MM-YYYY").startOf("day").toDate();
     const endDate = moment(selectedDate, "DD-MM-YYYY").endOf("day").toDate();
 
-    // Query the database to aggregate bookings by bookingType
     const summary = await Booking.aggregate([
       {
         $match: {
           bookingDate: { $gte: startDate, $lte: endDate },
+          bookingType: { $in: ["paid", "toPay"] }, // Only include 'paid' and 'toPay'
         },
       },
       {
@@ -2826,21 +2823,18 @@ const collectionSummaryReport = async (req, res) => {
       },
     ]);
 
-    // Add missing booking types if no bookings are found
-    const bookingTypes = ["paid", "toPay", "credit", "FOC", "CLR"];
+    const bookingTypes = ["paid", "toPay"];
     bookingTypes.forEach((type) => {
       if (!summary.find((item) => item.bookingType === type)) {
         summary.push({ bookingType: type, totalBookings: 0 });
       }
     });
 
-    // Calculate the total bookings for the entire day
     const totalBookingsForDay = summary.reduce(
       (acc, item) => acc + item.totalBookings,
       0
     );
 
-    // Include the totalBookingsForDay in the response
     res.json({
       summary,
       totalBookingsForDay,
@@ -2851,15 +2845,16 @@ const collectionSummaryReport = async (req, res) => {
   }
 };
 
+
 const branchAccount = async (req, res) => {
   try {
-    const { data } = req.body;
+    const { date } = req.body;
 
     const matchStage = {};
 
     // If `data` (date filter) is provided
-    if (data) {
-      const [day, month, year] = data.split("-"); // e.g., "16-04-2025"
+    if (date) {
+      const [day, month, year] = date.split("-"); // e.g., "16-04-2025"
       const start = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
       const end = new Date(`${year}-${month}-${day}T23:59:59.999Z`);
       matchStage.bookingDate = { $gte: start, $lte: end };
