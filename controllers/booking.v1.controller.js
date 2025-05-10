@@ -2741,8 +2741,8 @@ const salesSummaryByBranchWise = async (req, res) => {
           CLR: {
             $sum: { $cond: [{ $eq: ["$bookingType", "CLR"] }, 1, 0] },
           },
-          FOC: {
-            $sum: { $cond: [{ $eq: ["$bookingType", "FOC"] }, 1, 0] },
+          freeSample: {
+            $sum: { $cond: [{ $eq: ["$bookingType", "Free Sample"] }, 1, 0] },
           },
           totalBookings: { $sum: 1 },
         },
@@ -2768,7 +2768,7 @@ const salesSummaryByBranchWise = async (req, res) => {
           toPay: 1,
           paid: 1,
           CLR: 1,
-          FOC: 1,
+          freeSample: 1,
           totalBookings: 1,
           pickUpBranchName: {
             $cond: [

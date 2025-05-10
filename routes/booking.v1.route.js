@@ -1,12 +1,12 @@
 import express from 'express'
-import auth from '../../config/auth.middleware.js'
-
-import bookingController from '../controllers/booking.controller.js'
+import auth from '../config/auth.middleware.js'
+import bookingController from '../controllers/booking.v1.controller.js'
 
  
  
 const router=express.Router()  
  
+router.post("/",auth,bookingController.createBooking)
 
 router.get("/",bookingController.getAllBookings)
  
@@ -27,6 +27,8 @@ router.get("/pages",bookingController.getAllBookingsPages)
  
 router.get("/fromCity/:fromCity/toCity/:toCity/:vehicalNumber",bookingController.getBookingsfromCityTotoCity)
  
+
+ 
 router.post("/get-lrNumber",bookingController.getBookinglrNumber)
  
 router.delete("/:id",bookingController.deleteBookings)
@@ -36,19 +38,21 @@ router.patch("/:id",bookingController.updateBookings)
 router.patch("/grnNoUnique/:grnNoUnique",bookingController.updateGRNBookings)
  
 router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
+
+router.post("/unreceived-booking",bookingController.unReceivedBookings)
   
 router.post("/receivedBooking",auth,bookingController.receivedBooking)
 
-router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)
+router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)   
 
 // reports 
 
-router.post("/parcel-booking-reports",bookingController.parcelBookingReports)
-router.post("/all-parcel-booking-report",bookingController.allParcelBookingReport)
-router.post("/parcel-report-serialNo",bookingController.parcelReportSerialNo)
-router.post('/parcel-cancel-report',bookingController.parcelCancelReport)
+router.post("/parcel-booking-reports",auth,bookingController.parcelBookingReports)
+router.post("/all-parcel-booking-report",auth,bookingController.allParcelBookingReport)
+router.post("/parcel-report-serialNo",auth,bookingController.parcelReportSerialNo)
+router.post('/parcel-cancel-report',auth,bookingController.parcelCancelReport)
 router.post("/parcel-booking-summary-report",bookingController.parcelBookingSummaryReport)
-router.post("/parcel-booking-mobileNumber",bookingController.parcelBookingMobileNumber)
+router.post("/parcel-booking-mobileNumber",auth,bookingController.parcelBookingMobileNumber)
 router.post("/regular-customer-booking",bookingController.regularCustomerBooking)
 
 router.post("/branch-Wise-collection-report",bookingController.branchWiseCollectionReport)
