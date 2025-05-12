@@ -8,10 +8,13 @@ import multiRouter from '../routes/multi.router.js'
 import extraChargeRouter from '../routes/extra.charge.route.js'
 import parcelUnloadingRouter from '../routes/parcel.unloading.route.js'
 
+//company routes  
 import masterRouter from './cf.master.router.js'
 import cfExtraChargeRouter from './cf.extra.charge.router.js'
 import voucherRouter from './cf.voucher.generate.route.js'
 
+// subadmin data  routes
+import allRouter from './all.route.js'
 
 const app=express.Router()
 
@@ -33,7 +36,7 @@ app.use("/voucher-generate",voucherRouter)
 
 // second version 
 
-// app.use("/")
+app.use("/all",allRouter)
 
 
 export default app

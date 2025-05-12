@@ -2,7 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import router from "./routes/index.js";
-import routers from './routes/index.v1.js';
+// import routers from './routes/index.v1.js';
 import cors from "cors";
 
 dotenv.config();  
@@ -16,7 +16,7 @@ app.use(express.json({ limit: "40mb" }));
 app.use(cors());                   
     
 app.use("/", router);   
-app.use("/v1", routers);   
+// app.use("/v1", routers);   
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("mongodb connected successfully"))
