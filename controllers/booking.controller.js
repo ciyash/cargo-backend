@@ -2967,6 +2967,75 @@ const acPartyAccount = async (req, res) => {
   }
 };
 
+
+const statusWiseSummary = async (req, res) => {
+  try {
+    const result = await Booking.aggregate([
+      {
+        $group: {
+          _id: "$pickUpBranchname",
+          booking: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingStatus", 0] }, 1, 0],
+            },
+          },
+          loading: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingStatus", 1] }, 1, 0],
+            },
+          },
+          unloading: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingStatus", 2] }, 1, 0],
+            },
+          },
+          missing: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingStatus", 3] }, 1, 0],
+            },
+          },
+          delivered: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingStatus", 4] }, 1, 0],
+            },
+          },
+          cancelled: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingStatus", 5] }, 1, 0],
+            },
+          },
+          total: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          branch: "$_id",
+          booking: 1,
+          loading: 1,
+          unloading: 1,
+          missing: 1,
+          delivered: 1,
+          cancelled: 1,
+          total: 1,
+        },
+      },
+    ]);
+
+    return res.status(200).json({
+      branchwiseStatus: result,
+    });
+  } catch (error) {
+    console.error("Error in getBranchwiseBookingStatus:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error while fetching booking status.",
+    });
+  }
+};
+
+
+
 export default {
   createBooking,
   getAllBookings,
@@ -3016,4 +3085,5 @@ export default {
   collectionSummaryReport,
   branchAccount,
   acPartyAccount,
+  statusWiseSummary,
 };

@@ -96,9 +96,7 @@ const resetPassword = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
- 
- 
- 
+  
 const signup = async (req, res) => {
   try {
     const { name, username,companyName, address, phone, email, password, branchId, location, documents, role } = req.body;
@@ -301,7 +299,6 @@ const getSubadminsByBranchName = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
- 
  
 const deleteSubadmin = async (req, res) => {
   try {

@@ -76,5 +76,6 @@ router.post("/sales-summary-branchwise",bookingController.salesSummaryByBranchWi
 router.post("/summary-report",bookingController.collectionSummaryReport)
 router.post("/branch-account",bookingController.branchAccount)
 router.post("/acparty-account",bookingController.acPartyAccount)
+router.get("/status-wise-summary",bookingController.statusWiseSummary)
 
 export default router
