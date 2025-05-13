@@ -541,6 +541,80 @@ const getBookingsByDateAndBranch = async (req, res) => {
   }
 };
 
+// const offlineParcelVoucherDetailsPrint = async (req, res) => {
+//   try {
+//     const { vocherNoUnique } = req.params;
+
+//     const parcel = await ParcelLoading.findOne({ vocherNoUnique });
+
+//     if (!parcel) {
+//       return res.status(404).json({ message: "Data not found in parcels!" });
+//     }
+
+//     const grnNos = parcel.grnNo || [];
+
+//     const bookings = await Booking.find(
+//       { grnNo: { $in: grnNos } },
+//       {
+//         fromCity: 1,
+//         grnNo: 1,
+//         lrNumber: 1,
+//         pickUpBranchname: 1,
+//         toCity: 1,
+//         dropBranchname: 1,
+//         senderName: 1,
+//         totalQuantity: 1,
+//         receiverName: 1,
+//         senderMobile: 1,
+//         receiverMobile: 1,
+//         bookingType: 1,
+//         vehicalNumber: 1,
+//         grandTotal: 1,
+//         packages: 1,
+//         _id: 0
+//       }
+//     );
+
+//     let allTotal = 0;
+//     let allQuantity = 0;
+
+//     const formattedBookings = bookings.map(booking => {
+//       // Add to totals
+//       allTotal += Number(booking.grandTotal) || 0;
+//       allQuantity += Number(booking.totalQuantity) || 0;
+
+//       return {
+//         grnNo: booking.grnNo,
+//         lrNumber: booking.lrNumber,
+//         fromCity: booking.fromCity,
+//         pickUpBranchname: booking.pickUpBranchname,
+//         toCity: booking.toCity,
+//         dropBranchname: booking.dropBranchname,
+//         Sender: booking.senderName,
+//         Receiver: booking.receiverName,
+//         senderMobile: booking.senderMobile,
+//         receiverMobile: booking.receiverMobile,
+//         Amount: booking.grandTotal,
+//         bookingType: booking.bookingType,
+//         BusNo: booking.vehicalNumber,
+//         totalQuantity: booking.totalQuantity,
+//         packages: (booking.packages || []).map(pkg => ({
+//           packageType: pkg.packageType,
+//           quantity: pkg.quantity
+//         }))
+//       };
+//     });
+
+//     res.status(200).json({
+//       bookings: formattedBookings,
+//       allTotal,
+//       allQuantity
+//     });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
 const offlineParcelVoucherDetailsPrint = async (req, res) => {
   try {
     const { vocherNoUnique } = req.params;
@@ -553,69 +627,86 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
 
     const grnNos = parcel.grnNo || [];
 
-    const bookings = await Booking.find({ grnNo: { $in: grnNos } });
+    const bookings = await Booking.find(
+      { grnNo: { $in: grnNos } },
+      {
+        fromCity: 1,
+        grnNo: 1,
+        lrNumber: 1,
+        pickUpBranchname: 1,
+        toCity: 1,
+        dropBranchname: 1,
+        senderName: 1,
+        totalQuantity: 1,
+        receiverName: 1,
+        senderMobile: 1,
+        receiverMobile: 1,
+        bookingType: 1,
+        vehicalNumber: 1,
+        grandTotal: 1,
+        packages: 1,
+        _id: 0
+      }
+    );
 
-    const formattedBookings = bookings.map((booking, index) => {
-      let pkgDetails = "";
-   
+    let allTotal = 0;
+    let allQuantity = 0;
 
-      if (Array.isArray(booking.packages)) {
-        // Construct pkgDetails by joining packageType and contains
-        pkgDetails = booking.packages.map(pkg =>
-          `${pkg.packageType || ""} - ${pkg.contains || ""}`
-        ).join(" | ");
+    const bookingTypeSummary = {
+      paid: { totalBookings: 0, grandTotal: 0 },
+      toPay: { totalBookings: 0, grandTotal: 0 },
+      credit: { totalBookings: 0, grandTotal: 0 },
+      CLR: { totalBookings: 0, grandTotal: 0 },
+      FOC: { totalBookings: 0, grandTotal: 0 }
+    };
 
-       
-        parcelContains = booking.packages.map(pkg => pkg.contains).filter(Boolean).join(", ");
+    const formattedBookings = bookings.map(booking => {
+      const bookingTotal = Number(booking.grandTotal) || 0;
+      const bookingQty = Number(booking.totalQuantity) || 0;
+
+      // Add to overall totals
+      allTotal += bookingTotal;
+      allQuantity += bookingQty;
+
+      // Add to bookingType summary
+      const type = booking.bookingType;
+      if (bookingTypeSummary[type]) {
+        bookingTypeSummary[type].totalBookings += 1;
+        bookingTypeSummary[type].grandTotal += bookingTotal;
       }
 
       return {
-        no: index + 1,
-        grnNo: booking.grnNo || "",
-        bookingDate: booking.bookingDate
-          ? new Date(booking.bookingDate).toLocaleString("en-GB", {
-              timeZone: "Asia/Kolkata",
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            })
-          : "",
-        toCity: booking.toCity || "",
-        busNo: parcel.vehicalNumber || "", // from ParcelLoading
-        sender: booking.senderName || "",
-        receiver: booking.receiverName || "",
-        receiverNo: booking.receiverMobile || "",
-        payType: booking.bookingType || "",
-        pkgDetails: pkgDetails,
-      
-        qty: booking.totalQuantity || 0, // Directly using totalQuantity from the Booking schema
-        amount: booking.grandTotal || 0,
-        remarks: booking.remarks || "",
-        receiverSign: "" // Placeholder for signature
+        grnNo: booking.grnNo,
+        lrNumber: booking.lrNumber,
+        fromCity: booking.fromCity,
+        pickUpBranchname: booking.pickUpBranchname,
+        toCity: booking.toCity,
+        dropBranchname: booking.dropBranchname,
+        Sender: booking.senderName,
+        Receiver: booking.receiverName,
+        senderMobile: booking.senderMobile,
+        receiverMobile: booking.receiverMobile,
+        Amount: booking.grandTotal,
+        bookingType: booking.bookingType,
+        BusNo: booking.vehicalNumber,
+        totalQuantity: booking.totalQuantity,
+        packages: (booking.packages || []).map(pkg => ({
+          packageType: pkg.packageType,
+          quantity: pkg.quantity
+        }))
       };
     });
 
     res.status(200).json({
-      vocherNo: vocherNoUnique,
-      fromCity: parcel.fromCity || "",
-      toCity: parcel.toCity || "",
-      vehicalNumber: parcel.vehicalNumber || "",
-      loadingDate: parcel.loadingDate || null,
-      bookingList: formattedBookings,
+      bookings: formattedBookings,
+      allTotal,
+      allQuantity,
+      bookingTypeSummary
     });
-
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-
-
-
-
-
 
 const offlineParcelVoucherDetails = async (req, res) => {
   try {
