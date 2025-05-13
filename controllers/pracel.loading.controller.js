@@ -557,7 +557,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
 
     const formattedBookings = bookings.map((booking, index) => {
       let pkgDetails = "";
-      let parcelContains = "";
+   
 
       if (Array.isArray(booking.packages)) {
         // Construct pkgDetails by joining packageType and contains
@@ -565,7 +565,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
           `${pkg.packageType || ""} - ${pkg.contains || ""}`
         ).join(" | ");
 
-        // Construct parcelContains by joining the contains field of each package
+       
         parcelContains = booking.packages.map(pkg => pkg.contains).filter(Boolean).join(", ");
       }
 
@@ -590,7 +590,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
         receiverNo: booking.receiverMobile || "",
         payType: booking.bookingType || "",
         pkgDetails: pkgDetails,
-        parcelContains: parcelContains,
+      
         qty: booking.totalQuantity || 0, // Directly using totalQuantity from the Booking schema
         amount: booking.grandTotal || 0,
         remarks: booking.remarks || "",
