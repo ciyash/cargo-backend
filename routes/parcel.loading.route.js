@@ -14,6 +14,8 @@ router.get("/:id",parcelController.getParcelById)
 
 router.get("/vocherNoUnique/:vocherNoUnique",parcelController.getParcelVocherNoUnique)
 
+router.get("/voucher-details-print/:vocherNoUnique",parcelController.offlineParcelVoucherDetailsPrint)
+
 router.patch("/:id",parcelController.updateParcel)
   
 router.delete("/:id",parcelController.deleteParcel)
