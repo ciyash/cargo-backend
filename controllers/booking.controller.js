@@ -711,7 +711,7 @@ const unReceivedBookings = async (req, res) => {
     }
 
     return res.status(200).json({
-      data: bookings,
+      UnDelivery: bookings,
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -807,6 +807,7 @@ const receivedBooking = async (req, res) => {
     booking.deliveryEmployee = name;
     booking.receiverName1 = receiverName1;
     booking.receiverMobile1 = receiverMobile1;
+    booking.deliveryBranchName = req.user.branchName || null; 
 
     await booking.save({ validateModifiedOnly: true });
 

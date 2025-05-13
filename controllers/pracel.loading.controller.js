@@ -9,8 +9,12 @@ const getBookingsBetweenDates = async (req, res) => {
   try {
     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
  
-    if (!startDate || !endDate) {
+    if (!startDate || !endDate ) {
       return res.status(400).json({ message: "Start date and end date are required!" });
+    }
+
+       if (!fromCity || !pickUpBranch ) {
+      return res.status(400).json({ message: "FromCity  and pickUpBranch are required!" });
     }
  
     const start = new Date(startDate);
