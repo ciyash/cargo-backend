@@ -442,10 +442,10 @@ const updateBookings = async (req, res) => {
 
 const updateGRNBookings = async (req, res) => {
   try {
-    const { grnNoUnique } = req.params;
+    const { grnNo } = req.params;
     const update = req.body;
 
-    const booking = await Booking.findOneAndUpdate({ grnNoUnique }, update, {
+    const booking = await Booking.findOneAndUpdate({ grnNo }, update, {
       new: true,
       runValidators: true,
     });
@@ -718,11 +718,54 @@ const unReceivedBookings = async (req, res) => {
   }
 };
 
+// const receivedBooking = async (req, res) => {
+//   try {
+//     const { grnNo } = req.body;
+//     const name = req.user?.name; // Ensure req.user is properly populated
+
+//     if (!grnNo) {
+//       return res.status(400).json({ message: "grnNo is required!" });
+//     }
+
+//     if (!name) {
+//       return res
+//         .status(400)
+//         .json({ message: "Delivery employee name is required!" });
+//     }
+
+//     // Find the booking first
+//     const booking = await Booking.findOne({ grnNo });
+
+//     if (!booking) {
+//       return res.status(404).json({ message: "Booking not found!" });
+//     }
+
+//     // Check if the parcel is already received
+//     if (booking.bookingStatus === 4) {
+//       return res.status(400).json({ message: "Parcel already received!" });
+//     }
+
+//     // Update the booking if not already received
+//     booking.bookingStatus = 4;
+//     booking.deliveryDate = new Date();
+//     booking.deliveryEmployee = name;
+
+//     await booking.save({ validateModifiedOnly: true });
+
+//     return res
+//       .status(200)
+//       .json({ message: "Booking received successfully", booking });
+//   } catch (error) {
+//     return res.status(500).json({ error: error.message });
+//   }
+// };
+
 const receivedBooking = async (req, res) => {
   try {
-    const { grnNo } = req.body;
+    const { grnNo, receiverName1, receiverMobile1 } = req.body;
     const name = req.user?.name; // Ensure req.user is properly populated
 
+    // Validate required fields
     if (!grnNo) {
       return res.status(400).json({ message: "grnNo is required!" });
     }
@@ -733,7 +776,13 @@ const receivedBooking = async (req, res) => {
         .json({ message: "Delivery employee name is required!" });
     }
 
-    // Find the booking first
+    if (!receiverName1 || !receiverMobile1) {
+      return res
+        .status(400)
+        .json({ message: "Receiver name and mobile number are required!" });
+    }
+
+    // Find the booking by grnNo
     const booking = await Booking.findOne({ grnNo });
 
     if (!booking) {
@@ -745,10 +794,19 @@ const receivedBooking = async (req, res) => {
       return res.status(400).json({ message: "Parcel already received!" });
     }
 
-    // Update the booking if not already received
+    // Only allow receiving if bookingStatus is 2
+    if (booking.bookingStatus !== 2) {
+      return res.status(400).json({
+        message: "Your parcel is not eligible for receiving (unloading not completed)."
+      });
+    }
+
+    // Update the booking details
     booking.bookingStatus = 4;
     booking.deliveryDate = new Date();
     booking.deliveryEmployee = name;
+    booking.receiverName1 = receiverName1;
+    booking.receiverMobile1 = receiverMobile1;
 
     await booking.save({ validateModifiedOnly: true });
 

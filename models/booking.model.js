@@ -45,6 +45,13 @@ const bookingSchema = new mongoose.Schema(
     receiverMobile: {
       type: Number
     },
+
+    
+    receiverName1: { type: String,default: null },  
+    receiverMobile1: {
+      type: Number,default: null
+    },
+    
     receiverAddress: { type: String },
     receiverGst: { type: String, default: null },
  
@@ -77,6 +84,8 @@ const bookingSchema = new mongoose.Schema(
     deliveryDate:{type:Date,default:null},
     deliveryEmployee: { type: String, default: null },
     deliveryBranchName:{type:String,default:null},
+
+
 
  //last transactions
     ltDate: { type: Date, default: () => new Date() },

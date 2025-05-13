@@ -35,7 +35,7 @@ router.delete("/:id",bookingController.deleteBookings)
  
 router.patch("/:id",bookingController.updateBookings)
  
-router.patch("/grnNoUnique/:grnNoUnique",bookingController.updateGRNBookings)
+router.patch("/grnNo/:grnNo",bookingController.updateGRNBookings)
  
 router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
 
