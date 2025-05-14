@@ -7,6 +7,7 @@ import parcelLoadingRouter from '../routes/parcel.loading.route.js'
 import multiRouter from '../routes/multi.router.js'
 import extraChargeRouter from '../routes/extra.charge.route.js'
 import parcelUnloadingRouter from '../routes/parcel.unloading.route.js'
+import expensiveRouter from '../routes/expensive.route.js'  
 
 //company routes  
 import masterRouter from './cf.master.router.js'
@@ -31,6 +32,7 @@ app.use("/parcel-unloading",parcelUnloadingRouter)
 app.use("/cfmaster",masterRouter)
 app.use("/cfextra-charge",cfExtraChargeRouter)
 app.use("/voucher-generate",voucherRouter)
+app.use("/expensive",expensiveRouter)
 
 
 
