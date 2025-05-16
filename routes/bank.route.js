@@ -1,12 +1,16 @@
 import express from 'express';
-import bankController from '../controllers/bankController.js';
+import bankController from '../controllers/bank.controller.js';
 
 const router = express.Router();
 
-router.post('/banks', bankController.createBank); // Create a bank record
-router.get('/banks', bankController.getAllBanks); // Get all bank records
-router.get('/banks/:id', bankController.getBankById); // Get a single bank record by ID
-router.put('/banks/:id', bankController.updateBank); // Update a bank record by ID
-router.delete('/banks/:id', bankController.deleteBank); // Delete a bank record by ID
+router.post('/create', bankController.createBank); 
+
+router.get('/get', bankController.getAllBanks); 
+
+router.get('/banks/:id', bankController.getBankById); 
+
+router.patch('/banks/:id', bankController.updateBank); 
+
+router.delete('/banks/:id', bankController.deleteBank); 
 
 export default router;

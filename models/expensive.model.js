@@ -1,15 +1,14 @@
 import mongoose from "mongoose";
 
 const ExpenseSchema = new mongoose.Schema({
-  branch: { type: mongoose.Types.ObjectId, ref: "Branch", required: true },
-  date: { type: Date, default: Date.now, required: true },
+  branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", required: true },
+  expenseDate: { type: Date, default: () => new Date() },
   expenseType: { type: String, required: true },
   amount: { type: Number, required: true },
   paidThrough: { type: String, required: true },
-  vendor: { type: String, required: true },
   invoice: { type: String, required: true },
   notes: { type: String, required: true },
-  customerName: { type: String, required: true },
+
 }, {
   timestamps: true,
 });

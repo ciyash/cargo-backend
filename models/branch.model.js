@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 
 const branchSchema = new mongoose.Schema({
-    branchUniqueId:{type:String,required:true},  
+    branchUniqueId:{type:String,required:true}, 
+    openingBalance:{type:Number,require:true,default:0}, 
     createdBy: { type:mongoose.Schema.Types.ObjectId,ref:'Subadmin',required:true},
     branchType:{type:String,enum:["main","normal"],default:"normal"},
     name:{type:String,required:true},

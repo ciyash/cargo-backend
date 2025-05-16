@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 
-// Expense Schema
 const bankSchema = new mongoose.Schema({
   accountType: {
     type: String,
@@ -28,19 +27,19 @@ const bankSchema = new mongoose.Schema({
   },
   ifsc: {
     type: String,
-    required: true
+    
   },
   description: {
-    type: String,
+    type: String, 
     maxlength: 500
   },
   primary: {
     type: Boolean,
-    default: false // Whether the account is primary or not
+    default: false 
   }
 });
 
-// Expense Model
-export default Bank = mongoose.model('Bank', bankSchema);
+
+export default  mongoose.model('Bank', bankSchema);  
 
 

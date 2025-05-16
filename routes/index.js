@@ -8,6 +8,10 @@ import multiRouter from '../routes/multi.router.js'
 import extraChargeRouter from '../routes/extra.charge.route.js'
 import parcelUnloadingRouter from '../routes/parcel.unloading.route.js'
 import expensiveRouter from '../routes/expensive.route.js'  
+import bankRouter from '../routes/bank.route.js'
+import itemRouter from '../routes/item.route.js'
+import vendorRouter from '../routes/vendor.route.js' // Assuming you have a vendor route
+import branchReportRouter from '../routes/branch.report.route.js' // Assuming you have a branch report route
 
 //company routes  
 import masterRouter from './cf.master.router.js'
@@ -33,8 +37,10 @@ app.use("/cfmaster",masterRouter)
 app.use("/cfextra-charge",cfExtraChargeRouter)
 app.use("/voucher-generate",voucherRouter)
 app.use("/expensive",expensiveRouter)
-
-
+app.use("/bank",bankRouter)
+app.use("/item",itemRouter)
+app.use("/vendor",vendorRouter) // Assuming you have a vendor route
+app.use("/branch-report",branchReportRouter) // Assuming you have a branch report route    
 
 // second version 
 

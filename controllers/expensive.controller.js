@@ -1,30 +1,29 @@
 import {  Expense, ExpenseType, Customer,  AccountCat,  AccountSubCat} from '../models/expensive.model.js'; // adjust path if needed
 
 // ─── Expense CRUD ──────────────────────────────────────────────────────────────
+
+
+
 const createExpense = async (req, res) => {
   try {
     const {
-      branch,
-      date,
+      branchId,
+      expenseDate,
       expenseType,
       amount,
       paidThrough,
-      vendor,
       invoice,
-      notes,
-      customerName,
+      notes
     } = req.body;
 
     const newExpense = new Expense({
-      branch,
-      date,
+      branchId,
+      expenseDate: expenseDate ? new Date(expenseDate) : new Date(),
       expenseType,
       amount,
       paidThrough,
-      vendor,
       invoice,
-      notes,
-      customerName,
+      notes
     });
 
     await newExpense.save();

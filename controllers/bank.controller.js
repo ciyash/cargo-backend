@@ -1,16 +1,20 @@
-import Bank from '../models/Bank.js';
+import Bank from '../models/bank.model.js'; 
 
-// Create a new bank record
+
 const createBank = async (req, res) => {
   try {
     const { accountType, accountName, accountCode, currency, accountNumber, bankName, ifsc, description, primary } = req.body;
 
     // Validate required fields
-    if (!accountType || !accountName || !accountCode || !currency || !accountNumber || !bankName || !ifsc) {
+    if (!accountType || !accountName || !accountCode || !currency || !accountNumber || !bankName) {
       return res.status(400).json({ message: 'All required fields must be provided.' });
     }
 
-    // Create a new bank record
+   const existingBank = await Bank.findOne({ accountNumber });
+    if (existingBank) {
+      return res.status(409).json({ message: 'Bank with this account number already exists.' });
+    }
+
     const newBank = new Bank({
       accountType,
       accountName,

@@ -14,6 +14,7 @@ const createBranch = async (req, res) => {
   try {
     const {
       name,
+      openingBalance,
       branchType,
       city,
       location,
@@ -29,7 +30,7 @@ const createBranch = async (req, res) => {
     } = req.body;
 
     if (
-      !name || !branchType || !city || !location || !address ||
+      !name || !openingBalance || !branchType || !city || !location || !address ||
       !phone || !email || !pincode || !state || !country
     ) {
       return res.status(400).json({
@@ -54,6 +55,7 @@ const createBranch = async (req, res) => {
 
     const newBranch = new Branch({
       branchUniqueId,
+      openingBalance,  
       createdBy,
       name,
       branchType,
