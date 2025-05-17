@@ -1531,74 +1531,116 @@ const branchWiseCollectionReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
 
+    /* 1️⃣  basic date validation ----------------------------------------- */
     if (!fromDate || !toDate) {
       return res
         .status(400)
         .json({ error: "fromDate and toDate are required" });
     }
-
     const start = new Date(fromDate);
-    const end = new Date(toDate);
+    const end   = new Date(toDate);
     end.setHours(23, 59, 59, 999);
+    if (isNaN(start) || isNaN(end)) {
+      return res.status(400).json({ error: "Invalid date format" });
+    }
 
-    let filter = {
-      bookingDate: { $gte: start, $lte: end },
+    /* 2️⃣  build match filter ------------------------------------------- */
+    const filter = {
+      bookingDate: { $gte: start, $lte: end }
     };
+    if (fromCity)    filter.fromCity      = fromCity;
+    if (pickUpBranch)filter.pickUpBranch  = pickUpBranch;
+    if (bookedBy)    filter.bookedBy      = bookedBy;
 
-    if (fromCity) filter.fromCity = fromCity;
-    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
-    if (bookedBy) filter.bookedBy = bookedBy;
-
+    /* 3️⃣  aggregation --------------------------------------------------- */
     const reportData = await Booking.aggregate([
       { $match: filter },
+
+      /* A) split normal vs cancel amounts on the fly */
+      {
+        $addFields: {
+          isCancelled: { $eq: ["$bookingStatus", 5] },
+          normalGrand: {
+            $cond: [{ $eq: ["$bookingStatus", 5] }, 0, "$grandTotal"]
+          },
+          cancelGrand: {
+            $cond: [{ $eq: ["$bookingStatus", 5] }, "$grandTotal", 0]
+          }
+        }
+      },
+
+      /* B) group by branch + bookingType */
       {
         $group: {
-          _id: "$pickUpBranchname",
-          grandTotal: { $sum: "$grandTotal" },
-          cancelAmount: { $sum: "$refundAmount" },
-          totalQuantity: { $sum: "$totalQuantity" },
-          refundCharge: { $sum: "$refundCharge" },
-        },
+          _id: {
+            branchName:  "$pickUpBranchname",
+            bookingType: "$bookingType"
+          },
+          bookingCount:   { $sum: 1 },
+          normalGrand:    { $sum: "$normalGrand" },
+          cancelGrand:    { $sum: "$cancelGrand" },
+          totalQty:       { $sum: "$totalQuantity" }
+        }
+      },
+
+      /* C) reshape for easier consumption */
+      {
+        $group: {
+          _id: "$_id.branchName",
+          byType: {
+            $push: {
+              bookingType:   "$_id.bookingType",
+              bookingCount:  "$bookingCount",
+              grandTotal:    "$normalGrand",
+              cancelAmount:  "$cancelGrand",
+              totalQuantity: "$totalQty"
+            }
+          },
+          branchGrandTotal:   { $sum: "$normalGrand" },
+          branchCancelAmount: { $sum: "$cancelGrand" },
+          branchTotalQty:     { $sum: "$totalQty" }
+        }
       },
       {
         $project: {
           _id: 0,
-          pickupBranchName: "$_id",
-          grandTotal: 1,
-          cancelAmount: 1,
-          totalQuantity: 1,
-          refundCharge: 1,
-        },
+          branchName:          "$_id",
+          bookingTypes:        "$byType",
+          branchGrandTotal:    1,
+          branchCancelAmount:  1,
+          branchTotalQty:      1
+        }
       },
+      { $sort: { branchName: 1 } }
     ]);
 
-    if (reportData.length === 0) {
+    if (!reportData.length) {
       return res.status(404).json({ message: "No bookings found." });
     }
 
-    // Calculate final totals
-    const finalTotals = reportData.reduce(
-      (totals, item) => {
-        totals.finalGrandTotal += item.grandTotal || 0;
-        totals.finalTotalQuantity += item.totalQuantity || 0;
-        totals.finalRefundCharge += item.refundCharge || 0;
-        totals.finalCancelAmount += item.cancelAmount || 0;
-        return totals;
+    /* 4️⃣  overall totals ----------------------------------------------- */
+    const totals = reportData.reduce(
+      (acc, b) => {
+        acc.finalGrandTotal   += b.branchGrandTotal;
+        acc.finalCancelAmount += b.branchCancelAmount;
+        acc.finalTotalQty     += b.branchTotalQty;
+        return acc;
       },
-      {
-        finalGrandTotal: 0,
-        finalTotalQuantity: 0,
-        finalRefundCharge: 0,
-        finalCancelAmount: 0,
-      }
+      { finalGrandTotal: 0, finalCancelAmount: 0, finalTotalQty: 0 }
     );
 
-    res.status(200).json({ branches: reportData, totals: finalTotals });
-  } catch (error) {
-    console.error("Error generating report:", error);
-    res.status(500).json({ error: error.message });
+    /* 5️⃣  respond ------------------------------------------------------- */
+    res.status(200).json({
+      branches: reportData,
+      totals
+    });
+
+  } catch (err) {
+    console.error("Error generating report:", err);
+    res.status(500).json({ error: err.message });
   }
 };
+
 
 
 
