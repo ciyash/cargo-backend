@@ -3,7 +3,6 @@ import auth from '../config/auth.middleware.js'
 import bookingController from '../controllers/booking.controller.js'
 
  
- 
 const router=express.Router()  
  
 router.post("/",auth,bookingController.createBooking)

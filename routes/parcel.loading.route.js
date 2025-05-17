@@ -30,7 +30,7 @@ router.get("/vehicalNumber/:vehicalNumber",parcelController.getParcelByVehicalNu
 
 router.post("/offline-parcel-voucher-details",parcelController.offlineParcelVoucherDetails)
 
-router.post("/parcel-offline-report",parcelController.getParcelsByFilter)
+router.post("/parcel-offline-report",parcelController.parcelOfflineReport) // parcel offline report
 
 router.post("/parcel-status-report",parcelController.parcelStatusReport)  //parcel status date difference report
 
@@ -40,8 +40,12 @@ router.post("/branch-to-branch-load",parcelController.getBookingsByDateAndBranch
 
 router.post("/branch-to-branch-post",auth,parcelController.createBranchToBranch)  // branch to branch post
 
+
+
 // reports
 
 router.post("/dispatched-stock-report",parcelController.dispatchedStockReport)
+
+
 
 export default router    
