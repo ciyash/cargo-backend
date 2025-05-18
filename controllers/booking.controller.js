@@ -1641,9 +1641,6 @@ const branchWiseCollectionReport = async (req, res) => {
   }
 };
 
-
-
-
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
@@ -1809,7 +1806,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 const parcelBranchWiseGSTReport = async (req, res) => {
   try {
@@ -2780,8 +2776,6 @@ const dispatchedMemoReport = async (req, res) => {
   }
 };
 
-
-
 const parcelIncomingLuggagesReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;
@@ -2844,7 +2838,6 @@ const parcelIncomingLuggagesReport = async (req, res) => {
       .json({ message: "Internal Server Error", error: error.message });
   }
 };
-
 
 const getBookingByGrnOrLrNumber = async (req, res) => {
   try {

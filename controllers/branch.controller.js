@@ -30,7 +30,7 @@ const createBranch = async (req, res) => {
     } = req.body;
 
     if (
-      !name || !openingBalance || !branchType || !city || !location || !address ||
+      !name || !branchType || !city || !location || !address ||
       !phone || !email || !pincode || !state || !country
     ) {
       return res.status(400).json({

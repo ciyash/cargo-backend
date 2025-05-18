@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const ExpenseSchema = new mongoose.Schema({
-  branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", required: true },
+  branchId: { type:String ,required: true },
   expenseDate: { type: Date, default: () => new Date() },
   expenseType: { type: String, required: true },
   amount: { type: Number, required: true },

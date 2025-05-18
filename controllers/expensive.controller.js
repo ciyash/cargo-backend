@@ -1,9 +1,5 @@
 import {  Expense, ExpenseType, Customer,  AccountCat,  AccountSubCat} from '../models/expensive.model.js'; // adjust path if needed
 
-// ─── Expense CRUD ──────────────────────────────────────────────────────────────
-
-
-
 const createExpense = async (req, res) => {
   try {
     const {
@@ -35,7 +31,7 @@ const createExpense = async (req, res) => {
 
 const getAllExpenses = async (req, res) => {
   try {
-    const expenses = await Expense.find().sort({ date: -1 });
+    const expenses = await Expense.find()
     res.status(200).json(expenses);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch expenses", error: error.message });
