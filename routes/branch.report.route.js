@@ -4,10 +4,13 @@ import branchReportController from "../controllers/branch.report.controller.js";
 
 const router = express.Router();
 
-router.post("/branch",branchReportController.getBranchReport);
+router.post("/create-daily-branchSnapshot",branchReportController.createDailyBranchSnapshot);    
 
-router.post("/daily-net-collection", branchReportController.getDailyNetCollection);
+router.post("/get-daily-report", branchReportController.getDailyReport);
 
-router.post("/branch-snapshot", branchReportController.getDailyBranchSnapshot);
+router.post("/get-monthly-report", branchReportController.getMonthlyReport);
+
+router.post("/get-yearly-report", branchReportController.getYearlyReport);
 
 export default router;
+    

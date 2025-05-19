@@ -1,711 +1,179 @@
-// // controllers/branchReportController.js
-
-// import {Booking} from '..//models/booking.model.js'
-// import Branch from '../models/branch.model.js';
-// import {Expense} from '../models/expensive.model.js';
-
-//  const getBranchReport = async (req, res) => {
-//   try {
- 
-//     const { fromDate, toDate,branchId } = req.body;
-
-//     const branch = await Branch.findById(branchId);
-//     if (!branch) {
-//       return res.status(404).json({ message: "Branch not found" });
-//     }
-
-//     // Parse date range
-//     const from = fromDate ? new Date(fromDate) : new Date("1970-01-01");
-//     const to = toDate ? new Date(toDate) : new Date();
-
-//     // 1. Get all bookings for this branch within date range
-//     const bookings = await Booking.find({
-//       bookbranchid: branchId,
-//       bookingDate: { $gte: from, $lte: to }
-//     });
-
-//     const totalIncome = bookings.reduce((sum, b) => sum + b.grandTotal, 0);
-
-//     // 2. Get all expenses for this branch within date range
-//     const expenses = await Expense.find({
-//       branchId,
-//       expenseDate: { $gte: from, $lte: to }
-//     });
-
-//     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-
-//     // 3. Calculate closing balance
-//     const closingBalance = branch.openingBalance + totalIncome - totalExpenses;
-
-//     res.status(200).json({
-//       branch: {
-//         name: branch.name,
-//         city: branch.city,
-//         branchType: branch.branchType,
-//         openingBalance: branch.openingBalance,
-//       },
-//       reportPeriod: {
-//         fromDate: from.toISOString().split("T")[0],
-//         toDate: to.toISOString().split("T")[0]
-//       },
-//       income: {
-//         totalBookings: bookings.length,
-//         totalIncome,
-//       },
-//       expense: {
-//         totalExpenses,
-//         expenseDetails: expenses,
-//       },
-//       closingBalance
-//     });
-
-//   } catch (err) {
-//     console.error("Error generating report", err);
-//     res.status(500).json({ message: "Server Error" });
-//   }
-// };
-
-
-// export default { getBranchReport };
-
-
-
-import mongoose   from 'mongoose';
 import Branch      from '../models/branch.model.js';
 import { Booking } from '../models/booking.model.js';
 import { Expense } from '../models/expensive.model.js';
+import {BranchDailySnapshot} from '../models/expensive.model.js'
 
-const getBranchReport = async (req, res) => {
+
+
+
+const createDailyBranchSnapshot = async () => {
   try {
-    const { branchId, fromDate, toDate } = req.body;   // all inputs in body
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
 
-    /* 1️⃣  Date window -------------------------------------------------- */
-    const from = fromDate ? new Date(fromDate) : new Date('1970-01-01');
-    const to   = toDate   ? new Date(toDate)   : new Date();
-    from.setHours(0, 0, 0, 0);                    // 00:00 AM inclusive
-    to.setHours(23, 59, 59, 999);                 // 11:59:59 PM inclusive
+    const branches = await Branch.find({}); // Get all branches
 
-    if (isNaN(from) || isNaN(to))
-      return res.status(400).json({ message: 'Invalid date format' });
+    for (const branch of branches) {
+      const branchCode = branch.branchUniqueId;
 
-    /* 2️⃣  Which branches? --------------------------------------------- */
-    const branchMatch = branchId
-      ? { _id: new mongoose.Types.ObjectId(branchId) }
-      : {};
+      // Get last closing balance
+      const lastSnapshot = await BranchDailySnapshot.findOne({ branchCode })
+        .sort({ date: -1 });
 
-    /* 3️⃣  Aggregation pipeline ---------------------------------------- */
-    const report = await Branch.aggregate([
-      { $match: branchMatch },
+      const openingBalance = lastSnapshot ? lastSnapshot.closingBalance : 0;
 
-      /* A) Bookings inside window */
-      {
-        $lookup: {
-          from: 'bookings',
-          let: { bid: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$bookbranchid', '$$bid'] },
-                    { $gte: ['$bookingDate', from] },
-                    { $lte: ['$bookingDate', to] }
-                  ]
-                }
-              }
-            },
-            { $project: { grandTotal: 1, bookingType: 1 } }
-          ],
-          as: 'bookingsIn'
-        }
-      },
-
-      /* B) Bookings BEFORE window (for opening balance) */
-      {
-        $lookup: {
-          from: 'bookings',
-          let: { bid: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$bookbranchid', '$$bid'] },
-                    { $lt: ['$bookingDate', from] }
-                  ]
-                }
-              }
-            },
-            { $project: { grandTotal: 1 } }
-          ],
-          as: 'bookingsBefore'
-        }
-      },
-
-      /* C) Expenses inside window */
-      {
-        $lookup: {
-          from: 'expenses',
-          let: { bid: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$branchId', '$$bid'] },
-                    { $gte: ['$expenseDate', from] },
-                    { $lte: ['$expenseDate', to] }
-                  ]
-                }
-              }
-            },
-            { $project: { amount: 1 } }
-          ],
-          as: 'expensesIn'
-        }
-      },
-
-      /* D) Expenses BEFORE window */
-      {
-        $lookup: {
-          from: 'expenses',
-          let: { bid: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$branchId', '$$bid'] },
-                    { $lt: ['$expenseDate', from] }
-                  ]
-                }
-              }
-            },
-            { $project: { amount: 1 } }
-          ],
-          as: 'expensesBefore'
-        }
-      },
-
-      /* E) Calculated fields */
-      {
-        $addFields: {
-          // Opening balance at 00:00 AM
-          openingBalComputed: {
-            $subtract: [
-              { $add: ['$openingBalance', { $sum: '$bookingsBefore.grandTotal' }] },
-              { $sum: '$expensesBefore.amount' }
-            ]
-          },
-
-          // Income & expenses inside range
-          totalIncome:   { $sum: '$bookingsIn.grandTotal' },
-          totalExpenses: { $sum: '$expensesIn.amount' },
-
-          // Income by type
-          incomeByType: {
-            $arrayToObject: {
-              $map: {
-                input: { $setUnion: ['$bookingsIn.bookingType'] },
-                as: 't',
-                in: [
-                  '$$t',
-                  {
-                    $sum: {
-                      $map: {
-                        input: {
-                          $filter: {
-                            input: '$bookingsIn',
-                            as: 'b',
-                            cond: { $eq: ['$$b.bookingType', '$$t'] }
-                          }
-                        },
-                        as: 'f',
-                        in: '$$f.grandTotal'
-                      }
-                    }
-                  }
-                ]
-              }
-            }
-          },
-
-          totalBookings: { $size: '$bookingsIn' },
-
-          // Closing balance at 11:59 PM
-          closingBalance: {
-            $subtract: [
-              { $add: [
-                '$openingBalance',
-                { $sum: '$bookingsBefore.grandTotal' },
-                { $sum: '$bookingsIn.grandTotal' }
-              ]},
-              { $add: [
-                { $sum: '$expensesBefore.amount' },
-                { $sum: '$expensesIn.amount' }
-              ]}
-            ]
-          }
-        }
-      },
-
-      /* F) Final projection */
-      {
-        $project: {
-          _id: 0,
-          branch: {
-            id: '$_id',
-            branchUniqueId: '$branchUniqueId',
-            name: '$name',
-            city: '$city',
-            state: '$state',
-            branchType: '$branchType',
-            openingBalance: '$openingBalComputed'
-          },
-          totalBookings: 1,
-          totalIncome: 1,
-          incomeByType: 1,
-          totalExpenses: 1,
-          closingBalance: 1
-        }
-      }
-    ]);
-
-    if (!report.length)
-      return res.status(404).json({ message: 'No branch data found' });
-
-    res.status(200).json({
-      reportPeriod: {
-        fromDate: from.toISOString().split('T')[0],
-        toDate:   to.toISOString().split('T')[0]
-      },
-      totalBranches: report.length,
-      branches: report
-    });
-
-  } catch (err) {
-    console.error('Error generating branch report:', err);
-    res.status(500).json({ error: err.message, message: 'Server Error' });
-  }
-};
-
-
-const getDailyNetCollection = async (req, res) => {
-  try {
-    const { branchId, fromDate, toDate } = req.body;
-
-    const from = fromDate ? new Date(fromDate) : new Date();   // default today
-    const to   = toDate   ? new Date(toDate)   : new Date();
-
-    // Normalise to full‑day window
-    from.setHours(0, 0, 0, 0);
-    to.setHours(23, 59, 59, 999);
-
-    if (isNaN(from) || isNaN(to))
-      return res.status(400).json({ message: 'Invalid date format' });
-
-    const branchMatch = branchId
-      ? { _id: new mongoose.Types.ObjectId(branchId) }
-      : {};
-
-    const dailyReport = await Branch.aggregate([
-      { $match: branchMatch },
-
-      /* --- Join bookings within range ---------------------------------- */
-      {
-        $lookup: {
-          from: 'bookings',
-          let: { bid: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$bookbranchid', '$$bid'] },
-                    { $gte: ['$bookingDate', from] },
-                    { $lte: ['$bookingDate', to] }
-                  ]
-                }
-              }
-            },
-            {
-              $project: {
-                grandTotal: 1,
-                day: { $dateToString: { format: '%Y-%m-%d', date: '$bookingDate' } }
-              }
-            }
-          ],
-          as: 'bookings'
-        }
-      },
-
-      /* --- Join expenses within range ---------------------------------- */
-      {
-        $lookup: {
-          from: 'expenses',
-          let: { bid: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$branchId', '$$bid'] },
-                    { $gte: ['$expenseDate', from] },
-                    { $lte: ['$expenseDate', to] }
-                  ]
-                }
-              }
-            },
-            {
-              $project: {
-                amount: 1,
-                day: { $dateToString: { format: '%Y-%m-%d', date: '$expenseDate' } }
-              }
-            }
-          ],
-          as: 'expenses'
-        }
-      },
-
-      /* --- Unwind into daily rows -------------------------------------- */
-      { $unwind: { path: '$bookings', preserveNullAndEmptyArrays: true } },
-      { $unwind: { path: '$expenses', preserveNullAndEmptyArrays: true } },
-
-      /* --- Combine by day --------------------------------------------- */
-      {
-        $group: {
-          _id: {
-            branchId: '$_id',
-            branchName: '$name',
-            day: { $ifNull: ['$bookings.day', '$expenses.day'] }
-          },
-          income:   { $sum: '$bookings.grandTotal' },
-          expenses: { $sum: '$expenses.amount' }
-        }
-      },
-      {
-        $addFields: {
-          netIncome: { $subtract: ['$income', '$expenses'] }
-        }
-      },
-      { $sort: { '_id.branchName': 1, '_id.day': 1 } },
-
-      /* --- Reshape for output ----------------------------------------- */
-      {
-        $project: {
-          _id: 0,
-          branchId:   '$_id.branchId',
-          branchName: '$_id.branchName',
-          date:       '$_id.day',
-          income: 1,
-          expenses: 1,
-          netIncome: 1
-        }
-      }
-    ]);
-
-    res.status(200).json({
-      period: {
-        fromDate: from.toISOString().split('T')[0],
-        toDate:   to.toISOString().split('T')[0]
-      },
-      count: dailyReport.length,
-      data: dailyReport
-    });
-
-  } catch (err) {
-    console.error('Error generating daily net collection:', err);
-    res.status(500).json({ message: 'Server Error', error: err.message });
-  }
-};
-
-// const getDailyBranchSnapshot = async (req, res) => {
-//   try {
-//     const { pickUpBranch, date } = req.body;            // date = "YYYY-MM-DD"
-
-//     if (!date) return res.status(400).json({ message: "date is required" });
-
-//     const dayStart = new Date(date);
-//     dayStart.setHours(0, 0, 0, 0);
-
-//     const dayEnd   = new Date(date);
-//     dayEnd.setHours(23, 59, 59, 999);
-
-//     if (isNaN(dayStart)) return res.status(400).json({ message: "Invalid date" });
-
-//     /* branch filter by pickUpBranch code (not _id) */
-//     const branchFilter = pickUpBranch ? { pickUpBranch } : {};
-
-//     /**  Pipeline  **/
-//     const snapshot = await Booking.aggregate([
-//       { $match: branchFilter },
-
-//       /* Split INCOME buckets */
-//       {
-//         $facet: {
-//           /* Income before dayStart (for opening) */
-//           incomeBefore: [
-//             { $match: { bookingDate: { $lt: dayStart } } },
-//             { $group: {
-//                 _id: "$pickUpBranch",
-//                 amount: { $sum: "$grandTotal" }
-//             }}
-//           ],
-
-//           /* Expenses before dayStart (for opening) */
-//           expenseBefore: [
-//             { $match: { bookingDate: { $lt: dayStart } } },
-//             { $lookup: {
-//                 from: "expenses",
-//                 localField: "pickUpBranch",
-//                 foreignField: "paidThrough",            // adjust if needed
-//                 pipeline: [
-//                   { $match: { expenseDate: { $lt: dayStart } } },
-//                   { $group: { _id: null, amt: { $sum: "$amount" } } }
-//                 ],
-//                 as: "expB"
-//             }},
-//             { $addFields: { expenses: { $ifNull: [ { $arrayElemAt:["$expB.amt",0] }, 0 ] } } },
-//             { $group: {
-//                 _id: "$pickUpBranch",
-//                 amount: { $first: "$expenses" }
-//             }}
-//           ],
-
-//           /* Income during the day */
-//           incomeToday: [
-//             { $match: {
-//                 bookingDate: { $gte: dayStart, $lte: dayEnd }
-//             }},
-//             { $group: {
-//                 _id: "$pickUpBranch",
-//                 amount: { $sum: "$grandTotal" }
-//             }}
-//           ]
-//         }
-//       },
-
-//       /* Merge the 3 buckets */
-//       {
-//         $project: {
-//           combined: {
-//             $setUnion: [ "$incomeBefore._id", "$expenseBefore._id", "$incomeToday._id" ]
-//           },
-//           incomeBefore: 1,
-//           expenseBefore: 1,
-//           incomeToday: 1
-//         }
-//       },
-//       { $unwind: "$combined" },
-//       {
-//         $project: {
-//           branchCode: "$combined",
-//           openingIncome: {
-//             $ifNull: [
-//               { $arrayElemAt: [
-//                 {
-//                   $filter: {
-//                     input: "$incomeBefore",
-//                     as: "b",
-//                     cond: { $eq: ["$$b._id", "$combined"] }
-//                   }
-//                 }, 0] }, { amount: 0 }
-//             ]
-//           },
-//           openingExpense: {
-//             $ifNull: [
-//               { $arrayElemAt: [
-//                 {
-//                   $filter: {
-//                     input: "$expenseBefore",
-//                     as: "b",
-//                     cond: { $eq: ["$$b._id", "$combined"] }
-//                   }
-//                 }, 0] }, { amount: 0 }
-//             ]
-//           },
-//           incomeToday: {
-//             $ifNull: [
-//               { $arrayElemAt: [
-//                 {
-//                   $filter: {
-//                     input: "$incomeToday",
-//                     as: "b",
-//                     cond: { $eq: ["$$b._id", "$combined"] }
-//                   }
-//                 }, 0] }, { amount: 0 }
-//             ]
-//           }
-//         }
-//       },
-
-//       /* Attach branch name from Branch collection */
-//       { $lookup: {
-//           from: "branches",
-//           localField: "branchCode",
-//           foreignField: "branchUniqueId",
-//           pipeline: [ { $project: { _id:0, name:1 } } ],
-//           as: "branchInfo"
-//       }},
-
-//       { $addFields: {
-//           branchName: { $ifNull: [ { $arrayElemAt:["$branchInfo.name",0]}, "Unknown" ] }
-//       }},
-
-//       /* Final calc fields */
-//       {
-//         $addFields: {
-//           openingBalance: {
-//             $subtract: [
-//               "$openingIncome.amount",
-//               "$openingExpense.amount"
-//             ]
-//           },
-//           income: "$incomeToday.amount"
-//         }
-//       },
-//       {
-//         $addFields: {
-//           closingBalance: { $add: [ "$openingBalance", "$income" ] }
-//         }
-//       },
-
-//       /* final project */
-//       {
-//         $project: {
-//           _id:0,
-//           branchCode:1,
-//           branchName:1,
-//           date: { $dateToString:{ format:"%Y-%m-%d", date: dayStart } },
-//           openingBalance:1,
-//           income:1,
-//           expenses:{ $literal:0 },   // adjust if daily expenses table exists
-//           closingBalance:1
-//         }
-//       }
-//     ]);
-
-//     res.json(snapshot);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message:"Server error", error: err.message });
-//   }
-// };
-
-
-
-
-const getDailyBranchSnapshot = async (req, res) => {
-  try {
-    const { pickUpBranch, date } = req.body;
-
-    if (!date) return res.status(400).json({ message: "date is required" });
-
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    const branchFilter = pickUpBranch ? { pickUpBranch } : {};
-    const expenseFilter = pickUpBranch ? { paidThrough: pickUpBranch } : {};
-
-    // Booking Aggregates
-    const [incomeBefore, incomeToday] = await Promise.all([
-      Booking.aggregate([
-        { $match: { ...branchFilter, bookingDate: { $lt: dayStart } } },
-        {
-          $group: {
-            _id: "$pickUpBranch",
-            totalIncomeBefore: { $sum: "$grandTotal" }
-          }
-        }
-      ]),
-      Booking.aggregate([
+      // Get today's income from Booking
+      const incomeResult = await Booking.aggregate([
         {
           $match: {
-            ...branchFilter,
-            bookingDate: { $gte: dayStart, $lte: dayEnd }
+            pickUpBranch: branchCode,
+            bookingDate: { $gte: today, $lt: tomorrow }
           }
         },
         {
           $group: {
-            _id: "$pickUpBranch",
-            incomeToday: { $sum: "$grandTotal" }
+            _id: null,
+            totalIncome: { $sum: "$grandTotal" }
           }
         }
-      ])
-    ]);
+      ]);
+      const income = incomeResult[0]?.totalIncome || 0;
 
-    // Expense Aggregates
-    const [expenseBefore, expenseToday] = await Promise.all([
-      Expense.aggregate([
-        { $match: { ...expenseFilter, expenseDate: { $lt: dayStart } } },
-        {
-          $group: {
-            _id: "$paidThrough",
-            totalExpenseBefore: { $sum: "$amount" }
-          }
-        }
-      ]),
-      Expense.aggregate([
+      // Get today's expense from Expense
+      const expenseResult = await Expense.aggregate([
         {
           $match: {
-            ...expenseFilter,
-            expenseDate: {
-              $gte: dayStart,
-              $lte: dayEnd
-            }
+            branchCode: branchCode,
+            date: { $gte: today, $lt: tomorrow }
           }
         },
         {
           $group: {
-            _id: "$paidThrough",
-            expenseToday: { $sum: "$amount" }
+            _id: null,
+            totalExpenses: { $sum: "$amount" }
           }
         }
-      ])
-    ]);
+      ]);
+      const expenses = expenseResult[0]?.totalExpenses || 0;
 
-    // Combine all unique branch codes
-    const branchCodes = new Set([
-      ...incomeBefore.map(i => i._id),
-      ...incomeToday.map(i => i._id),
-      ...expenseBefore.map(e => e._id),
-      ...expenseToday.map(e => e._id)
-    ]);
+      const closingBalance = openingBalance + income - expenses;
 
-    // Build snapshot per branch
-    const snapshot = [];
-
-    for (const branchCode of branchCodes) {
-      const incomeBeforeVal = incomeBefore.find(i => i._id === branchCode)?.totalIncomeBefore || 0;
-      const expenseBeforeVal = expenseBefore.find(e => e._id === branchCode)?.totalExpenseBefore || 0;
-      const incomeTodayVal = incomeToday.find(i => i._id === branchCode)?.incomeToday || 0;
-      const expenseTodayVal = expenseToday.find(e => e._id === branchCode)?.expenseToday || 0;
-
-      const openingBalance = incomeBeforeVal - expenseBeforeVal;
-      const closingBalance = openingBalance + incomeTodayVal - expenseTodayVal;
-
-      const branchData = await Branch.findOne({ branchUniqueId: branchCode }, { name: 1 });
-
-      snapshot.push({
+      // Save daily snapshot
+      await BranchDailySnapshot.create({
         branchCode,
-        branchName: branchData?.name || "Unknown",
-        date: date,
+        date: today,
         openingBalance,
-        income: incomeTodayVal,
-        expenses: expenseTodayVal,
+        income,
+        expenses,
         closingBalance
       });
+
+      console.log(`✅ Snapshot saved for branch ${branchCode}`);
     }
 
-    return res.json(snapshot);
-  } catch (err) {
-    console.error("getDailyBranchSnapshot error:", err);
-    return res.status(500).json({ message: "Server error", error: err.message });
+    console.log("🎉 All branch snapshots created successfully.");
+  } catch (error) {
+    console.error("❌ Error creating branch snapshot:", error.message);
   }
 };
 
 
-export default { getBranchReport, getDailyNetCollection, getDailyBranchSnapshot };
+const getDailyReport = async (req, res) => {
+  try {
+    const { branchCode, date } = req.body;
 
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const snapshot = await BranchDailySnapshot.findOne({
+      branchCode,
+      date: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    if (!snapshot) {
+      return res.status(404).json({ message: "Report not found." });
+    }
+
+    res.json(snapshot);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const getMonthlyReport = async (req, res) => {
+  try {
+    const { branchCode, month, year } = req.body; // month = 0 to 11
+
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 1);
+
+    const data = await BranchDailySnapshot.aggregate([
+      {
+        $match: {
+          branchCode,
+          date: { $gte: startDate, $lt: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalIncome: { $sum: "$income" },
+          totalExpenses: { $sum: "$expenses" },
+          openingBalance: { $first: "$openingBalance" },
+          closingBalance: { $last: "$closingBalance" }
+        }
+      }
+    ]);
+
+    if (!data.length) {
+      return res.status(404).json({ message: "No data found" });
+    }
+
+    res.json(data[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const getYearlyReport = async (req, res) => {
+  try {
+    const { branchCode, year } = req.body;
+
+    const startDate = new Date(year, 0, 1); // Jan 1st
+    const endDate = new Date(year + 1, 0, 1); // Next Jan 1st
+
+    const data = await BranchDailySnapshot.aggregate([
+      {
+        $match: {
+          branchCode,
+          date: { $gte: startDate, $lt: endDate }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalIncome: { $sum: "$income" },
+          totalExpenses: { $sum: "$expenses" },
+          openingBalance: { $first: "$openingBalance" },
+          closingBalance: { $last: "$closingBalance" }
+        }
+      }
+    ]);
+
+    if (!data.length) {
+      return res.status(404).json({ message: "No data found" });
+    }
+
+    res.json(data[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+export default { createDailyBranchSnapshot,getDailyReport,getMonthlyReport,getYearlyReport };

@@ -1,5 +1,15 @@
 import mongoose from "mongoose";
 
+const branchDailySnapshotSchema = new mongoose.Schema({
+  branchCode: { type: String, required: true },
+  date: { type: Date, required: true },
+  openingBalance: { type: Number, required: true },
+  income: { type: Number, required: true }, 
+  expenses: { type: Number, required: true },
+  closingBalance: { type: Number, required: true },
+});    
+
+
 const ExpenseSchema = new mongoose.Schema({
   branchId: { type:String ,required: true },
   expenseDate: { type: Date, default: () => new Date() },
@@ -48,3 +58,4 @@ export const AccountSubCat = mongoose.model('AccountSubCat', AccountSubCatSchema
 export const Expense = mongoose.model("Expense", ExpenseSchema);
 export const ExpenseType = mongoose.model("ExpenseType", ExpenseTypeSchema);
 export const Customer = mongoose.model("Customer", CustomerSchema);
+export const BranchDailySnapshot = mongoose.model("BranchDailySnapshot", branchDailySnapshotSchema);

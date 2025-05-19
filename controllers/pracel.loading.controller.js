@@ -877,10 +877,6 @@ const dispatchedStockReport = async (req, res) => {
 };
 
 
-
-
-    
-
 export default {
   getBookingsBetweenDates,
   createParcel,

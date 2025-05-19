@@ -3235,6 +3235,54 @@ const statusWiseSummary = async (req, res) => {
 
 
 
+const getTotalByBranchAndDate = async (req, res) => {
+  try {
+    const { bookingDate, pickupBranch } = req.body;
+
+    if (!bookingDate) {
+      return res.status(400).json({ message: 'bookingDate is required' });
+    }
+
+    const startDate = new Date(bookingDate);
+    const endDate = new Date(bookingDate);
+    endDate.setDate(endDate.getDate() + 1);
+
+    const matchStage = {
+      bookingDate: {
+        $gte: startDate,
+        $lt: endDate
+      }
+    };
+
+    // Fix field name to match actual DB field: pickUpBranch
+    if (pickupBranch) {
+      matchStage.pickUpBranch = pickupBranch;
+    }
+
+    const bookings = await Booking.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: '$pickUpBranch', // fix here too
+          total: { $sum: '$grandTotal' } // fixed: no need to double
+        }
+      }
+    ]);
+
+    if (bookings.length === 0) {
+      return res.status(404).json({ message: 'No bookings found for this date' });
+    }
+
+    res.status(200).json({ results: bookings });
+  } catch (error) {
+    console.error('Error getting totals:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+  
 export default {
   createBooking,
   getAllBookings,
@@ -3285,4 +3333,6 @@ export default {
   branchAccount,
   acPartyAccount,
   statusWiseSummary,
+
+  getTotalByBranchAndDate
 };

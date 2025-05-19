@@ -154,7 +154,7 @@ const getCustomerById = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch customer", error: error.message });
   }
-};
+};  
 
 const updateCustomer = async (req, res) => {
   try {
