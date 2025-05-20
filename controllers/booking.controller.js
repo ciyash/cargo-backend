@@ -2909,17 +2909,149 @@ const deliveredStockReport = async (req, res) => {
   }
 };
 
+// const pendingDispatchStockReport = async (req, res) => {
+//   try {
+//     const { fromCity, toCity, pickUpBranch } = req.body;
+
+//     let query = { bookingStatus: 2 };
+
+//     if (fromCity && fromCity !== "all") query.fromCity = fromCity;
+//     if (toCity && toCity !== "all") query.toCity = toCity;
+//     if (pickUpBranch && pickUpBranch !== "all") query.pickUpBranch = pickUpBranch;
+
+//     const dispatchReport = await Booking.find(query)
+//       .select(
+//         "_id grnNo lrNumber totalPackages fromCity receiptNo bookingDate pickUpBranchname toCity deliveryEmployee vehicalNumber senderName bookingStatus receiverMobile bookingType receiverName hamaliCharge grandTotal packages"
+//       )
+//       .lean();
+
+//     if (!dispatchReport.length) {
+//       return res.status(404).json({
+//         message: "No pending deliveries found for the given criteria",
+//       });
+//     }
+
+//     const bookingTypeData = {
+//       foc: [],
+//       paid: [],
+//       toPay: [],
+//       credit: [],
+//       freeSample: [],
+//       other: [],
+//     };
+
+//     const bookings = [];
+//     let allTotalPackages = 0;
+//     let allTotalWeight = 0;
+//     let totalGrandTotalAmount = 0;
+
+//     for (const item of dispatchReport) {
+//       const weight = item.packages?.reduce((sum, pkg) => sum + (pkg.weight || 0), 0) || 0;
+//       allTotalPackages += item.totalPackages || 0;
+//       allTotalWeight += weight;
+//       totalGrandTotalAmount += item.grandTotal || 0;
+
+//       const bookingType = (item.bookingType || "other").toLowerCase();
+//       const bookingRow = {
+//         lrNumber: item.lrNumber,
+//         totalWeight: weight,
+//         grandTotal: item.grandTotal || 0,
+//       };
+
+//       if (bookingTypeData[bookingType]) {
+//         bookingTypeData[bookingType].push(bookingRow);
+//       } else {
+//         bookingTypeData.other.push(bookingRow);
+//       }
+
+//       // Prepare booking detail row
+//       bookings.push({
+//         wbNo: item.lrNumber,
+//         pkgs: item.totalPackages || 0,
+//         destination: item.toCity,
+//         sender: item.senderName,
+//         receiver: item.receiverName,
+//         receiverNo: item.receiverMobile,
+//         wbType: bookingType.charAt(0).toUpperCase() + bookingType.slice(1),
+//         amount: item.grandTotal || 0,
+//         source: item.pickUpBranchname,
+//         receiptNo: item.receiptNo || "-",
+//         bookingDate: item.bookingDate,
+//         days: Math.max(0, Math.floor((new Date() - new Date(item.bookingDate)) / (1000 * 60 * 60 * 24)))
+//       });
+//     }
+
+//     const bookingSummary = Object.entries(bookingTypeData).reduce((acc, [type, entries]) => {
+//       const noa = entries.reduce((sum, e) => sum + 1, 0);
+//       const totalLR = noa;
+//       const actualWeight = entries.reduce((sum, e) => sum + (e.totalWeight || 0), 0);
+//       const chargeWeight = 0; // Modify if you calculate it elsewhere
+//       const totalAmount = entries.reduce((sum, e) => sum + (e.grandTotal || 0), 0);
+
+//       acc[type] = {
+//         noa,
+//         totalLR,
+//         actualWeight,
+//         chargeWeight,
+//         totalAmount
+//       };
+//       return acc;
+//     }, {});
+
+//     return res.status(200).json({
+//       bookings, 
+//       summary: bookingSummary, // top grouped summary
+//       allTotalPackages,
+//       allTotalWeight,
+//       totalGrandTotalAmount
+//     });
+//   } catch (error) {
+//     console.error("Error in pendingDispatchStockReport:", error);
+//     return res.status(500).json({ error: error.message });
+//   }
+// };
+
+
+
 const pendingDispatchStockReport = async (req, res) => {
   try {
-    const { fromCity, toCity, pickUpBranch } = req.body;
+    const { fromCity, toCity, pickUpBranch, fromDate, toDate } = req.body;
 
-    let query = { bookingStatus: 2 };
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ message: "Both fromDate and toDate are required." });
+    }
 
-    if (fromCity && fromCity !== "all") query.fromCity = fromCity;
-    if (toCity && toCity !== "all") query.toCity = toCity;
-    if (pickUpBranch && pickUpBranch !== "all") query.pickUpBranch = pickUpBranch;
+    // Step 1: Query ParcelLoading model
+    let parcelQuery = {
+      loadingDate: {
+        $gte: new Date(`${fromDate}T00:00:00.000Z`),
+        $lte: new Date(`${toDate}T23:59:59.999Z`)
+      }
+    };
+    if (fromCity && fromCity !== "all") parcelQuery.fromCity = fromCity;
+    if (toCity && toCity !== "all") parcelQuery.toCity = { $in: [toCity] };
+    if (pickUpBranch && pickUpBranch !== "all") parcelQuery.fromBranch = pickUpBranch;
 
-    const dispatchReport = await Booking.find(query)
+    const parcels = await ParcelLoading.find(parcelQuery).select("grnNo").lean();
+
+    if (!parcels.length) {
+      return res.status(404).json({ message: "No parcel loading data found for given criteria" });
+    }
+
+    // Step 2: Collect all grnNo numbers
+    const grnNumbers = parcels.flatMap(parcel => parcel.grnNo);
+
+    if (!grnNumbers.length) {
+      return res.status(404).json({ message: "No GRN numbers found in matching parcel records" });
+    }
+
+    // Step 3: Query Booking model
+    const bookingQuery = {
+      grnNo: { $in: grnNumbers },
+    
+    };
+
+    const dispatchReport = await Booking.find(bookingQuery)
       .select(
         "_id grnNo lrNumber totalPackages fromCity receiptNo bookingDate pickUpBranchname toCity deliveryEmployee vehicalNumber senderName bookingStatus receiverMobile bookingType receiverName hamaliCharge grandTotal packages"
       )
@@ -2927,17 +3059,13 @@ const pendingDispatchStockReport = async (req, res) => {
 
     if (!dispatchReport.length) {
       return res.status(404).json({
-        message: "No pending deliveries found for the given criteria",
+        message: "No pending deliveries found for the matched GRN numbers",
       });
     }
 
+    // Step 4: Process booking data (same as before)
     const bookingTypeData = {
-      foc: [],
-      paid: [],
-      toPay: [],
-      credit: [],
-      freeSample: [],
-      other: [],
+      foc: [], paid: [], toPay: [], credit: [], freeSample: [], other: []
     };
 
     const bookings = [];
@@ -2964,7 +3092,6 @@ const pendingDispatchStockReport = async (req, res) => {
         bookingTypeData.other.push(bookingRow);
       }
 
-      // Prepare booking detail row
       bookings.push({
         wbNo: item.lrNumber,
         pkgs: item.totalPackages || 0,
@@ -2982,34 +3109,33 @@ const pendingDispatchStockReport = async (req, res) => {
     }
 
     const bookingSummary = Object.entries(bookingTypeData).reduce((acc, [type, entries]) => {
-      const noa = entries.reduce((sum, e) => sum + 1, 0);
-      const totalLR = noa;
+      const noa = entries.length;
       const actualWeight = entries.reduce((sum, e) => sum + (e.totalWeight || 0), 0);
-      const chargeWeight = 0; // Modify if you calculate it elsewhere
       const totalAmount = entries.reduce((sum, e) => sum + (e.grandTotal || 0), 0);
-
       acc[type] = {
         noa,
-        totalLR,
+        totalLR: noa,
         actualWeight,
-        chargeWeight,
+        chargeWeight: 0, // Placeholder
         totalAmount
       };
       return acc;
     }, {});
 
     return res.status(200).json({
-      bookings, 
-      summary: bookingSummary, // top grouped summary
+      bookings,
+      summary: bookingSummary,
       allTotalPackages,
       allTotalWeight,
       totalGrandTotalAmount
     });
+
   } catch (error) {
     console.error("Error in pendingDispatchStockReport:", error);
     return res.status(500).json({ error: error.message });
   }
 };
+
 
 
 const dispatchedMemoReport = async (req, res) => {
