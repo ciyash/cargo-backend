@@ -2248,7 +2248,7 @@ const pendingDeliveryStockReport = async (req, res) => {
     const isPickUpBranchAll = pickUpBranch === "all" || !pickUpBranch;
     const isDropBranchAll = dropBranch === "all" || !dropBranch;
 
-    // Base query: Only bookingStatus === 2
+    
     const query = {
       bookingStatus: 2,
     };
