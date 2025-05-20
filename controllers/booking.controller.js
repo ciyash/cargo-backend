@@ -3011,47 +3011,29 @@ const deliveredStockReport = async (req, res) => {
 //   }
 // };
 
-
-
 const pendingDispatchStockReport = async (req, res) => {
   try {
     const { fromCity, toCity, pickUpBranch, fromDate, toDate } = req.body;
 
+    // Validate required fields
     if (!fromDate || !toDate) {
-      return res.status(400).json({ message: "Both fromDate and toDate are required." });
+      return res.status(400).json({
+        message: "Both fromDate and toDate are required.",
+      });
     }
 
-    // Step 1: Query ParcelLoading model
-    let parcelQuery = {
-      loadingDate: {
+    let query = {
+      bookingDate: {
         $gte: new Date(`${fromDate}T00:00:00.000Z`),
         $lte: new Date(`${toDate}T23:59:59.999Z`)
       }
     };
-    if (fromCity && fromCity !== "all") parcelQuery.fromCity = fromCity;
-    if (toCity && toCity !== "all") parcelQuery.toCity = { $in: [toCity] };
-    if (pickUpBranch && pickUpBranch !== "all") parcelQuery.fromBranch = pickUpBranch;
 
-    const parcels = await ParcelLoading.find(parcelQuery).select("grnNo").lean();
+    if (fromCity && fromCity !== "all") query.fromCity = fromCity;
+    if (toCity && toCity !== "all") query.toCity = toCity;
+    if (pickUpBranch && pickUpBranch !== "all") query.pickUpBranch = pickUpBranch;
 
-    if (!parcels.length) {
-      return res.status(404).json({ message: "No parcel loading data found for given criteria" });
-    }
-
-    // Step 2: Collect all grnNo numbers
-    const grnNumbers = parcels.flatMap(parcel => parcel.grnNo);
-
-    if (!grnNumbers.length) {
-      return res.status(404).json({ message: "No GRN numbers found in matching parcel records" });
-    }
-
-    // Step 3: Query Booking model
-    const bookingQuery = {
-      grnNo: { $in: grnNumbers },
-    
-    };
-
-    const dispatchReport = await Booking.find(bookingQuery)
+    const dispatchReport = await Booking.find(query)
       .select(
         "_id grnNo lrNumber totalPackages fromCity receiptNo bookingDate pickUpBranchname toCity deliveryEmployee vehicalNumber senderName bookingStatus receiverMobile bookingType receiverName hamaliCharge grandTotal packages"
       )
@@ -3059,13 +3041,17 @@ const pendingDispatchStockReport = async (req, res) => {
 
     if (!dispatchReport.length) {
       return res.status(404).json({
-        message: "No pending deliveries found for the matched GRN numbers",
+        message: "No pending deliveries found for the given criteria",
       });
     }
 
-    // Step 4: Process booking data (same as before)
     const bookingTypeData = {
-      foc: [], paid: [], toPay: [], credit: [], freeSample: [], other: []
+      foc: [],
+      paid: [],
+      toPay: [],
+      credit: [],
+      freeSample: [],
+      other: [],
     };
 
     const bookings = [];
@@ -3092,6 +3078,7 @@ const pendingDispatchStockReport = async (req, res) => {
         bookingTypeData.other.push(bookingRow);
       }
 
+      // Prepare booking detail row
       bookings.push({
         wbNo: item.lrNumber,
         pkgs: item.totalPackages || 0,
@@ -3110,13 +3097,16 @@ const pendingDispatchStockReport = async (req, res) => {
 
     const bookingSummary = Object.entries(bookingTypeData).reduce((acc, [type, entries]) => {
       const noa = entries.length;
+      const totalLR = noa;
       const actualWeight = entries.reduce((sum, e) => sum + (e.totalWeight || 0), 0);
+      const chargeWeight = 0; // Modify if you calculate it elsewhere
       const totalAmount = entries.reduce((sum, e) => sum + (e.grandTotal || 0), 0);
+
       acc[type] = {
         noa,
-        totalLR: noa,
+        totalLR,
         actualWeight,
-        chargeWeight: 0, // Placeholder
+        chargeWeight,
         totalAmount
       };
       return acc;
@@ -3129,13 +3119,11 @@ const pendingDispatchStockReport = async (req, res) => {
       allTotalWeight,
       totalGrandTotalAmount
     });
-
   } catch (error) {
     console.error("Error in pendingDispatchStockReport:", error);
     return res.status(500).json({ error: error.message });
   }
 };
-
 
 
 const dispatchedMemoReport = async (req, res) => {
