@@ -87,7 +87,7 @@ const bookingSchema = new mongoose.Schema(
 
 
 
- //last transactions
+   //last transactions
     ltDate: { type: Date, default: () => new Date() },
     ltCity: { type: String, default: null },
     ltBranch: { type: String, default: null },
@@ -104,9 +104,6 @@ const bookingSchema = new mongoose.Schema(
     refundAmount: { type: Number, default: 0 },
 
   },
-
-
-
 
   { timestamps: true }
 );

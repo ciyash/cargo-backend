@@ -292,20 +292,6 @@ const getAllBookings = async (req, res) => {
   }
 };
 
-const getAllUsers = async (req, res) => {
-  try {
-    const users = await User.find();
-    if (users.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No Users found" });
-    }
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
 const getAllBookingsPages = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1; // Default: Page 1
@@ -675,6 +661,53 @@ const getUsersBySearch = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find();
+    if (users.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No Users found" });
+    }
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getUserByMobile = async (req, res) => {
+  try {
+    const { senderMobile } = req.params;
+
+    const users = await Booking.find({ senderMobile });
+
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, message: "No users found" });
+    }
+
+    res.status(200).json({ success: true, users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getCreditBookings = async (req, res) => {
+  try {
+    const creditBookings = await Booking.find({ bookingType: "credit" })
+      .select("senderName senderMobile senderGst grandTotal bookingDate")
+      .sort({ bookingDate: -1 }); // optional: sorts by newest first
+
+    if (!creditBookings || creditBookings.length === 0) {
+      return res.status(404).json({ success: false, message: "No credit bookings found" });
+    }
+
+    res.status(200).json({ success: true, data: creditBookings });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 const unReceivedBookings = async (req, res) => {
   try {
@@ -2147,6 +2180,7 @@ const pendingDeliveryStockReport = async (req, res) => {
         ? new Date(booking.bookingDate).toLocaleDateString()
         : "",
       Source: booking.fromCity,
+      grnNo: booking.grnNo,
       Destination: booking.toCity,
       lrNumber: booking.lrNumber,
       Consignor: `${booking.senderName} (${booking.senderMobile || "N/A"})`,
@@ -3296,8 +3330,11 @@ export default {
   getBookingsfromCityTotoCity,
   getAllBookingsPages,
   getBookingsByAnyField,
+
+  getUserByMobile,
   getAllUsers,
   getUsersBySearch,
+  getCreditBookings,
   getBookingBydate,
   unReceivedBookings,
   receivedBooking,

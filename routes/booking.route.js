@@ -4,14 +4,26 @@ import bookingController from '../controllers/booking.controller.js'
 
  
 const router=express.Router()  
- 
-router.post("/",auth,bookingController.createBooking)
 
-router.get("/",bookingController.getAllBookings)
+
+//users 
  
 router.get("/users",bookingController.getAllUsers)  
 
 router.get("/users/search",bookingController.getUsersBySearch)
+
+router.get("/user/:senderMobile",bookingController.getUserByMobile)
+
+router.get("/user/credit",bookingController.getCreditBookings)
+
+// bookings 
+ 
+router.post("/",auth,bookingController.createBooking)
+
+router.get("/",bookingController.getAllBookings)
+
+
+
    
 router.get("/todaybookings",auth,bookingController.getBookingBydate)
    
