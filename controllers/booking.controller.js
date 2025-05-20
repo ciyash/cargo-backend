@@ -2087,17 +2087,168 @@ const parcelStatusDateDifferenceReport = async (req, res) => {
   }
 };
 
+// const pendingDeliveryStockReport = async (req, res) => {
+//   try {
+//     const { fromCity, toCity, pickUpBranch, dropBranch } = req.body;
+
+//     // Define filters
+//     const isFromCityAll = fromCity === "all" || !fromCity;
+//     const isToCityAll = toCity === "all" || !toCity;
+//     const isPickUpBranchAll = pickUpBranch === "all" || !pickUpBranch;
+//     const isDropBranchAll = dropBranch === "all" || !dropBranch;
+
+//     // Query: Only bookingStatus === 2
+//     const query = {
+//       bookingStatus: 2,
+//     };
+
+//     if (!isFromCityAll) query.fromCity = fromCity;
+//     if (!isToCityAll) query.toCity = toCity;
+//     if (!isPickUpBranchAll) query.pickUpBranch = pickUpBranch;
+//     if (!isDropBranchAll) query.dropBranch = dropBranch;
+
+//     const bookings = await Booking.find(query).lean();
+//     const bookingRecords = bookings.length;
+
+//     const [result] = await Booking.aggregate([
+//       { $match: query },
+//       {
+//         $facet: {
+//           totalData: [
+//             {
+//               $group: {
+//                 _id: null,
+//                 totalRecords: { $sum: 1 },
+//                 totalQuantity: { $sum: { $sum: "$packages.quantity" } },
+//                 grandTotalSum: { $sum: "$grandTotal" },
+//               },
+//             },
+//           ],
+//           byBookingType: [
+//             {
+//               $group: {
+//                 _id: "$bookingType",
+//                 totalRecords: { $sum: 1 },
+//                 totalQuantity: { $sum: { $sum: "$packages.quantity" } },
+//                 grandTotalSum: { $sum: "$grandTotal" },
+//               },
+//             },
+//           ],
+//         },
+//       },
+//     ]);
+
+//     const totalData = result.totalData[0] || {
+//       totalRecords: 0,
+//       totalQuantity: 0,
+//       grandTotalSum: 0,
+//     };
+
+//     const byBookingTypeRaw = result.byBookingType || [];
+//     const bookingTypes = ["credit", "toPay", "paid", "foc", "Free Sample"];
+
+//     const byBookingType = {};
+//     bookingTypes.forEach((type) => {
+//       const data = byBookingTypeRaw.find((item) => item._id === type) || {
+//         totalRecords: 0,
+//         totalQuantity: 0,
+//         grandTotalSum: 0,
+//       };
+//       byBookingType[type] = {
+//         totalRecords: data.totalRecords,
+//         totalQuantity: data.totalQuantity,
+//         grandTotal: data.grandTotalSum,
+//       };
+//     });
+
+//     // Include any other booking types
+//     byBookingTypeRaw.forEach((item) => {
+//       if (!byBookingType[item._id]) {
+//         byBookingType[item._id] = {
+//           totalRecords: item.totalRecords,
+//           totalQuantity: item.totalQuantity,
+//           grandTotal: item.grandTotalSum,
+//         };
+//       }
+//     });
+
+//     const formattedBookings = bookings.map((booking, index) => ({
+//       "Sr. No": index + 1,
+//       "WB No.": booking.eWayBillNo,
+//       "Manual TicketNo.": booking.receiptNo,
+//       "Received Date": booking.bookingDate
+//         ? new Date(booking.bookingDate).toLocaleDateString()
+//         : "",
+//       Source: booking.fromCity,
+//       grnNo: booking.grnNo,
+//       Destination: booking.toCity,
+//       lrNumber: booking.lrNumber,
+//       Consignor: `${booking.senderName} (${booking.senderMobile || "N/A"})`,
+//       Consignee: `${booking.receiverName} (${booking.receiverMobile || "N/A"})`,
+//       "WB Type": booking.bookingType,
+//       Amt: booking.grandTotal,
+//       Pkgs: booking.totalQuantity,
+//       Days: booking.bookingDate
+//         ? Math.floor(
+//             (new Date() - new Date(booking.bookingDate)) / (1000 * 3600 * 24)
+//           )
+//         : 0,
+//     }));
+
+//     res.status(200).json({
+//       data: {
+//         total: {
+//           totalRecords: totalData.totalRecords,
+//           totalQuantity: totalData.totalQuantity,
+//           grandTotal: totalData.grandTotalSum,
+//         },
+//         byBookingType,
+//         bookingRecords,
+//         formattedBookings,
+//         filters: {
+//           fromCity: fromCity || "all",
+//           toCity: toCity || "all",
+//           pickUpBranch: pickUpBranch || "all",
+//           dropBranch: dropBranch || "all",
+//         },
+//       },
+//       message:
+//         totalData.totalRecords > 0
+//           ? "Pending delivery stock report generated"
+//           : "No pending deliveries found",
+//     });
+//   } catch (error) {
+//     console.error("Error generating pending delivery report:", error);
+//     res.status(500).json({
+//       message: "Internal server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
 const pendingDeliveryStockReport = async (req, res) => {
   try {
-    const { fromCity, toCity, pickUpBranch, dropBranch } = req.body;
+    const {
+      fromCity,
+      toCity,
+      pickUpBranch,
+      dropBranch,
+      fromDate,
+      toDate,
+    } = req.body;
 
-    // Define filters
+    if(!fromDate || !toDate) {  
+      return res
+        .status(400)
+        .json({ message: "fromDate and toDate are required" });
+    }
+
     const isFromCityAll = fromCity === "all" || !fromCity;
     const isToCityAll = toCity === "all" || !toCity;
     const isPickUpBranchAll = pickUpBranch === "all" || !pickUpBranch;
     const isDropBranchAll = dropBranch === "all" || !dropBranch;
 
-    // Query: Only bookingStatus === 2
+    // Base query: Only bookingStatus === 2
     const query = {
       bookingStatus: 2,
     };
@@ -2106,6 +2257,13 @@ const pendingDeliveryStockReport = async (req, res) => {
     if (!isToCityAll) query.toCity = toCity;
     if (!isPickUpBranchAll) query.pickUpBranch = pickUpBranch;
     if (!isDropBranchAll) query.dropBranch = dropBranch;
+
+    // Add date filtering if provided
+    if (fromDate || toDate) {
+      query.bookingDate = {};
+      if (fromDate) query.bookingDate.$gte = new Date(fromDate);
+      if (toDate) query.bookingDate.$lte = new Date(toDate);
+    }
 
     const bookings = await Booking.find(query).lean();
     const bookingRecords = bookings.length;
@@ -2195,28 +2353,32 @@ const pendingDeliveryStockReport = async (req, res) => {
         : 0,
     }));
 
-    res.status(200).json({
-      data: {
-        total: {
-          totalRecords: totalData.totalRecords,
-          totalQuantity: totalData.totalQuantity,
-          grandTotal: totalData.grandTotalSum,
-        },
-        byBookingType,
-        bookingRecords,
-        formattedBookings,
-        filters: {
-          fromCity: fromCity || "all",
-          toCity: toCity || "all",
-          pickUpBranch: pickUpBranch || "all",
-          dropBranch: dropBranch || "all",
-        },
-      },
-      message:
-        totalData.totalRecords > 0
-          ? "Pending delivery stock report generated"
-          : "No pending deliveries found",
-    });
+ res.status(200).json({
+  data: {
+     message:
+    totalData.totalRecords > 0
+      ? "Pending delivery stock report generated"
+      : `No data found for the selected filters${!isFromCityAll ? ` (fromCity: ${fromCity})` : ""}${!isToCityAll ? ` (toCity: ${toCity})` : ""}${!isPickUpBranchAll ? ` (pickUpBranch: ${pickUpBranch})` : ""}${!isDropBranchAll ? ` (dropBranch: ${dropBranch})` : ""}`,
+
+    total: {
+      totalRecords: totalData.totalRecords,
+      totalQuantity: totalData.totalQuantity,
+      grandTotal: totalData.grandTotalSum,
+    },
+    byBookingType,
+    bookingRecords,
+    formattedBookings,
+    filters: {
+      fromCity: fromCity || "all",
+      toCity: toCity || "all",
+      pickUpBranch: pickUpBranch || "all",
+      dropBranch: dropBranch || "all",
+      fromDate: fromDate || null,
+      toDate: toDate || null,
+    },
+  },
+ });
+
   } catch (error) {
     console.error("Error generating pending delivery report:", error);
     res.status(500).json({
