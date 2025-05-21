@@ -1840,11 +1840,176 @@ const branchWiseCollectionReport = async (req, res) => {
   }
 };
 
+// const parcelBranchConsolidatedReport = async (req, res) => {
+//   try {
+//     const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
+
+//     /* ---------- 1.  Build match stage ---------- */
+//     const matchStage = { bookingDate: { $ne: null } };
+
+//     if (fromDate && toDate) {
+//       matchStage.bookingDate = {
+//         $gte: new Date(fromDate),
+//         $lte: new Date(toDate)
+//       };
+//     }
+//     if (fromCity)        matchStage.fromCity          = fromCity;
+//     if (pickUpBranch)    matchStage.pickUpBranchname  = pickUpBranch;
+//     if (bookedBy)        matchStage.bookedBy          = bookedBy;
+
+//     /* ---------- 2.  Aggregate ---------- */
+//     const bookingData = await Booking.aggregate([
+//       { $match: matchStage },
+
+//       /* A) get state of FROM city */
+//       {
+//         $lookup: {
+//           from: "cities",               // collection name for City
+//           localField: "fromCity",
+//           foreignField: "cityName",
+//           as: "fromCityData"
+//         }
+//       },
+//       { $unwind: { path: "$fromCityData", preserveNullAndEmptyArrays: true } },
+
+//       /* B) get state of TO city */
+//       {
+//         $lookup: {
+//           from: "cities",
+//           localField: "toCity",
+//           foreignField: "cityName",
+//           as: "toCityData"
+//         }
+//       },
+//       { $unwind: { path: "$toCityData", preserveNullAndEmptyArrays: true } },
+
+//       /* C) decide if both states are the same */
+//       {
+//         $addFields: {
+//           sameState: {
+//             $eq: [
+//               { $toLower: "$fromCityData.state" },
+//               { $toLower: "$toCityData.state" }
+//             ]
+//           }
+//         }
+//       },
+
+//       /* D) split GST on the fly */
+//       {
+//         $addFields: {
+//           igstAmount: {
+//             $cond: [{ $eq: ["$sameState", false] }, "$parcelGstAmount", 0]
+//           },
+//           cgstAmount: {
+//             $cond: [{ $eq: ["$sameState", true] },
+//                     { $divide: ["$parcelGstAmount", 2] }, 0]
+//           },
+//           sgstAmount: {
+//             $cond: [{ $eq: ["$sameState", true] },
+//                     { $divide: ["$parcelGstAmount", 2] }, 0]
+//           }
+//         }
+//       },
+
+//       /* E) group by branch / status / type */
+//       {
+//         $group: {
+//           _id: {
+//             branchName:    "$pickUpBranchname",
+//             bookingStatus: "$bookingStatus",
+//             bookingType:   "$bookingType"
+//           },
+//           count:            { $sum: 1 },
+//           grandTotal:       { $sum: "$grandTotal" },
+//           parcelGstAmount:  { $sum: "$parcelGstAmount" },
+//           igstAmount:       { $sum: "$igstAmount" },
+//           cgstAmount:       { $sum: "$cgstAmount" },
+//           sgstAmount:       { $sum: "$sgstAmount" }
+//         }
+//       }
+//     ]);
+
+//     /* ---------- 3.  Post‑aggregation shaping ---------- */
+//     const branchMap = {};
+//     const totals = {
+//       finalPaid: 0, finalToPay: 0, finalCredit: 0,
+//       finalBookingTotal: 0,
+//       finalTotalDelivery: 0, finalTotalCancel: 0,
+//       finalParcelGstAmount: 0,
+//       totalIgst: 0, totalCgst: 0, totalSgst: 0
+//     };
+
+//     for (const record of bookingData) {
+//       const { branchName, bookingStatus, bookingType } = record._id;
+
+//       if (!branchMap[branchName]) {
+//         branchMap[branchName] = {
+//           branchName,
+//           paid: 0, toPay: 0, credit: 0,
+//           BookingTotal: 0, booking: 0,
+//           delivered: 0, cancelled: 0,
+//           grandTotal: 0, bookingTotalAmount: 0,
+//           deliveredTotalAmount: 0, cancelTotalAmount: 0,
+//           parcelGstAmount: 0, cancelAmount: 0,
+//           igstAmount: 0, cgstAmount: 0, sgstAmount: 0
+//         };
+//       }
+//       const entry = branchMap[branchName];
+
+//       /* money by bookingType */
+//       if (bookingType === "paid")   { entry.paid  += record.grandTotal; totals.finalPaid  += record.grandTotal; }
+//       if (bookingType === "toPay")  { entry.toPay += record.grandTotal; totals.finalToPay += record.grandTotal; }
+//       if (bookingType === "credit") { entry.credit+= record.grandTotal; totals.finalCredit+= record.grandTotal; }
+
+//       /* GST + totals */
+//       entry.grandTotal       += record.grandTotal;
+//       entry.parcelGstAmount  += record.parcelGstAmount;
+//       entry.igstAmount       += record.igstAmount;
+//       entry.cgstAmount       += record.cgstAmount;
+//       entry.sgstAmount       += record.sgstAmount;
+
+//       totals.finalParcelGstAmount += record.parcelGstAmount;
+//       totals.totalIgst            += record.igstAmount;
+//       totals.totalCgst            += record.cgstAmount;
+//       totals.totalSgst            += record.sgstAmount;
+
+//       /* counts */
+//       entry.BookingTotal += record.count;
+//       entry.booking      += record.count;
+//       totals.finalBookingTotal += record.grandTotal;
+
+//       /* delivery / cancel stats */
+//       if (bookingStatus === 4) {
+//         entry.delivered            += record.count;
+//         entry.deliveredTotalAmount += record.grandTotal;
+//         totals.finalTotalDelivery  += record.grandTotal;
+//       }
+//       if (bookingStatus === 5) {
+//         entry.cancelled           += record.count;
+//         entry.cancelTotalAmount   += record.grandTotal;
+//         entry.cancelAmount        += record.grandTotal;
+//         totals.finalTotalCancel   += record.grandTotal;
+//       }
+
+//       entry.bookingTotalAmount = entry.grandTotal;
+//     }
+
+//     res.status(200).json({
+//       data: Object.values(branchMap),
+//       ...totals
+//     });
+
+//   } catch (err) {
+//     console.error("Error in parcelBranchConsolidatedReport:", err);
+//     res.status(500).json({ message: "Server Error" });
+//   }
+// };
+
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
 
-    /* ---------- 1.  Build match stage ---------- */
     const matchStage = { bookingDate: { $ne: null } };
 
     if (fromDate && toDate) {
@@ -1853,26 +2018,21 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         $lte: new Date(toDate)
       };
     }
-    if (fromCity)        matchStage.fromCity          = fromCity;
-    if (pickUpBranch)    matchStage.pickUpBranchname  = pickUpBranch;
-    if (bookedBy)        matchStage.bookedBy          = bookedBy;
+    if (fromCity)       matchStage.fromCity         = fromCity;
+    if (pickUpBranch)   matchStage.pickUpBranchname = pickUpBranch;
+    if (bookedBy)       matchStage.bookedBy         = bookedBy;
 
-    /* ---------- 2.  Aggregate ---------- */
     const bookingData = await Booking.aggregate([
       { $match: matchStage },
-
-      /* A) get state of FROM city */
       {
         $lookup: {
-          from: "cities",               // collection name for City
+          from: "cities",
           localField: "fromCity",
           foreignField: "cityName",
           as: "fromCityData"
         }
       },
       { $unwind: { path: "$fromCityData", preserveNullAndEmptyArrays: true } },
-
-      /* B) get state of TO city */
       {
         $lookup: {
           from: "cities",
@@ -1882,8 +2042,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         }
       },
       { $unwind: { path: "$toCityData", preserveNullAndEmptyArrays: true } },
-
-      /* C) decide if both states are the same */
       {
         $addFields: {
           sameState: {
@@ -1894,25 +2052,19 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           }
         }
       },
-
-      /* D) split GST on the fly */
       {
         $addFields: {
           igstAmount: {
             $cond: [{ $eq: ["$sameState", false] }, "$parcelGstAmount", 0]
           },
           cgstAmount: {
-            $cond: [{ $eq: ["$sameState", true] },
-                    { $divide: ["$parcelGstAmount", 2] }, 0]
+            $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
           },
           sgstAmount: {
-            $cond: [{ $eq: ["$sameState", true] },
-                    { $divide: ["$parcelGstAmount", 2] }, 0]
+            $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
           }
         }
       },
-
-      /* E) group by branch / status / type */
       {
         $group: {
           _id: {
@@ -1920,20 +2072,20 @@ const parcelBranchConsolidatedReport = async (req, res) => {
             bookingStatus: "$bookingStatus",
             bookingType:   "$bookingType"
           },
-          count:            { $sum: 1 },
-          grandTotal:       { $sum: "$grandTotal" },
-          parcelGstAmount:  { $sum: "$parcelGstAmount" },
-          igstAmount:       { $sum: "$igstAmount" },
-          cgstAmount:       { $sum: "$cgstAmount" },
-          sgstAmount:       { $sum: "$sgstAmount" }
+          count:           { $sum: 1 },
+          grandTotal:      { $sum: "$grandTotal" },
+          parcelGstAmount: { $sum: "$parcelGstAmount" },
+          igstAmount:      { $sum: "$igstAmount" },
+          cgstAmount:      { $sum: "$cgstAmount" },
+          sgstAmount:      { $sum: "$sgstAmount" }
         }
       }
     ]);
 
-    /* ---------- 3.  Post‑aggregation shaping ---------- */
     const branchMap = {};
     const totals = {
       finalPaid: 0, finalToPay: 0, finalCredit: 0,
+      finalFOC: 0, finalCLR: 0,
       finalBookingTotal: 0,
       finalTotalDelivery: 0, finalTotalCancel: 0,
       finalParcelGstAmount: 0,
@@ -1946,23 +2098,29 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       if (!branchMap[branchName]) {
         branchMap[branchName] = {
           branchName,
-          paid: 0, toPay: 0, credit: 0,
+          paid: 0, toPay: 0, credit: 0, FOC: 0, CLR: 0,
           BookingTotal: 0, booking: 0,
           delivered: 0, cancelled: 0,
           grandTotal: 0, bookingTotalAmount: 0,
           deliveredTotalAmount: 0, cancelTotalAmount: 0,
           parcelGstAmount: 0, cancelAmount: 0,
-          igstAmount: 0, cgstAmount: 0, sgstAmount: 0
+          igstAmount: 0, cgstAmount: 0, sgstAmount: 0,
+          deliveredAmountByType: {
+            paid: 0, toPay: 0, credit: 0, FOC: 0, CLR: 0
+          }
         };
       }
+
       const entry = branchMap[branchName];
 
-      /* money by bookingType */
-      if (bookingType === "paid")   { entry.paid  += record.grandTotal; totals.finalPaid  += record.grandTotal; }
-      if (bookingType === "toPay")  { entry.toPay += record.grandTotal; totals.finalToPay += record.grandTotal; }
-      if (bookingType === "credit") { entry.credit+= record.grandTotal; totals.finalCredit+= record.grandTotal; }
+      // Booking Type Sums
+      if (bookingType === "paid")    { entry.paid   += record.grandTotal; totals.finalPaid  += record.grandTotal; }
+      if (bookingType === "toPay")   { entry.toPay  += record.grandTotal; totals.finalToPay += record.grandTotal; }
+      if (bookingType === "credit")  { entry.credit += record.grandTotal; totals.finalCredit+= record.grandTotal; }
+      if (bookingType === "FOC")     { entry.FOC    += record.grandTotal; totals.finalFOC   += record.grandTotal; }
+      if (bookingType === "CLR")     { entry.CLR    += record.grandTotal; totals.finalCLR   += record.grandTotal; }
 
-      /* GST + totals */
+      // Common Aggregations
       entry.grandTotal       += record.grandTotal;
       entry.parcelGstAmount  += record.parcelGstAmount;
       entry.igstAmount       += record.igstAmount;
@@ -1974,17 +2132,22 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       totals.totalCgst            += record.cgstAmount;
       totals.totalSgst            += record.sgstAmount;
 
-      /* counts */
       entry.BookingTotal += record.count;
       entry.booking      += record.count;
       totals.finalBookingTotal += record.grandTotal;
 
-      /* delivery / cancel stats */
+      // Delivered Bookings (assuming status code 4 means Delivered)
       if (bookingStatus === 4) {
-        entry.delivered            += record.count;
-        entry.deliveredTotalAmount += record.grandTotal;
-        totals.finalTotalDelivery  += record.grandTotal;
+        entry.delivered               += record.count;
+        entry.deliveredTotalAmount   += record.grandTotal;
+        totals.finalTotalDelivery    += record.grandTotal;
+
+        if (entry.deliveredAmountByType[bookingType] !== undefined) {
+          entry.deliveredAmountByType[bookingType] += record.grandTotal;
+        }
       }
+
+      // Cancelled Bookings (assuming status code 5 means Cancelled)
       if (bookingStatus === 5) {
         entry.cancelled           += record.count;
         entry.cancelTotalAmount   += record.grandTotal;
@@ -1995,16 +2158,27 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       entry.bookingTotalAmount = entry.grandTotal;
     }
 
+    // Add afterCalculate field per branch
+    Object.values(branchMap).forEach(entry => {
+      entry.afterCalculate = entry.bookingTotalAmount - entry.cancelTotalAmount;
+    });
+
+    // Calculate net booking total (excluding cancelled)
+    const finalNetBookingAmount = totals.finalBookingTotal - totals.finalTotalCancel;
+
     res.status(200).json({
       data: Object.values(branchMap),
-      ...totals
+      ...totals,
+      finalNetBookingAmount
     });
 
   } catch (err) {
     console.error("Error in parcelBranchConsolidatedReport:", err);
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
+
 
 const parcelBranchWiseGSTReport = async (req, res) => {
   try {
