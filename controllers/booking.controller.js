@@ -1528,76 +1528,6 @@ const parcelBookingSummaryReport = async (req, res) => {
   }
 };
 
-// const parcelBookingMobileNumber = async (req, res) => {
-//   try {
-//     const { fromDate, toDate, mobile, bookingType, bookingStatus, reportType } =
-//       req.body;
-
-//     if (!req.user) {
-//       return res
-//         .status(401)
-//         .json({ success: false, message: "Unauthorized: User data missing" });
-//     }
-
-//     let query = {};
-
-//     if (req.user.role === "employee") {
-//       query.pickUpBranch = req.user.branchId;
-//     }
-
-//     // Date rang
-//     if (fromDate && toDate) {
-//       query.bookingDate = {
-//         $gte: new Date(`${fromDate}T00:00:00.000Z`),
-//         $lte: new Date(`${toDate}T23:59:59.999Z`),
-//       };
-//     }
-
-//     // Mobile filter based on reportTypeee
-//     if (mobile && reportType) {
-//       if (reportType === "Sender") {
-//         query.senderMobile = mobile;
-//       } else if (reportType === "Receiver") {
-//         query.receiverMobile = mobile;
-//       } else if (reportType === "ALL") {
-//         query.$or = [{ senderMobile: mobile }, { receiverMobile: mobile }];
-//       }
-//     }
-
-//     // Optional filters
-//     if (bookingType) query.bookingType = bookingType;
-//     if (bookingStatus) query.bookingStatus = bookingStatus;
-
-//     const bookings = await Booking.find(query).select(
-//       "grnNo lrNumber bookingDate pickUpBranchname fromCity toCity senderName senderMobile receiverName receiverMobile deliveryDate bookingType totalQuantity grandTotal"
-//     );
-
-//     if (!bookings.length) {
-//       return res
-//         .status(200)
-//         .json({ success: true, message: "No customer bookings found." });
-//     }
-
-//     const allGrandTotal = bookings.reduce(
-//       (sum, b) => sum + (b.grandTotal || 0),
-//       0
-//     );
-//     const allTotalQuantity = bookings.reduce(
-//       (sum, b) => sum + (b.totalQuantity || 0),
-//       0
-//     );
-
-//     res.status(200).json({
-//       success: true,
-//       data: bookings,
-//       allGrandTotal,
-//       allTotalQuantity,
-//     });
-//   } catch (error) {
-//     console.error("Error fetching parcel booking summary report:", error);
-//     res.status(500).json({ success: false, message: "Internal server error" });
-//   }
-// };
 
 const parcelBookingMobileNumber = async (req, res) => {
   try {
@@ -1672,11 +1602,9 @@ const parcelBookingMobileNumber = async (req, res) => {
   }
 };
 
-
 const regularCustomerBooking = async (req, res) => {
   try {
-    const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } =
-      req.body;
+    const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch, name } = req.body;
 
     let query = {};
 
@@ -1691,40 +1619,43 @@ const regularCustomerBooking = async (req, res) => {
     // Optional filters
     if (fromCity) query.fromCity = fromCity;
     if (toCity) query.toCity = toCity;
-    if (pickUpBranch) query.pickUpBranch = pickUpBranch;
-    if (dropBranch) query.dropBranch = dropBranch;
+    if (pickUpBranch) query.pickUpBranchname = pickUpBranch;  // Note: use pickUpBranchname here
+    if (dropBranch) query.dropBranchname = dropBranch;        // Same for dropBranchname
 
-    // Select only required fields
+    // Name filter - search in senderName OR receiverName with case-insensitive regex
+    if (name) {
+      query.$or = [
+        { senderName: { $regex: new RegExp(name, "i") } },
+        { receiverName: { $regex: new RegExp(name, "i") } }
+      ];
+    }
+
+    // Select required fields - make sure fields are consistent with query keys
     const bookings = await Booking.find(query).select(
-      "fromCity pickUpBranchname toCity dropBranchname bookingDate senderName senderNumber grandTotal totalQuantity"
+      "fromCity pickUpBranchname toCity dropBranchname bookingDate senderName receiverName senderNumber grandTotal totalQuantity"
     );
 
     if (bookings.length === 0) {
-      return res
-        .status(200)
-        .json({ success: true, message: "No customer bookings found." });
+      return res.status(200).json({ success: true, message: "No customer bookings found." });
     }
 
     // Calculate totals
-    const allGrandTotal = bookings.reduce(
-      (sum, b) => sum + (b.grandTotal || 0),
-      0
-    );
-    const allTotalQuantity = bookings.reduce(
-      (sum, b) => sum + (b.totalQuantity || 0),
-      0
-    );
+    const allGrandTotal = bookings.reduce((sum, b) => sum + (b.grandTotal || 0), 0);
+    const allTotalQuantity = bookings.reduce((sum, b) => sum + (b.totalQuantity || 0), 0);
 
     res.status(200).json({
+      success: true,
       data: bookings,
       allGrandTotal,
       allTotalQuantity,
     });
+
   } catch (error) {
     console.error("Error in regularCustomerBooking:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
 
 const branchWiseCollectionReport = async (req, res) => {
   try {
