@@ -2894,7 +2894,7 @@ const deliveredStockReport = async (req, res) => {
         bookingType: delivery.bookingType,
         receiverName: delivery.receiverName,
         totalPackages: packages.length,
-        grandTotal,
+        grandTotal,  
         gst,
         otherCharges,
         ...packageFields,
