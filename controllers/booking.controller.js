@@ -2676,6 +2676,126 @@ const pendingDeliveryLuggageReport = async (req, res) => {
 
 
 
+// const parcelReceivedStockReport = async (req, res) => {
+//   try {
+//     const {
+//       fromDate,
+//       toDate,
+//       fromCity,
+//       toCity,
+//       pickUpBranch,
+//       dropBranch,
+//       receiverName,
+//     } = req.body;
+
+//     if (!fromDate || !toDate) {
+//       return res
+//         .status(400)
+//         .json({ message: "fromDate and toDate are required" });
+//     }
+
+//     const start = new Date(fromDate);
+//     const end = new Date(toDate);
+//     end.setHours(23, 59, 59, 999);
+
+//     let query = {
+//       bookingDate: { $gte: start, $lte: end },
+//       // bookingStatus: 4, // Delivered
+//     };
+
+//     if (fromCity) query.fromCity = fromCity;
+//     if (toCity) query.toCity = toCity;
+//     if (pickUpBranch) query.pickUpBranch = pickUpBranch;
+//     if (dropBranch) query.dropBranch = dropBranch;
+//     if (receiverName) query.receiverName = receiverName;
+
+//     const bookings = await Booking.find(query)
+//       .select(
+//         "grnNo lrNumber deliveryDate unloadingDate senderName senderMobile bookingType bookingStatus receiverName fromCity pickUpBranch packages"
+//       )
+//       .lean();
+
+//     if (!bookings.length) {
+//       return res
+//         .status(404)
+//         .json({ message: "No deliveries found for the given criteria" });
+//     }
+
+//     let totalGrandTotal = 0;
+//     const updatedDeliveries = [];
+
+//     // Initialize bookingType summary for both types
+//     const bookingTypeSummary = {
+//       paid: {
+//         fromCity: "",
+//         pickupbranchname: "",
+//         totalAmount: 0,
+//       },
+//       toPay: {
+//         fromCity: "",
+//         pickupbranchname: "",
+//         totalAmount: 0,
+//       },
+//     };
+
+//     let finalTotalTopay = 0;
+//     let finalTotalpaid = 0;
+
+//     for (const delivery of bookings) {
+//       const grandTotal =
+//         delivery.packages?.reduce(
+//           (sum, pkg) => sum + (pkg.totalPrice || 0),
+//           0
+//         ) || 0;
+//       totalGrandTotal += grandTotal;
+
+//       updatedDeliveries.push({
+//         _id: delivery._id,
+//         grnNo: delivery.grnNo,
+//         lrNumber: delivery.lrNumber,
+//         bookingType: delivery.bookingType,
+//         senderName: delivery.senderName,
+//         senderMobile: delivery.senderMobile,
+//         receiverName: delivery.receiverName,
+//         bookingStatus: delivery.bookingStatus,
+//         unloadingDate: delivery.unloadingDate,
+//         deliveryDate: delivery.deliveryDate,
+//         totalPackages: delivery.packages?.length || 0,
+//         grandTotal,
+//       });
+
+//       const type = delivery.bookingType;
+//       if (bookingTypeSummary[type]) {
+//         if (!bookingTypeSummary[type].fromCity) {
+//           bookingTypeSummary[type].fromCity = delivery.fromCity || "";
+//         }
+//         if (!bookingTypeSummary[type].pickupbranchname) {
+//           bookingTypeSummary[type].pickupbranchname =
+//             delivery.pickUpBranch || "";
+//         }
+//         bookingTypeSummary[type].totalAmount += grandTotal;
+//       }
+
+//       if (type === "toPay") finalTotalTopay += grandTotal;
+//       if (type === "paid") finalTotalpaid += grandTotal;
+//     }
+
+//     return res.status(200).json({
+//       data: updatedDeliveries,
+//       totalGrandTotal,
+//       bookingType: bookingTypeSummary,
+//       finalTotalTopay,
+//       finalTotalpaid,
+//     });
+//   } catch (error) {
+//     console.error("Error in parcelReceivedStockReport:", error);
+//     return res.status(500).json({ error: error.message });
+//   }
+// };
+
+
+
+
 const parcelReceivedStockReport = async (req, res) => {
   try {
     const {
@@ -2698,9 +2818,22 @@ const parcelReceivedStockReport = async (req, res) => {
     const end = new Date(toDate);
     end.setHours(23, 59, 59, 999);
 
+    // Step 1: Get grnNo list from ParcelUnloading
+    const unloadingGrns = await ParcelUnloading.find({
+      unloadingDate: { $gte: start, $lte: end },
+    }).select("grnNo -_id");
+
+    const grnNos = unloadingGrns.flatMap((item) => item.grnNo);
+
+    if (!grnNos.length) {
+      return res
+        .status(404)
+        .json({ message: "No GRNs found in ParcelUnloading for given date range" });
+    }
+
+    // Step 2: Build Booking Query
     let query = {
-      bookingDate: { $gte: start, $lte: end },
-      bookingStatus: 4, // Delivered
+      grnNo: { $in: grnNos },
     };
 
     if (fromCity) query.fromCity = fromCity;
@@ -2718,13 +2851,13 @@ const parcelReceivedStockReport = async (req, res) => {
     if (!bookings.length) {
       return res
         .status(404)
-        .json({ message: "No deliveries found for the given criteria" });
+        .json({ message: "No bookings found for the given criteria" });
     }
 
     let totalGrandTotal = 0;
+    let grandTotalPackages = 0;
     const updatedDeliveries = [];
 
-    // Initialize bookingType summary for both types
     const bookingTypeSummary = {
       paid: {
         fromCity: "",
@@ -2743,11 +2876,11 @@ const parcelReceivedStockReport = async (req, res) => {
 
     for (const delivery of bookings) {
       const grandTotal =
-        delivery.packages?.reduce(
-          (sum, pkg) => sum + (pkg.totalPrice || 0),
-          0
-        ) || 0;
+        delivery.packages?.reduce((sum, pkg) => sum + (pkg.totalPrice || 0), 0) || 0;
+
+      const totalPackages = delivery.packages?.length || 0;
       totalGrandTotal += grandTotal;
+      grandTotalPackages += totalPackages;
 
       updatedDeliveries.push({
         _id: delivery._id,
@@ -2760,7 +2893,7 @@ const parcelReceivedStockReport = async (req, res) => {
         bookingStatus: delivery.bookingStatus,
         unloadingDate: delivery.unloadingDate,
         deliveryDate: delivery.deliveryDate,
-        totalPackages: delivery.packages?.length || 0,
+        totalPackages,
         grandTotal,
       });
 
@@ -2770,8 +2903,7 @@ const parcelReceivedStockReport = async (req, res) => {
           bookingTypeSummary[type].fromCity = delivery.fromCity || "";
         }
         if (!bookingTypeSummary[type].pickupbranchname) {
-          bookingTypeSummary[type].pickupbranchname =
-            delivery.pickUpBranch || "";
+          bookingTypeSummary[type].pickupbranchname = delivery.pickUpBranch || "";
         }
         bookingTypeSummary[type].totalAmount += grandTotal;
       }
@@ -2783,6 +2915,7 @@ const parcelReceivedStockReport = async (req, res) => {
     return res.status(200).json({
       data: updatedDeliveries,
       totalGrandTotal,
+      grandTotalPackages, // <- newly added field
       bookingType: bookingTypeSummary,
       finalTotalTopay,
       finalTotalpaid,
@@ -2792,6 +2925,10 @@ const parcelReceivedStockReport = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+
+
+
 
 const deliveredStockReport = async (req, res) => {
   try {
