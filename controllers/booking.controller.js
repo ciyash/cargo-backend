@@ -2806,7 +2806,6 @@ const parcelReceivedStockReport = async (req, res) => {
 };
 
 
-
 const deliveredStockReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } =
@@ -2847,7 +2846,7 @@ const deliveredStockReport = async (req, res) => {
     let totalGrandTotal = 0;
     let totalGST = 0;
     let totalOtherCharges = 0;
-    let grandTotalPackages = 0;
+    let totalPackagesCount = 0;
 
     const bookingWiseDetails = {
       paid: 0,
@@ -2884,7 +2883,7 @@ const deliveredStockReport = async (req, res) => {
       totalOtherCharges += otherCharges;
 
       totalGrandTotal += grandTotal;
-      grandTotalPackages += packages.length;
+      totalPackagesCount += packages.length;
 
       const type = delivery.bookingType;
       if (bookingWiseDetails[type] !== undefined) {
@@ -2915,13 +2914,16 @@ const deliveredStockReport = async (req, res) => {
     const clrNetAmount = bookingWiseDetails.CLR + totalGST + totalOtherCharges;
     const focNetAmount = bookingWiseDetails.FOC + totalGST + totalOtherCharges;
 
+    const allTotalAmount = totalGrandTotal + totalGST + totalOtherCharges;
+
     return res.status(200).json({
       message: "Delivered stock report generated successfully",
       data: updatedDeliveries,
       totalGrandTotal,
       totalGST,
       totalOtherCharges,
-      grandTotalPackages,
+      totalPackagesCount,
+      allTotalAmount,
       bookingWiseDetails,
       paidNetAmount,
       toPayNetAmount,
@@ -2935,107 +2937,6 @@ const deliveredStockReport = async (req, res) => {
   }
 };
 
-// const pendingDispatchStockReport = async (req, res) => {
-//   try {
-//     const { fromCity, toCity, pickUpBranch } = req.body;
-
-//     let query = { bookingStatus: 2 };
-
-//     if (fromCity && fromCity !== "all") query.fromCity = fromCity;
-//     if (toCity && toCity !== "all") query.toCity = toCity;
-//     if (pickUpBranch && pickUpBranch !== "all") query.pickUpBranch = pickUpBranch;
-
-//     const dispatchReport = await Booking.find(query)
-//       .select(
-//         "_id grnNo lrNumber totalPackages fromCity receiptNo bookingDate pickUpBranchname toCity deliveryEmployee vehicalNumber senderName bookingStatus receiverMobile bookingType receiverName hamaliCharge grandTotal packages"
-//       )
-//       .lean();
-
-//     if (!dispatchReport.length) {
-//       return res.status(404).json({
-//         message: "No pending deliveries found for the given criteria",
-//       });
-//     }
-
-//     const bookingTypeData = {
-//       foc: [],
-//       paid: [],
-//       toPay: [],
-//       credit: [],
-//       freeSample: [],
-//       other: [],
-//     };
-
-//     const bookings = [];
-//     let allTotalPackages = 0;
-//     let allTotalWeight = 0;
-//     let totalGrandTotalAmount = 0;
-
-//     for (const item of dispatchReport) {
-//       const weight = item.packages?.reduce((sum, pkg) => sum + (pkg.weight || 0), 0) || 0;
-//       allTotalPackages += item.totalPackages || 0;
-//       allTotalWeight += weight;
-//       totalGrandTotalAmount += item.grandTotal || 0;
-
-//       const bookingType = (item.bookingType || "other").toLowerCase();
-//       const bookingRow = {
-//         lrNumber: item.lrNumber,
-//         totalWeight: weight,
-//         grandTotal: item.grandTotal || 0,
-//       };
-
-//       if (bookingTypeData[bookingType]) {
-//         bookingTypeData[bookingType].push(bookingRow);
-//       } else {
-//         bookingTypeData.other.push(bookingRow);
-//       }
-
-//       // Prepare booking detail row
-//       bookings.push({
-//         wbNo: item.lrNumber,
-//         pkgs: item.totalPackages || 0,
-//         destination: item.toCity,
-//         sender: item.senderName,
-//         receiver: item.receiverName,
-//         receiverNo: item.receiverMobile,
-//         wbType: bookingType.charAt(0).toUpperCase() + bookingType.slice(1),
-//         amount: item.grandTotal || 0,
-//         source: item.pickUpBranchname,
-//         receiptNo: item.receiptNo || "-",
-//         bookingDate: item.bookingDate,
-//         days: Math.max(0, Math.floor((new Date() - new Date(item.bookingDate)) / (1000 * 60 * 60 * 24)))
-//       });
-//     }
-
-//     const bookingSummary = Object.entries(bookingTypeData).reduce((acc, [type, entries]) => {
-//       const noa = entries.reduce((sum, e) => sum + 1, 0);
-//       const totalLR = noa;
-//       const actualWeight = entries.reduce((sum, e) => sum + (e.totalWeight || 0), 0);
-//       const chargeWeight = 0; // Modify if you calculate it elsewhere
-//       const totalAmount = entries.reduce((sum, e) => sum + (e.grandTotal || 0), 0);
-
-//       acc[type] = {
-//         noa,
-//         totalLR,
-//         actualWeight,
-//         chargeWeight,
-//         totalAmount
-//       };
-//       return acc;
-//     }, {});
-
-//     return res.status(200).json({
-//       bookings, 
-//       summary: bookingSummary, // top grouped summary
-//       allTotalPackages,
-//       allTotalWeight,
-//       totalGrandTotalAmount
-//     });
-//   } catch (error) {
-//     console.error("Error in pendingDispatchStockReport:", error);
-//     return res.status(500).json({ error: error.message });
-//   }
-// };
 
 const pendingDispatchStockReport = async (req, res) => {
   try {
