@@ -2805,15 +2805,13 @@ const parcelReceivedStockReport = async (req, res) => {
   }
 };
 
+
 const deliveredStockReport = async (req, res) => {
   try {
-    const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } =
-      req.body;
+    const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;
 
     if (!fromDate || !toDate) {
-      return res
-        .status(400)
-        .json({ message: "fromDate and toDate are required" });
+      return res.status(400).json({ message: "fromDate and toDate are required" });
     }
 
     const start = new Date(fromDate);
@@ -2832,106 +2830,100 @@ const deliveredStockReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryEmployee fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
+        "grnNo lrNumber deliveryEmployee totalCharge fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
       )
       .lean();
 
-    if (stockReport.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No stock found for the given criteria" });
+    if (!stockReport.length) {
+      return res.status(404).json({ message: "No stock found for the given criteria" });
     }
 
-    let totalGrandTotal = 0;
+    let totalPackages = 0;
+    let totalFreight = 0;
     let totalGST = 0;
     let totalOtherCharges = 0;
-    let grandTotalPackages = 0;
+    let totalNetAmount = 0;
 
-    const bookingWiseDetails = {
-      paid: 0,
-      toPay: 0,
-      credit: 0,
-      CLR: 0,
-      FOC: 0,
+    const bookingTypeSummary = {
+      Paid: { freight: 0, gst: 0, otherCharges: 0, netAmount: 0 },
+      ToPay: { freight: 0, gst: 0, otherCharges: 0, netAmount: 0 },
     };
 
-    const updatedDeliveries = stockReport.map((delivery) => {
-      const packages = delivery.packages || [];
+    const updatedDeliveries = stockReport.map((delivery, index) => {
+      const {
+        grnNo,
+        lrNumber,
+        deliveryEmployee,
+        totalCharge,
+        fromCity,
+        pickUpBranchname,
+        senderName,
+        senderMobile,
+        bookingType,
+        receiverName,
+        packages = [],
+        parcelGstAmount = 0,
+        totalPackages: packageCount = 0,
+        serviceCharge = 0,
+        hamaliCharge = 0,
+        doorDeliveryCharge = 0,
+        doorPickupCharge = 0
+      } = delivery;
 
-      const packageFields = {};
-      let grandTotal = 0;
+      const otherCharges = serviceCharge + hamaliCharge + doorDeliveryCharge + doorPickupCharge;
+      const netAmount = totalCharge + parcelGstAmount + otherCharges;
+      const type = bookingType === "paid" ? "Paid" : "ToPay";
 
-      packages.forEach((pkg, index) => {
-        const quantity = pkg.quantity || 0;
-        const price = pkg.totalPrice || 0;
-
-        grandTotal += price;
-
-        const fieldName = `package${index + 1}`;
-        packageFields[fieldName] = `${pkg.packageType} (${quantity})`;
-      });
-
-      const gst = delivery.parcelGstAmount || 0;
-      totalGST += gst;
-
-      const otherCharges =
-        (delivery.serviceCharge || 0) +
-        (delivery.hamaliCharge || 0) +
-        (delivery.doorDeliveryCharge || 0) +
-        (delivery.doorPickupCharge || 0);
+      totalFreight += totalCharge || 0;
+      totalGST += parcelGstAmount;
       totalOtherCharges += otherCharges;
+      totalNetAmount += netAmount;
+      totalPackages += packageCount;
 
-      totalGrandTotal += grandTotal;
-      grandTotalPackages += packages.length;
-
-      const type = delivery.bookingType;
-      if (bookingWiseDetails[type] !== undefined) {
-        bookingWiseDetails[type] += grandTotal;
+      if (bookingTypeSummary[type]) {
+        bookingTypeSummary[type].freight += totalCharge || 0;
+        bookingTypeSummary[type].gst += parcelGstAmount;
+        bookingTypeSummary[type].otherCharges += otherCharges;
+        bookingTypeSummary[type].netAmount += netAmount;
       }
 
+      const parcelItems = packages
+        .map(pkg => `${pkg.quantity || 0}-${pkg.packageType || ''}`)
+        .join(', ');
+
       return {
-        grnNo: delivery.grnNo,
-        lrNumber: delivery.lrNumber,
-        deliveryEmployee: delivery.deliveryEmployee,
-        fromCity: delivery.fromCity,
-        pickUpBranchname: delivery.pickUpBranchname,
-        senderName: delivery.senderName,
-        senderMobile: delivery.senderMobile,
-        bookingType: type,
-        receiverName: delivery.receiverName,
-        totalPackages: packages.length,
-        grandTotal,
-        gst,
-        otherCharges,
-        ...packageFields,
+        SrNo: index + 1,
+        WBNo: lrNumber,
+        SourceSubregion: `${fromCity} (${pickUpBranchname})`,
+        ReceivedBy: deliveryEmployee,
+        Consigner: senderName,
+        Consignee: receiverName,
+        WBType: type,
+        ParcelItem: parcelItems,
+        Pkgs: packageCount,
+        Amount: totalCharge || 0
       };
     });
 
-    const paidNetAmount = bookingWiseDetails.paid + totalGST + totalOtherCharges;
-    const toPayNetAmount = bookingWiseDetails.toPay + totalGST + totalOtherCharges;
-    const creditNetAmount = bookingWiseDetails.credit + totalGST + totalOtherCharges;
-    const clrNetAmount = bookingWiseDetails.CLR + totalGST + totalOtherCharges;
-    const focNetAmount = bookingWiseDetails.FOC + totalGST + totalOtherCharges;
-
     return res.status(200).json({
       message: "Delivered stock report generated successfully",
-      data: updatedDeliveries,
-      totalGrandTotal,
-      totalGST,
-      totalOtherCharges,
-      grandTotalPackages,
-      bookingWiseDetails,
-      paidNetAmount,
-      toPayNetAmount,
-      creditNetAmount,
-      clrNetAmount,
-      focNetAmount,
+      deliveries: updatedDeliveries,
+      summary: {
+        totalPackages,
+        totalFreight,
+        totalGST,
+        totalOtherCharges,
+        totalNetAmount,
+        bookingTypeSummary
+      }
     });
+
   } catch (error) {
     console.error("Error in deliveredStockReport:", error);
     return res.status(500).json({ error: error.message });
   }
 };
+
 
 const pendingDispatchStockReport = async (req, res) => {
   try {
