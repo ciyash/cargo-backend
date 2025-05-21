@@ -2212,7 +2212,7 @@ const getBranchCity = async (branchUniqueId) => {
 
 const parcelStatusDateDifferenceReport = async (req, res) => {
   try {
-    const { startDate, endDate, fromCity, toCity } = req.body;
+    const { startDate, endDate, fromCity, toCity,bookingStatus } = req.body;
 
     if (!startDate || !endDate) {
       return res
@@ -2226,11 +2226,12 @@ const parcelStatusDateDifferenceReport = async (req, res) => {
 
     let query = {
       bookingDate: { $gte: start, $lte: end },
-      bookingStatus: 4,
+      // bookingStatus: 4,
     };
 
     if (fromCity) query.fromCity = fromCity;
     if (toCity) query.toCity = toCity;
+    if (bookingStatus) query.bookingStatus = bookingStatus;
 
     const bookings = await Booking.find(query).select(
       "grnNo lrNumber bookingDate loadingDate unloadingDate deliveryDate deliveryEmployee  fromCity toCity bookingStatus parcelGstAmount"

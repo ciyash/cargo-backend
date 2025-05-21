@@ -92,3 +92,4 @@ router.get("/status-wise-summary",bookingController.statusWiseSummary)
 router.post("/get-total",bookingController.getTotalByBranchAndDate)
 
 export default router
+ 
