@@ -56,7 +56,7 @@ router.post("/receivedBooking",auth,bookingController.receivedBooking)
 
 router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)   
 
-// reports 
+// reportss
 
 router.post("/parcel-booking-reports",auth,bookingController.parcelBookingReports)
 router.post("/all-parcel-booking-report",auth,bookingController.allParcelBookingReport)
