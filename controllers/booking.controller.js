@@ -2833,7 +2833,7 @@ const deliveredStockReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryEmployee pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
+        "grnNo lrNumber deliveryEmployee fromCity  pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
       )
       .lean();
 
@@ -2888,6 +2888,7 @@ const deliveredStockReport = async (req, res) => {
         grnNo: delivery.grnNo,
         lrNumber: delivery.lrNumber,
         deliveryEmployee: delivery.deliveryEmployee,
+        fromCity: delivery.fromCity,  
         pickUpBranchname: delivery.pickUpBranchname,
         senderName: delivery.senderName,
         senderMobile: delivery.senderMobile,
