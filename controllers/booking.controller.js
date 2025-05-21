@@ -2805,7 +2805,6 @@ const parcelReceivedStockReport = async (req, res) => {
   }
 };
 
-
 const deliveredStockReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } =
@@ -2846,7 +2845,7 @@ const deliveredStockReport = async (req, res) => {
     let totalGrandTotal = 0;
     let totalGST = 0;
     let totalOtherCharges = 0;
-    let totalPackagesCount = 0;
+    let grandTotalPackages = 0;
 
     const bookingWiseDetails = {
       paid: 0,
@@ -2883,7 +2882,7 @@ const deliveredStockReport = async (req, res) => {
       totalOtherCharges += otherCharges;
 
       totalGrandTotal += grandTotal;
-      totalPackagesCount += packages.length;
+      grandTotalPackages += packages.length;
 
       const type = delivery.bookingType;
       if (bookingWiseDetails[type] !== undefined) {
@@ -2914,16 +2913,13 @@ const deliveredStockReport = async (req, res) => {
     const clrNetAmount = bookingWiseDetails.CLR + totalGST + totalOtherCharges;
     const focNetAmount = bookingWiseDetails.FOC + totalGST + totalOtherCharges;
 
-    const allTotalAmount = totalGrandTotal + totalGST + totalOtherCharges;
-
     return res.status(200).json({
       message: "Delivered stock report generated successfully",
       data: updatedDeliveries,
       totalGrandTotal,
       totalGST,
       totalOtherCharges,
-      totalPackagesCount,
-      allTotalAmount,
+      grandTotalPackages,
       bookingWiseDetails,
       paidNetAmount,
       toPayNetAmount,
@@ -2936,7 +2932,6 @@ const deliveredStockReport = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
-
 
 const pendingDispatchStockReport = async (req, res) => {
   try {
