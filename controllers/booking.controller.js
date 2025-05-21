@@ -2806,6 +2806,7 @@ const parcelReceivedStockReport = async (req, res) => {
 };
 
 
+
 const deliveredStockReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } =
@@ -2833,7 +2834,7 @@ const deliveredStockReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryEmployee fromCity  pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
+        "grnNo lrNumber deliveryEmployee fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
       )
       .lean();
 
@@ -2846,12 +2847,19 @@ const deliveredStockReport = async (req, res) => {
     let totalGrandTotal = 0;
     let totalGST = 0;
     let totalOtherCharges = 0;
-    let bookingWiseDetails = { paid: 0, toPay: 0, credit: 0 };
+    let grandTotalPackages = 0;
+
+    const bookingWiseDetails = {
+      paid: 0,
+      toPay: 0,
+      credit: 0,
+      CLR: 0,
+      FOC: 0,
+    };
 
     const updatedDeliveries = stockReport.map((delivery) => {
       const packages = delivery.packages || [];
 
-      // Compute package-wise fields
       const packageFields = {};
       let grandTotal = 0;
 
@@ -2876,38 +2884,36 @@ const deliveredStockReport = async (req, res) => {
       totalOtherCharges += otherCharges;
 
       totalGrandTotal += grandTotal;
+      grandTotalPackages += packages.length;
 
-      if (delivery.bookingType === "paid")
-        bookingWiseDetails.paid += grandTotal;
-      if (delivery.bookingType === "toPay")
-        bookingWiseDetails.toPay += grandTotal;
-      if (delivery.bookingType === "credit")
-        bookingWiseDetails.credit += grandTotal;
+      const type = delivery.bookingType;
+      if (bookingWiseDetails[type] !== undefined) {
+        bookingWiseDetails[type] += grandTotal;
+      }
 
       return {
         grnNo: delivery.grnNo,
         lrNumber: delivery.lrNumber,
         deliveryEmployee: delivery.deliveryEmployee,
-        fromCity: delivery.fromCity,  
+        fromCity: delivery.fromCity,
         pickUpBranchname: delivery.pickUpBranchname,
         senderName: delivery.senderName,
         senderMobile: delivery.senderMobile,
-        bookingType: delivery.bookingType,
+        bookingType: type,
         receiverName: delivery.receiverName,
         totalPackages: packages.length,
-        grandTotal,  
+        grandTotal,
         gst,
         otherCharges,
         ...packageFields,
       };
     });
 
-    const paidNetAmount =
-      bookingWiseDetails.paid + totalGST + totalOtherCharges;
-    const toPayNetAmount =
-      bookingWiseDetails.toPay + totalGST + totalOtherCharges;
-    const creditNetAmount =
-      bookingWiseDetails.credit + totalGST + totalOtherCharges;
+    const paidNetAmount = bookingWiseDetails.paid + totalGST + totalOtherCharges;
+    const toPayNetAmount = bookingWiseDetails.toPay + totalGST + totalOtherCharges;
+    const creditNetAmount = bookingWiseDetails.credit + totalGST + totalOtherCharges;
+    const clrNetAmount = bookingWiseDetails.CLR + totalGST + totalOtherCharges;
+    const focNetAmount = bookingWiseDetails.FOC + totalGST + totalOtherCharges;
 
     return res.status(200).json({
       message: "Delivered stock report generated successfully",
@@ -2915,12 +2921,16 @@ const deliveredStockReport = async (req, res) => {
       totalGrandTotal,
       totalGST,
       totalOtherCharges,
+      grandTotalPackages,
       bookingWiseDetails,
       paidNetAmount,
       toPayNetAmount,
       creditNetAmount,
+      clrNetAmount,
+      focNetAmount,
     });
   } catch (error) {
+    console.error("Error in deliveredStockReport:", error);
     return res.status(500).json({ error: error.message });
   }
 };
