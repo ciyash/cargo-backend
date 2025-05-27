@@ -76,6 +76,95 @@ const createDailyBranchSnapshot = async () => {
     console.error("❌ Error creating branch snapshot:", error);
   }
 };
+const updateBranchSnapshotContinuously = async () => {
+  try {
+    const now = new Date();
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    const branches = await Branch.find({});
+
+    for (const branch of branches) {
+      const branchCode = branch.branchUniqueId;
+
+      // Check if today's snapshot exists
+      let snapshot = await BranchDailySnapshot.findOne({
+        branchCode,
+        date: startOfDay,
+      });
+
+      // If not, create it with openingBalance
+      if (!snapshot) {
+        // Get last day's closing balance
+        const lastSnapshot = await BranchDailySnapshot.findOne({ branchCode }).sort({ date: -1 });
+        const openingBalance = lastSnapshot ? lastSnapshot.closingBalance : 0;
+
+        snapshot = await BranchDailySnapshot.create({
+          branchCode,
+          date: startOfDay,
+          openingBalance,
+          income: 0,
+          expenses: 0,
+          closingBalance: openingBalance,
+        });
+      }
+
+      // Compute today's income
+      const incomeResult = await Booking.aggregate([
+        {
+          $match: {
+            pickUpBranch: branchCode,
+            bookingDate: { $gte: startOfDay, $lt: endOfDay },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalIncome: { $sum: "$grandTotal" },
+          },
+        },
+      ]);
+
+      const income = incomeResult.length > 0 ? incomeResult[0].totalIncome : 0;
+
+      // Compute today's expenses
+      const expenseResult = await Expense.aggregate([
+        {
+          $match: {
+            branchCode,
+            date: { $gte: startOfDay, $lt: endOfDay },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalExpenses: { $sum: "$amount" },
+          },
+        },
+      ]);
+
+      const expenses = expenseResult.length > 0 ? expenseResult[0].totalExpenses : 0;
+
+      const closingBalance = snapshot.openingBalance + income - expenses;
+
+      // Update today's snapshot
+      snapshot.income = income;
+      snapshot.expenses = expenses;
+      snapshot.closingBalance = closingBalance;
+      await snapshot.save();
+
+      console.log(`🔄 Snapshot updated for branch ${branchCode}`);
+    }
+
+    console.log("✅ All branch snapshots updated.");
+  } catch (error) {
+    console.error("❌ Error updating branch snapshot:", error);
+  }
+};
+
 
 
 // const createDailyBranchSnapshot = async () => {
@@ -151,22 +240,83 @@ const createDailyBranchSnapshot = async () => {
 //   }
 // };
 
+// const getTodayBranchSummary = async (req, res) => {
+//   try {
+//     const { branchCode } = req.body;
+
+//     const today = new Date();
+//     today.setHours(0, 0, 0, 0);
+
+//     const tomorrow = new Date(today);
+//     tomorrow.setDate(today.getDate() + 1);
+
+//     // Today's income
+//     const incomeResult = await Booking.aggregate([
+//       {
+//         $match: {
+//           pickUpBranch: branchCode,
+//           bookingDate: { $gte: today, $lt: tomorrow }
+//         }
+//       },
+//       {
+//         $group: {
+//           _id: null,
+//           totalIncome: { $sum: "$grandTotal" }
+//         }
+//       }
+//     ]);
+//     const income = incomeResult.length > 0 ? incomeResult[0].totalIncome : 0;
+
+//     // Today's expenses
+//     const expenseResult = await Expense.aggregate([
+//       {
+//         $match: {
+//           branchCode,
+//           date: { $gte: today, $lt: tomorrow }
+//         }
+//       },
+//       {
+//         $group: {
+//           _id: null,
+//           totalExpenses: { $sum: "$amount" }
+//         }
+//       }
+//     ]);
+//     const expenses = expenseResult.length > 0 ? expenseResult[0].totalExpenses : 0;
+
+//     const net = income - expenses;
+
+//     res.json({
+//       branchCode,
+//       date: today.toISOString().slice(0, 10), // YYYY-MM-DD
+//       income,
+//       expenses,
+//       netBalance: net
+//     });
+
+//   } catch (error) {
+//     console.error("❌ Error getting today's summary:", error.message);
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
 const getTodayBranchSummary = async (req, res) => {
   try {
-    const { branchCode } = req.body;
+    const { branchCode, date } = req.body;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use provided date or default to today
+    const baseDate = date ? new Date(date) : new Date();
+    baseDate.setHours(0, 0, 0, 0);
 
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(baseDate.getDate() + 1);
 
-    // Today's income
+    // Income aggregation
     const incomeResult = await Booking.aggregate([
       {
         $match: {
           pickUpBranch: branchCode,
-          bookingDate: { $gte: today, $lt: tomorrow }
+          bookingDate: { $gte: baseDate, $lt: nextDate }
         }
       },
       {
@@ -178,35 +328,37 @@ const getTodayBranchSummary = async (req, res) => {
     ]);
     const income = incomeResult.length > 0 ? incomeResult[0].totalIncome : 0;
 
-    // Today's expenses
-    const expenseResult = await Expense.aggregate([
-      {
-        $match: {
-          branchCode,
-          date: { $gte: today, $lt: tomorrow }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          totalExpenses: { $sum: "$amount" }
-        }
-      }
-    ]);
+    // Expenses aggregation
+   // Corrected Expenses aggregation
+const expenseResult = await Expense.aggregate([
+  {
+    $match: {
+      branchCode,
+      expenseDate: { $gte: baseDate, $lt: nextDate } // <-- updated field name
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      totalExpenses: { $sum: "$amount" }
+    }
+  }
+]);
+
     const expenses = expenseResult.length > 0 ? expenseResult[0].totalExpenses : 0;
 
     const net = income - expenses;
 
     res.json({
       branchCode,
-      date: today.toISOString().slice(0, 10), // YYYY-MM-DD
+      date: baseDate.toISOString().slice(0, 10),
       income,
       expenses,
       netBalance: net
     });
 
   } catch (error) {
-    console.error("❌ Error getting today's summary:", error.message);
+    console.error("❌ Error getting branch summary:", error.message);
     res.status(500).json({ error: error.message });
   }
 };
@@ -216,12 +368,13 @@ const getDailyReport = async (req, res) => {
   try {
     const { branchCode, date } = req.body;
 
-    const startOfDay = new Date(`${date}T00:00:00+05:30`);
-    const endOfDay = new Date(`${date}T23:59:59+05:30`);
+    // Match exact date (normalized to 00:00:00)
+    const queryDate = new Date(date);
+    queryDate.setHours(0, 0, 0, 0);
 
     const snapshot = await BranchDailySnapshot.findOne({
       branchCode,
-      date: { $gte: startOfDay, $lte: endOfDay }
+      date: queryDate,
     });
 
     if (!snapshot) {
@@ -285,6 +438,9 @@ const getYearlyReport = async (req, res) => {
         }
       },
       {
+        $sort: { date: 1 }
+      },
+      {
         $group: {
           _id: null,
           totalIncome: { $sum: "$income" },
@@ -304,6 +460,13 @@ const getYearlyReport = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+ 
+// Run every minute
+setInterval(updateBranchSnapshotContinuously, 60 * 1000);
+
+// Also run once immediately when server starts
+updateBranchSnapshotContinuously();
 
 
 export default { createDailyBranchSnapshot,getDailyReport,getMonthlyReport,getYearlyReport,getTodayBranchSummary };

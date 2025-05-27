@@ -1529,6 +1529,79 @@ const parcelBookingSummaryReport = async (req, res) => {
 };
 
 
+// const parcelBookingMobileNumber = async (req, res) => {
+//   try {
+//     const { fromDate, toDate, mobile, bookingType, bookingStatus, reportType } = req.body;
+
+//     if (!req.user) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: User data missing"
+//       });
+//     }
+
+//     let query = {};
+
+//     // Branch restriction for employees
+//     if (req.user.role === "employee") {
+//       query.pickUpBranch = req.user.branchId;
+//     }
+
+//     // Date range filter
+//     if (fromDate && toDate) {
+//       query.bookingDate = {
+//         $gte: new Date(`${fromDate}T00:00:00.000Z`),
+//         $lte: new Date(`${toDate}T23:59:59.999Z`)
+//       };
+//     }
+
+//     // Mobile filter
+//     if (mobile && reportType) {
+//       if (reportType === "Sender") {
+//         query.senderMobile = mobile;
+//       } else if (reportType === "Receiver") {
+//         query.receiverMobile = mobile;
+//       } else if (reportType === "ALL") {
+//         // Correctly apply OR condition
+//         query.$or = [
+//           { senderMobile: mobile },
+//           { receiverMobile: mobile }
+//         ];
+//       }
+//     }
+
+//     // Optional filters
+//     if (bookingType) query.bookingType = bookingType;
+//     if (bookingStatus !== undefined) query.bookingStatus = bookingStatus;
+
+//     const bookings = await Booking.find(query).select(
+//       "grnNo lrNumber bookingDate pickUpBranchname fromCity toCity senderName senderMobile receiverName receiverMobile deliveryDate bookingType totalQuantity grandTotal"
+//     );
+
+//     // If no results, return clean message
+//     if (!bookings.length) {
+//       return res.status(200).json({
+//         success: true,
+//         message: "No customer bookings found."
+//       });
+//     }
+
+//     const allGrandTotal = bookings.reduce((sum, b) => sum + (b.grandTotal || 0), 0);
+//     const allTotalQuantity = bookings.reduce((sum, b) => sum + (b.totalQuantity || 0), 0);
+
+//     res.status(200).json({
+//       success: true,
+//       data: bookings,
+//       allGrandTotal,
+//       allTotalQuantity
+//     });
+
+//   } catch (error) {
+//     console.error("Error fetching parcel booking summary report:", error);
+//     res.status(500).json({ success: false, message: "Internal server error" });
+//   }
+// };
+
 const parcelBookingMobileNumber = async (req, res) => {
   try {
     const { fromDate, toDate, mobile, bookingType, bookingStatus, reportType } = req.body;
@@ -1540,45 +1613,49 @@ const parcelBookingMobileNumber = async (req, res) => {
       });
     }
 
-    let query = {};
-
-    // Branch restriction for employees
+    const query = [];
+    
+    // Restrict to employee's branch
     if (req.user.role === "employee") {
-      query.pickUpBranch = req.user.branchId;
+      query.push({ pickUpBranch: req.user.branchId });
     }
 
-    // Date range filter
+    // Date range
     if (fromDate && toDate) {
-      query.bookingDate = {
-        $gte: new Date(`${fromDate}T00:00:00.000Z`),
-        $lte: new Date(`${toDate}T23:59:59.999Z`)
-      };
+      query.push({
+        bookingDate: {
+          $gte: new Date(`${fromDate}T00:00:00.000Z`),
+          $lte: new Date(`${toDate}T23:59:59.999Z`)
+        }
+      });
     }
 
     // Mobile filter
     if (mobile && reportType) {
       if (reportType === "Sender") {
-        query.senderMobile = mobile;
+        query.push({ senderMobile: mobile });
       } else if (reportType === "Receiver") {
-        query.receiverMobile = mobile;
-      } else if (reportType === "ALL") {
-        // Correctly apply OR condition
-        query.$or = [
-          { senderMobile: mobile },
-          { receiverMobile: mobile }
-        ];
+        query.push({ receiverMobile: mobile });
+      } else if (reportType.toUpperCase() === "ALL") {
+        query.push({
+          $or: [
+            { senderMobile: mobile },
+            { receiverMobile: mobile }
+          ]
+        });
       }
     }
 
     // Optional filters
-    if (bookingType) query.bookingType = bookingType;
-    if (bookingStatus !== undefined) query.bookingStatus = bookingStatus;
+    if (bookingType) query.push({ bookingType });
+    if (bookingStatus !== undefined) query.push({ bookingStatus });
 
-    const bookings = await Booking.find(query).select(
+    const finalQuery = query.length ? { $and: query } : {};
+
+    const bookings = await Booking.find(finalQuery).select(
       "grnNo lrNumber bookingDate pickUpBranchname fromCity toCity senderName senderMobile receiverName receiverMobile deliveryDate bookingType totalQuantity grandTotal"
     );
 
-    // If no results, return clean message
     if (!bookings.length) {
       return res.status(200).json({
         success: true,
@@ -1601,6 +1678,7 @@ const parcelBookingMobileNumber = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
 
 const regularCustomerBooking = async (req, res) => {
   try {
