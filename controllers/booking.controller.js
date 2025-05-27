@@ -101,6 +101,7 @@ const createBooking = async (req, res) => {
       totalPrice,
       dispatchType,
       bookingType,
+      agent,
       packages,
       senderName,
       senderMobile,
@@ -197,6 +198,7 @@ const createBooking = async (req, res) => {
       bookingTime: Date.now(),
       fromCity,
       toCity,
+      agent,
       pickUpBranch,
       dropBranch,
       dispatchType,
@@ -2271,7 +2273,8 @@ const parcelBranchWiseGSTReport = async (req, res) => {
       error: error.message,
     });
   }
-};
+}; 
+
 
 const senderReceiverGSTReport = async (req, res) => {
   try {
@@ -2287,17 +2290,15 @@ const senderReceiverGSTReport = async (req, res) => {
     const endDate = new Date(toDate);
     endDate.setHours(23, 59, 59, 999);
 
-    // Construct query object
     let query = {
       bookingDate: { $gte: startDate, $lte: endDate },
     };
 
-    if (branchCity) query.fromCity = branchCity; // Add branchCity condition if provided
-    if (branchName) query.pickUpBranch = branchName; // Add branchName condition if provided
+    if (branchCity) query.fromCity = branchCity;
+    if (branchName) query.pickUpBranch = branchName;
 
-    // Fetch bookings and return only required fields
     const bookings = await Booking.find(query).select(
-      "grnNo bookingDate senderName receiverName bookingType ltDate senderGst reciverGst grandTotal parcelGstAmount"
+      "grnNo bookingDate senderName receiverName bookingType ltDate senderGst receiverGst fromCity toCity totalQuantity grandTotal parcelGstAmount"
     );
 
     if (bookings.length === 0) {
@@ -2305,16 +2306,34 @@ const senderReceiverGSTReport = async (req, res) => {
         .status(404)
         .json({ message: "No bookings found for the given criteria" });
     }
-    const totalParcelGst = bookings.reduce(
+
+    // Calculate totals
+    const finalTotalQuantity = bookings.reduce(
+      (sum, booking) => sum + (booking.totalQuantity || 0),
+      0
+    );
+
+    const finalGrandTotal = bookings.reduce(
+      (sum, booking) => sum + (booking.grandTotal || 0),
+      0
+    );
+
+    const finalGstTotalAmount = bookings.reduce(
       (sum, booking) => sum + (booking.parcelGstAmount || 0),
       0
     );
 
-    res.status(200).json({ bookings, totalParcelGst });
+    res.status(200).json({
+      bookings,
+      finalTotalQuantity,
+      finalGrandTotal,
+      finalGstTotalAmount,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 const getBranchCity = async (branchUniqueId) => {
   const branch = await Branch.findOne({ branchUniqueId }).lean();

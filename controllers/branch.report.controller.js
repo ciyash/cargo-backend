@@ -136,7 +136,7 @@ const updateBranchSnapshotContinuously = async () => {
           $match: {
             branchCode,
             date: { $gte: startOfDay, $lt: endOfDay },
-          },
+          }, 
         },
         {
           $group: {
@@ -156,10 +156,10 @@ const updateBranchSnapshotContinuously = async () => {
       snapshot.closingBalance = closingBalance;
       await snapshot.save();
 
-      console.log(`🔄 Snapshot updated for branch ${branchCode}`);
+      // console.log(`🔄 Snapshot updated for branch ${branchCode}`);
     }
 
-    console.log("✅ All branch snapshots updated.");
+    // console.log("✅ All branch snapshots updated.");  
   } catch (error) {
     console.error("❌ Error updating branch snapshot:", error);
   }
