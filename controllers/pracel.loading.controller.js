@@ -1,6 +1,6 @@
 import ParcelLoading from "../models/pracel.loading.model.js";
 import { Booking } from "../models/booking.model.js";
-
+import CFMaster from "../models/cf.master.model.js";
 const generateVocherNoUnique = () => {
   return Math.floor(100000 + Math.random() * 900000);
 };
@@ -113,9 +113,9 @@ const getBookingsBetweenDates = async (req, res) => {
     res.status(200).json(bookings);
   } catch (error) {
     console.error("Error fetching bookings:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).json({ error:error.message});
   }
-};
+}; 
 
 const getParcelByGrnNo = async (req, res) => {
   try {
@@ -291,7 +291,7 @@ const getAllParcels = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-};
+};   
 
 const getParcelVocherNoUnique = async (req, res) => {
   try {
