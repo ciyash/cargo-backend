@@ -1,102 +1,114 @@
 import ParcelLoading from "../models/pracel.loading.model.js";
 import {Booking} from "../models/booking.model.js";
-
+import CFMaster from "../models/cf.master.model.js";
 const generateVocherNoUnique = () => {
   return Math.floor(100000 + Math.random() * 900000);
 };
 
-const getBookingsBetweenDates = async (req, res) => { 
-  try {
-    const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
- 
-    if (!startDate || !endDate ) {
-      return res.status(400).json({ message: "Start date and end date are required!" });
-    }
-
-       if (!fromCity || !pickUpBranch ) {
-      return res.status(400).json({ message: "FromCity  and pickUpBranch are required!" });
-    }
- 
-    const start = new Date(startDate);
-    const end = new Date(endDate);     
-    start.setHours(0, 0, 0, 0);
-    end.setHours(23, 59, 59, 999);
- 
-    let filter = { bookingDate: { $gte: start, $lte: end }, bookingStatus: 0 };
- 
-    if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
- 
-    if (Array.isArray(toCity) && toCity.length > 0) {
-      filter.toCity = { $in: toCity.map(city => new RegExp(`^${city}$`, "i")) };
-    } else if (toCity) {
-      filter.toCity = new RegExp(`^${toCity}$`, "i");
-    }
- 
-    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
- 
-    const bookings = await Booking.find(filter);
- 
-    if (bookings.length === 0) {
-      return res.status(404).json({ message: "No bookings found for the given filters!", data: [] });
-    }
- 
-    res.status(200).json(bookings);
-  } catch (error) {
-    console.error("Error fetching bookings:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};   
-
-// const getBookingsBetweenDates = async (req, res) => {
+// const getBookingsBetweenDates = async (req, res) => { 
 //   try {
 //     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
-
-//     if (!startDate || !endDate) {
+ 
+//     if (!startDate || !endDate ) {
 //       return res.status(400).json({ message: "Start date and end date are required!" });
 //     }
 
-//     if (!fromCity || !pickUpBranch) {
-//       return res.status(400).json({ message: "FromCity and pickUpBranch are required!" });
+//        if (!fromCity || !pickUpBranch ) {
+//       return res.status(400).json({ message: "FromCity  and pickUpBranch are required!" });
 //     }
-
+ 
 //     const start = new Date(startDate);
-//     const end = new Date(endDate);
+//     const end = new Date(endDate);     
 //     start.setHours(0, 0, 0, 0);
 //     end.setHours(23, 59, 59, 999);
-
-//     let filter = {
-//       bookingDate: { $gte: start, $lte: end },
-//       bookingStatus: 0,
-//       agent: "" // ✅ Only include user bookings
-//     };
-
+ 
+//     let filter = { bookingDate: { $gte: start, $lte: end }, bookingStatus: 0 };
+ 
 //     if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
-
+ 
 //     if (Array.isArray(toCity) && toCity.length > 0) {
 //       filter.toCity = { $in: toCity.map(city => new RegExp(`^${city}$`, "i")) };
 //     } else if (toCity) {
 //       filter.toCity = new RegExp(`^${toCity}$`, "i");
 //     }
-
+ 
 //     if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
-
-//     // First, fetch the bookings that match the base filter
-//     let bookings = await Booking.find(filter);
-
-//     // Then, exclude bookings where senderName exists in CFMaster
-//     const cfSenders = await CFMaster.find().distinct("senderName");
-//     bookings = bookings.filter(booking => !cfSenders.includes(booking.senderName));
-
+ 
+//     const bookings = await Booking.find(filter);
+ 
 //     if (bookings.length === 0) {
-//       return res.status(404).json({ message: "No user bookings found for the given filters!", data: [] });
+//       return res.status(404).json({ message: "No bookings found for the given filters!", data: [] });
 //     }
-
-//     res.status(200).json({ message: "User bookings fetched successfully", data: bookings });
+ 
+//     res.status(200).json(bookings);
 //   } catch (error) {
 //     console.error("Error fetching bookings:", error);
 //     res.status(500).json({ error: "Internal Server Error" });
 //   }
-// };
+// };   
+
+
+
+
+const getBookingsBetweenDates = async (req, res) => {
+  try {
+    const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "Start date and end date are required!" });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    // Step 1: Get all company senderNames from CFMaster (lowercased)
+    const rawSenderNames = await CFMaster.distinct("senderName");
+    const companySenderNames = rawSenderNames.map(name => name.toLowerCase());
+
+    // Step 2: Build base filter
+    let filter = {
+      bookingDate: { $gte: start, $lte: end },
+      bookingStatus: 0,
+      agent: { $in: ["", null] }, // agent is empty string or null
+    };
+
+    if (fromCity) {
+      filter.fromCity = new RegExp(`^${fromCity}$`, "i");
+    }
+
+    if (Array.isArray(toCity) && toCity.length > 0) {
+      filter.toCity = { $in: toCity.map(city => new RegExp(`^${city}$`, "i")) };
+    } else if (toCity) {
+      filter.toCity = new RegExp(`^${toCity}$`, "i");
+    }
+
+    if (pickUpBranch) {
+      filter.pickUpBranch = pickUpBranch;
+    }
+
+    // Step 3: Fetch all bookings that match the base filter
+    let bookings = await Booking.find(filter);
+
+    // Step 4: Exclude bookings where senderName matches any companySenderName (case-insensitive)
+    bookings = bookings.filter(booking => {
+      const sender = (booking.senderName || "").toLowerCase();
+      return !companySenderNames.includes(sender);
+    });
+
+    if (bookings.length === 0) {
+      return res.status(404).json({ message: "No user bookings found for the given filters!", data: [] });
+    }
+
+    res.status(200).json({ message: "User bookings fetched successfully", data: bookings });
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+
 
 
 
