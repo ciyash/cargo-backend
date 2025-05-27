@@ -1,53 +1,62 @@
 import ParcelLoading from "../models/pracel.loading.model.js";
-import {Booking} from "../models/booking.model.js";
-import CFMaster from "../models/cf.master.model.js";
+import { Booking } from "../models/booking.model.js";
+
 const generateVocherNoUnique = () => {
   return Math.floor(100000 + Math.random() * 900000);
 };
 
-// const getBookingsBetweenDates = async (req, res) => { 
+// const getBookingsBetweenDates = async (req, res) => {
 //   try {
 //     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
- 
-//     if (!startDate || !endDate ) {
-//       return res.status(400).json({ message: "Start date and end date are required!" });
+
+//     if (!startDate || !endDate) {
+//       return res
+//         .status(400)
+//         .json({ message: "Start date and end date are required!" });
 //     }
 
-//        if (!fromCity || !pickUpBranch ) {
-//       return res.status(400).json({ message: "FromCity  and pickUpBranch are required!" });
+//     if (!fromCity || !pickUpBranch) {
+//       return res
+//         .status(400)
+//         .json({ message: "FromCity  and pickUpBranch are required!" });
 //     }
- 
+
 //     const start = new Date(startDate);
-//     const end = new Date(endDate);     
+//     const end = new Date(endDate);
 //     start.setHours(0, 0, 0, 0);
 //     end.setHours(23, 59, 59, 999);
- 
+
 //     let filter = { bookingDate: { $gte: start, $lte: end }, bookingStatus: 0 };
- 
+
 //     if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
- 
+
 //     if (Array.isArray(toCity) && toCity.length > 0) {
-//       filter.toCity = { $in: toCity.map(city => new RegExp(`^${city}$`, "i")) };
+//       filter.toCity = {
+//         $in: toCity.map((city) => new RegExp(`^${city}$`, "i")),
+//       };
 //     } else if (toCity) {
 //       filter.toCity = new RegExp(`^${toCity}$`, "i");
 //     }
- 
+
 //     if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
- 
+
 //     const bookings = await Booking.find(filter);
- 
+
 //     if (bookings.length === 0) {
-//       return res.status(404).json({ message: "No bookings found for the given filters!", data: [] });
+//       return res
+//         .status(404)
+//         .json({
+//           message: "No bookings found for the given filters!",
+//           data: [],
+//         });
 //     }
- 
+
 //     res.status(200).json(bookings);
 //   } catch (error) {
 //     console.error("Error fetching bookings:", error);
 //     res.status(500).json({ error: "Internal Server Error" });
 //   }
-// };   
-
-
+// };
 
 
 const getBookingsBetweenDates = async (req, res) => {
@@ -101,20 +110,16 @@ const getBookingsBetweenDates = async (req, res) => {
       return res.status(404).json({ message: "No user bookings found for the given filters!", data: [] });
     }
 
-    res.status(200).json({ message: "User bookings fetched successfully", data: bookings });
+    res.status(200).json(bookings);
   } catch (error) {
     console.error("Error fetching bookings:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-
-
-
-
 const getParcelByGrnNo = async (req, res) => {
   try {
-    const { grnNo } = req.params;  
+    const { grnNo } = req.params;
 
     if (!grnNo) {
       return res.status(400).json({ message: "grnNo is required" });
@@ -123,7 +128,9 @@ const getParcelByGrnNo = async (req, res) => {
     const booking = await Booking.findOne({ grnNo, bookingStatus: 0 });
 
     if (!booking) {
-      return res.status(404).json({ message: "No matching data found with bookingStatus 0" });
+      return res
+        .status(404)
+        .json({ message: "No matching data found with bookingStatus 0" });
     }
 
     res.status(200).json(booking);
@@ -132,14 +139,12 @@ const getParcelByGrnNo = async (req, res) => {
   }
 };
 
-
 const createParcel = async (req, res) => {
   const session = await ParcelLoading.startSession(); // Start a transaction session
   session.startTransaction();
 
   try {
     const {
-     
       senderName,
       parcelStatus,
       vehicalNumber,
@@ -150,14 +155,14 @@ const createParcel = async (req, res) => {
       lrNumber,
       fromCity,
       toCity,
-      fromBranch
+      fromBranch,
     } = req.body;
 
     //  Validate required fields
     if (
       !fromCity ||
       !toCity ||
-      !fromBranch   ||
+      !fromBranch ||
       !vehicalNumber ||
       !driverName ||
       !driverNo ||
@@ -171,7 +176,6 @@ const createParcel = async (req, res) => {
         .json({ message: "All required fields must be provided" });
     }
 
-
     const existingBookings = await Booking.find({
       grnNo: { $in: grnNo },
     }).session(session);
@@ -179,8 +183,9 @@ const createParcel = async (req, res) => {
       throw new Error("No matching GRN numbers found in Booking collection.");
     }
 
-    
-    const uniqueToCity = [...new Set(toCity.map(city => city.trim().toLowerCase()))];
+    const uniqueToCity = [
+      ...new Set(toCity.map((city) => city.trim().toLowerCase())),
+    ];
 
     const vocherNoUnique = generateVocherNoUnique();
     const loadingBy = req.user.id;
@@ -188,10 +193,10 @@ const createParcel = async (req, res) => {
 
     // Create the parcel record
     const parcel = await new ParcelLoading({
-      loadingType:"offload",
+      loadingType: "offload",
       vehicalNumber,
       fromCity,
-      toCity:uniqueToCity,
+      toCity: uniqueToCity,
       fromBranch,
       parcelStatus,
       loadingBy,
@@ -203,7 +208,7 @@ const createParcel = async (req, res) => {
       remarks,
       grnNo,
       lrNumber,
-      loadingDate : new Date()
+      loadingDate: new Date(),
     }).save({ session });
 
     //  Update all bookings in a single query
@@ -214,15 +219,19 @@ const createParcel = async (req, res) => {
           bookingStatus: 1,
           loadingDate: loadingDate,
           vehicalNumber: vehicalNumber,
-          ltDate: new Date()
+          ltDate: new Date(),
         },
       },
       { session }
     );
-    
 
     await session.commitTransaction(); //  Commit transaction
-    res.status(201).json({ message: "Parcel created successfully and bookings updated", parcel });
+    res
+      .status(201)
+      .json({
+        message: "Parcel created successfully and bookings updated",
+        parcel,
+      });
   } catch (error) {
     if (session.inTransaction()) {
       await session.abortTransaction(); //  Abort transaction only if active
@@ -250,9 +259,11 @@ const createBranchToBranch = async (req, res) => {
 
     const vocherNoUnique = generateVocherNoUnique();
     const loadingBy = req.user.id;
-    const uniqueToCity = [...new Set(toCity.map(city => city.trim().toLowerCase()))];
+    const uniqueToCity = [
+      ...new Set(toCity.map((city) => city.trim().toLowerCase())),
+    ];
     const parcel = new ParcelLoading({
-      loadingType:"branchLoad",
+      loadingType: "branchLoad",
       vocherNoUnique,
       fromCity,
       toCity: uniqueToCity,
@@ -263,8 +274,8 @@ const createBranchToBranch = async (req, res) => {
       vehicalNumber,
       remarks,
     });
-    await parcel.save()
-    res.status(201).json({message:"parcel loading successfully",parcel})
+    await parcel.save();
+    res.status(201).json({ message: "parcel loading successfully", parcel });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -309,20 +320,20 @@ const getParcelVocherNoUnique = async (req, res) => {
       toCity: booking.toCity,
       payType: booking.bookingType,
       status: booking.bookingStatus,
-      tranDate: booking.loadingDate ? new Date(booking.bookingDate).toLocaleDateString('en-GB') : null,
-      amount: booking.grandTotal || 0
+      tranDate: booking.loadingDate
+        ? new Date(booking.bookingDate).toLocaleDateString("en-GB")
+        : null,
+      amount: booking.grandTotal || 0,
     }));
 
     res.status(200).json({
       vocherNo: vocherNoUnique,
       bookingList: formattedBookings,
     });
-
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 const getParcelById = async (req, res) => {
   try {
@@ -371,7 +382,6 @@ const deleteParcel = async (req, res) => {
   }
 };
 
-
 // const getParcelsByFilter = async (req, res) => {
 //   try {
 //     const { fromBranch, fromCity, toCity, fromBookingDate, toBookingDate } = req.body;
@@ -412,11 +422,11 @@ const deleteParcel = async (req, res) => {
 //       contains: booking.packages?.map(pkg => pkg.contains) || []
 //     }));
 
-//     return res.status(200).json({ 
-//         parcelLoadingDetails: parcels, 
-//         bookingDetails: formattedBookings 
+//     return res.status(200).json({
+//         parcelLoadingDetails: parcels,
+//         bookingDetails: formattedBookings
 //       })
-    
+
 //   } catch (error) {
 //     console.error("Error fetching parcels and bookings:", error);
 //     res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -425,17 +435,13 @@ const deleteParcel = async (req, res) => {
 
 const parcelOfflineReport = async (req, res) => {
   try {
-    const {
-      fromDate,
-      toDate,
-      fromCity,
-      toCity,
-      fromBranch,
-      dropBranch
-    } = req.body;
+    const { fromDate, toDate, fromCity, toCity, fromBranch, dropBranch } =
+      req.body;
 
     if (!fromDate || !toDate) {
-      return res.status(400).json({ message: "fromDate and toDate are required!" });
+      return res
+        .status(400)
+        .json({ message: "fromDate and toDate are required!" });
     }
 
     const startDate = new Date(fromDate);
@@ -449,7 +455,7 @@ const parcelOfflineReport = async (req, res) => {
     // Build the filter
     const filter = {
       bookingDate: { $gte: startDate, $lte: endDate },
-      bookingStatus: 0
+      bookingStatus: 0,
     };
 
     if (fromCity) filter.fromCity = fromCity;
@@ -457,7 +463,7 @@ const parcelOfflineReport = async (req, res) => {
     // ✅ If toCity is an array, use $in
     if (Array.isArray(toCity) && toCity.length > 0) {
       filter.toCity = { $in: toCity };
-    } else if (typeof toCity === 'string') {
+    } else if (typeof toCity === "string") {
       filter.toCity = toCity;
     }
 
@@ -467,20 +473,20 @@ const parcelOfflineReport = async (req, res) => {
     const bookings = await Booking.find(filter).sort({ createdAt: -1 }).lean();
 
     if (!bookings.length) {
-      return res.status(404).json({ message: "No bookings found in the given criteria." });
+      return res
+        .status(404)
+        .json({ message: "No bookings found in the given criteria." });
     }
 
     res.status(200).json({
       count: bookings.length,
-      data: bookings
+      data: bookings,
     });
-
   } catch (error) {
     console.error("Error in parcelOfflineReport:", error);
     res.status(500).json({ message: "Server error." });
   }
 };
-
 
 const updateAllGrnNumbers = async (req, res) => {
   try {
@@ -553,8 +559,6 @@ const getParcelByLrNumber = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-
 
 const getParcelByVehicalNumber = async (req, res) => {
   try {
@@ -641,7 +645,12 @@ const getBookingsByDateAndBranch = async (req, res) => {
     const { fromBookingDate, toBookingDate, fromBranch } = req.body;
 
     if (!fromBookingDate || !toBookingDate || !fromBranch) {
-      return res.status(400).json({ message: "fromBookingDate, toBookingDate, and fromBranch are required" });
+      return res
+        .status(400)
+        .json({
+          message:
+            "fromBookingDate, toBookingDate, and fromBranch are required",
+        });
     }
 
     const from = new Date(fromBookingDate);
@@ -650,17 +659,19 @@ const getBookingsByDateAndBranch = async (req, res) => {
 
     const bookings = await Booking.find({
       bookingDate: { $gte: from, $lte: to },
-      pickUpBranch: fromBranch // Fixed: Ensure you're filtering by the correct field
+      pickUpBranch: fromBranch, // Fixed: Ensure you're filtering by the correct field
     }).sort({ bookingDate: -1 });
 
     if (bookings.length === 0) {
-      return res.status(200).json({message: "No parcels available" });
+      return res.status(200).json({ message: "No parcels available" });
     }
 
     return res.status(200).json(bookings);
   } catch (error) {
     console.error("Error fetching bookings:", error);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -738,8 +749,6 @@ const getBookingsByDateAndBranch = async (req, res) => {
 //   }
 // };
 
-
-
 const offlineParcelVoucherDetailsPrint = async (req, res) => {
   try {
     const { vocherNoUnique } = req.params;
@@ -770,7 +779,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
         vehicalNumber: 1,
         grandTotal: 1,
         packages: 1,
-        _id: 0
+        _id: 0,
       }
     );
 
@@ -782,10 +791,10 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
       toPay: { totalBookings: 0, grandTotal: 0 },
       credit: { totalBookings: 0, grandTotal: 0 },
       CLR: { totalBookings: 0, grandTotal: 0 },
-      FOC: { totalBookings: 0, grandTotal: 0 }
+      FOC: { totalBookings: 0, grandTotal: 0 },
     };
 
-    const formattedBookings = bookings.map(booking => {
+    const formattedBookings = bookings.map((booking) => {
       const bookingTotal = Number(booking.grandTotal) || 0;
       const bookingQty = Number(booking.totalQuantity) || 0;
 
@@ -815,10 +824,10 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
         bookingType: booking.bookingType,
         BusNo: booking.vehicalNumber,
         totalQuantity: booking.totalQuantity,
-        packages: (booking.packages || []).map(pkg => ({
+        packages: (booking.packages || []).map((pkg) => ({
           packageType: pkg.packageType,
-          quantity: pkg.quantity
-        }))
+          quantity: pkg.quantity,
+        })),
       };
     });
 
@@ -826,7 +835,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
       bookings: formattedBookings,
       allTotal,
       allQuantity,
-      bookingTypeSummary
+      bookingTypeSummary,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -835,10 +844,13 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
 
 const offlineParcelVoucherDetails = async (req, res) => {
   try {
-    const { fromDate, toDate, vehicalNumber, fromCity, toCity, fromBranch } = req.body;
+    const { fromDate, toDate, vehicalNumber, fromCity, toCity, fromBranch } =
+      req.body;
 
     if (!fromDate || !toDate) {
-      return res.status(400).json({ message: "fromBookingDate and toBookingDate are required!" });
+      return res
+        .status(400)
+        .json({ message: "fromBookingDate and toBookingDate are required!" });
     }
 
     const startDate = new Date(fromDate);
@@ -864,7 +876,9 @@ const offlineParcelVoucherDetails = async (req, res) => {
     const parcels = await ParcelLoading.find(filter).sort({ createdAt: -1 });
 
     if (!parcels.length) {
-      return res.status(404).json({ message: "No parcels found in the given date range!" });
+      return res
+        .status(404)
+        .json({ message: "No parcels found in the given date range!" });
     }
 
     const grnNos = parcels.flatMap((parcel) => parcel.grnNo);
@@ -882,7 +896,10 @@ const offlineParcelVoucherDetails = async (req, res) => {
         grandTotal += booking.grandTotal || 0;
 
         if (Array.isArray(booking.packages)) {
-          totalQuantity += booking.packages.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0);
+          totalQuantity += booking.packages.reduce(
+            (sum, pkg) => sum + (pkg.quantity || 0),
+            0
+          );
         }
       });
 
@@ -899,12 +916,10 @@ const offlineParcelVoucherDetails = async (req, res) => {
     });
 
     res.status(200).json(result);
-
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 //reports
 
@@ -913,7 +928,9 @@ const dispatchedStockReport = async (req, res) => {
     const { fromDate, toDate, fromCity, toCity, fromBranch } = req.body;
 
     if (!fromDate || !toDate) {
-      return res.status(400).json({ message: "fromDate and toDate are required" });
+      return res
+        .status(400)
+        .json({ message: "fromDate and toDate are required" });
     }
 
     const start = new Date(fromDate);
@@ -930,16 +947,19 @@ const dispatchedStockReport = async (req, res) => {
     const dispatchedStock = await ParcelLoading.find(query).lean();
 
     if (!dispatchedStock.length) {
-      return res.status(404).json({ message: "No dispatched stock found for the given criteria" });
+      return res
+        .status(404)
+        .json({ message: "No dispatched stock found for the given criteria" });
     }
 
     res.status(200).json(dispatchedStock);
   } catch (error) {
     console.error("Error generating dispatched stock report:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 };
-
 
 export default {
   getBookingsBetweenDates,
@@ -963,5 +983,5 @@ export default {
   offlineParcelVoucherDetailsPrint,
 
   //
-  parcelOfflineReport
+  parcelOfflineReport,
 };
