@@ -46,7 +46,59 @@ const getBookingsBetweenDates = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };   
-//
+
+// const getBookingsBetweenDates = async (req, res) => {
+//   try {
+//     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
+
+//     if (!startDate || !endDate) {
+//       return res.status(400).json({ message: "Start date and end date are required!" });
+//     }
+
+//     if (!fromCity || !pickUpBranch) {
+//       return res.status(400).json({ message: "FromCity and pickUpBranch are required!" });
+//     }
+
+//     const start = new Date(startDate);
+//     const end = new Date(endDate);
+//     start.setHours(0, 0, 0, 0);
+//     end.setHours(23, 59, 59, 999);
+
+//     let filter = {
+//       bookingDate: { $gte: start, $lte: end },
+//       bookingStatus: 0,
+//       agent: "" // ✅ Only include user bookings
+//     };
+
+//     if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
+
+//     if (Array.isArray(toCity) && toCity.length > 0) {
+//       filter.toCity = { $in: toCity.map(city => new RegExp(`^${city}$`, "i")) };
+//     } else if (toCity) {
+//       filter.toCity = new RegExp(`^${toCity}$`, "i");
+//     }
+
+//     if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+
+//     // First, fetch the bookings that match the base filter
+//     let bookings = await Booking.find(filter);
+
+//     // Then, exclude bookings where senderName exists in CFMaster
+//     const cfSenders = await CFMaster.find().distinct("senderName");
+//     bookings = bookings.filter(booking => !cfSenders.includes(booking.senderName));
+
+//     if (bookings.length === 0) {
+//       return res.status(404).json({ message: "No user bookings found for the given filters!", data: [] });
+//     }
+
+//     res.status(200).json({ message: "User bookings fetched successfully", data: bookings });
+//   } catch (error) {
+//     console.error("Error fetching bookings:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
+
+
 
 const getParcelByGrnNo = async (req, res) => {
   try {

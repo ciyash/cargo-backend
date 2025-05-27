@@ -18,7 +18,7 @@ const bookingSchema = new mongoose.Schema(
     bookedBy: { type:mongoose.Schema.Types.ObjectId,ref:"Subadmin",required:true},  // auto entered  // employee or subadmin or accountant
     totalPackages:{type:Number,required:true},
     bookbranchid: {type: mongoose.Schema.Types.ObjectId,ref: "Branch", required: true},
-    agent:{ type: String, default: null }, 
+    agent:{ type: String, default:"" }, 
     fromCity: { type: String,required:true },
     toCity: { type: String,required:true },
     pickUpBranch: { type: String,required:true },

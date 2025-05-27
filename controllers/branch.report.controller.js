@@ -368,13 +368,16 @@ const getDailyReport = async (req, res) => {
   try {
     const { branchCode, date } = req.body;
 
-    // Match exact date (normalized to 00:00:00)
-    const queryDate = new Date(date);
-    queryDate.setHours(0, 0, 0, 0);
+    // Convert string to Date
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0); // 2025-05-27T00:00:00.000Z
+
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1); // 2025-05-28T00:00:00.000Z
 
     const snapshot = await BranchDailySnapshot.findOne({
       branchCode,
-      date: queryDate,
+      date: { $gte: startOfDay, $lt: endOfDay },
     });
 
     if (!snapshot) {
