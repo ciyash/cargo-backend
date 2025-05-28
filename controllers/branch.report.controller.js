@@ -141,22 +141,22 @@ const getLiveBranchSnapshot = async (branchCode) => {
   }
 };
 
-const getLiveBranchStatus = async (branchCode) => {
+ const getLiveStatus = async (req, res) => {
   try {
+    const branchCode = req.params.branchCode;
+
+    console.log("📍 Requested branchCode:", branchCode);
+
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // ఈరోజు మొదలు
-    const now = new Date();      // ఇప్పటి సమయం
+    today.setHours(0, 0, 0, 0);
 
-    // గత snapshot (opening balance కోసం)
-    const lastSnapshot = await BranchDailySnapshot.findOne({ branchCode }).sort({ date: -1 });
-    const openingBalance = lastSnapshot ? lastSnapshot.closingBalance : 0;
+    const now = new Date();
 
-    // Booking నుండి ఈ రోజు ఇప్పటి వరకు ఆదాయం లెక్క
     const incomeResult = await Booking.aggregate([
       {
         $match: {
           pickUpBranch: branchCode,
-          bookingDate: { $gte: today, $lt: now }
+          bookingDate: { $gte: today, $lte: now }
         }
       },
       {
@@ -166,14 +166,14 @@ const getLiveBranchStatus = async (branchCode) => {
         }
       }
     ]);
-    const income = incomeResult.length > 0 ? incomeResult[0].totalIncome : 0;
 
-    // Expense నుండి ఈ రోజు ఇప్పటి వరకు ఖర్చులు లెక్క
+    console.log("💰 Income result:", incomeResult);
+
     const expenseResult = await Expense.aggregate([
       {
         $match: {
-          branchCode,
-          date: { $gte: today, $lt: now }
+          branchCode: branchCode,
+          date: { $gte: today, $lte: now }
         }
       },
       {
@@ -183,25 +183,29 @@ const getLiveBranchStatus = async (branchCode) => {
         }
       }
     ]);
+
+    console.log("💸 Expense result:", expenseResult);
+
+    const income = incomeResult.length > 0 ? incomeResult[0].totalIncome : 0;
     const expenses = expenseResult.length > 0 ? expenseResult[0].totalExpenses : 0;
+    const liveBalance = income - expenses;
 
-    // Calculate current closing balance
-    const closingBalance = openingBalance + income - expenses;
-
-    return {
+    res.status(200).json({
+      success: true,
       branchCode,
-      openingBalance,
       income,
       expenses,
-      closingBalance,
-      lastUpdated: now
-    };
+      liveBalance
+    });
+
   } catch (error) {
-    console.error("Error fetching live branch status:", error);
-    throw error;
+    console.error("❌ Failed to fetch live status", error);
+    res.status(500).json({ error: "Failed to fetch live status" });
   }
 };
 
 
 
-export default { createDailyBranchSnapshot,getLiveBranchSnapshot,getLiveBranchStatus };
+
+export default { createDailyBranchSnapshot,getLiveBranchSnapshot, getLiveStatus };
+  
