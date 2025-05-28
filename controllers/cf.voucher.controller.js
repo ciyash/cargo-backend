@@ -142,6 +142,7 @@ const generateVoucher = async () => {
 // };
 
 
+
 const createCFVoucher = async (req, res) => {
   try {
     const {
@@ -150,7 +151,7 @@ const createCFVoucher = async (req, res) => {
       creditForAgent,
       fromBranch,
       toBranch,
-      consignor, // <-- MUST BE HERE
+      consignor,
       bookingStatus,
       charge
     } = req.body;
@@ -164,17 +165,21 @@ const createCFVoucher = async (req, res) => {
       creditForAgent,
       fromBranch,
       toBranch,
-      consignor, // <-- MUST BE HERE TOO
+      consignor,
       bookingStatus,
       charge
     });
 
     await newVoucher.save();
 
-    await CFMaster.updateMany(
-      { grnNo: { $in: grnNo } },
+    const grnList = Array.isArray(grnNo) ? grnNo.map(Number) : [Number(grnNo)];
+
+    const updateResult = await CFMaster.updateMany(
+      { grnNo: { $in: grnList } },
       { $set: { bookingStatus: 1 } }
     );
+
+    console.log("Update result:", updateResult);
 
     res.status(201).json({ message: "CF Voucher created successfully", newVoucher });
 
