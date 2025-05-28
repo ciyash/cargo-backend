@@ -31,7 +31,7 @@ app.use("/vehicle",vehicleRouter)
 app.use("/parcel-loading",parcelLoadingRouter)
 app.use("/multi-router",multiRouter)
 app.use("/extra-charge",extraChargeRouter)
-app.use("/parcel-unloading",parcelUnloadingRouter)
+app.use("/parcel-unloading",parcelUnloadingRouter)     
 
 app.use("/cfmaster",masterRouter)
 app.use("/cfextra-charge",cfExtraChargeRouter)
@@ -48,4 +48,4 @@ app.use("/branch-report",branchReportRouter) // Assuming you have a branch repor
 app.use("/all",allRouter)
 
 
-export default app
+export default app      

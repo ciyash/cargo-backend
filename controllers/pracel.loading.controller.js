@@ -6,8 +6,6 @@ const generateVocherNoUnique = () => {
 };
 
 
-
-
 // const getBookingsBetweenDates = async (req, res) => {
 //   try {
 //     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
@@ -134,10 +132,6 @@ const getBookingsBetweenDates = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
-
-
-
 
 
 

@@ -2,56 +2,103 @@ import CFVoucher from '../models/cf.voucher.generate.model.js'
 import CFMaster from '../models/cf.master.model.js '
 import {Booking} from '../models/booking.model.js'
 
+// const creditForVoucherGenerate = async (req, res) => {
+//   try {
+//     const { fromDate, toDate, senderName } = req.body;
+
+//     // Step 1: Validate dates
+//     if (!fromDate || !toDate) {
+//       return res.status(400).json({ success: false, message: "Missing required query parameters" });
+//     }
+
+//     const from = new Date(fromDate);
+//     const to = new Date(toDate);
+//     to.setHours(23, 59, 59, 999); // Full day
+
+//     if (isNaN(from) || isNaN(to)) {
+//       return res.status(400).json({ success: false, message: "Invalid date format" });
+//     }
+
+//     // Step 2: Get sender names from CFMaster
+//     let cfMasterQuery = {};
+//     if (senderName) {
+//       cfMasterQuery.name = { $regex: `^${senderName}$`, $options: "i" };
+//     }
+
+//     const matchedMasters = await CFMaster.find(cfMasterQuery).select("name");
+
+//     if (!matchedMasters.length) {
+//       return res.status(404).json({ message: "No matching sender names found in CFMaster" });
+//     }
+
+//     const validSenderNames = matchedMasters.map(master => master.name);
+
+//     // Step 3: Booking query with senderName IN validSenderNames
+//     const bookingQuery = {
+//       bookingTime: { $gte: from, $lte: to },
+//       senderName: { $in: validSenderNames }
+//     };
+
+//     const bookings = await Booking.find(bookingQuery)
+//       .sort({ bookingTime: -1 })
+//       .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingTime");
+
+//     if (!bookings.length) {
+//       return res.status(404).json({ message: "No bookings found for given date and sender match" });
+//     }
+
+//     res.status(200).json(bookings);
+//   } catch (error) {
+//     res.status(500).json({ success: false, message: "Server Error", error: error.message });
+//   }
+// };
+
+
+
 const creditForVoucherGenerate = async (req, res) => {
   try {
     const { fromDate, toDate, senderName } = req.body;
 
-    // Step 1: Validate dates
     if (!fromDate || !toDate) {
-      return res.status(400).json({ success: false, message: "Missing required query parameters" });
+      return res.status(400).json({ success: false, message: "Missing required date parameters" });
     }
 
     const from = new Date(fromDate);
     const to = new Date(toDate);
-    to.setHours(23, 59, 59, 999); // Full day
+    to.setHours(23, 59, 59, 999); // include entire 'toDate'
 
     if (isNaN(from) || isNaN(to)) {
       return res.status(400).json({ success: false, message: "Invalid date format" });
     }
 
-    // Step 2: Get sender names from CFMaster
-    let cfMasterQuery = {};
-    if (senderName) {
-      cfMasterQuery.name = { $regex: `^${senderName}$`, $options: "i" };
-    }
-
-    const matchedMasters = await CFMaster.find(cfMasterQuery).select("name");
-
-    if (!matchedMasters.length) {
-      return res.status(404).json({ message: "No matching sender names found in CFMaster" });
-    }
-
-    const validSenderNames = matchedMasters.map(master => master.name);
-
-    // Step 3: Booking query with senderName IN validSenderNames
-    const bookingQuery = {
-      bookingTime: { $gte: from, $lte: to },
-      senderName: { $in: validSenderNames }
+    const query = {
+      bookingDate: { $gte: from, $lte: to }, // ✅ corrected field
+      agent: { $exists: true, $type: "string", $ne: "" }, // ✅ only if agent length > 0
+      bookingStatus: 0
     };
 
-    const bookings = await Booking.find(bookingQuery)
-      .sort({ bookingTime: -1 })
-      .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingTime");
+    if (senderName) {
+      query.senderName = { $regex: `^${senderName}$`, $options: "i" };
+    }
+
+    const bookings = await Booking.find(query)
+      .sort({ bookingDate: -1 })
+      .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingDate agent");
 
     if (!bookings.length) {
-      return res.status(404).json({ message: "No bookings found for given date and sender match" });
+      return res.status(404).json({ message: "No company bookings found for given criteria" });
     }
 
     res.status(200).json(bookings);
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    console.error("Error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
+
+
+
+
 
 const generateVoucher = async () => {
 
