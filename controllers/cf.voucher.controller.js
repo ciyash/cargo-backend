@@ -397,6 +397,66 @@ const voucherDetails = async (req, res) => {
 };
 
 
+// const voucherDetailsPrint = async (req, res) => {
+//   try {
+//     const { senderName } = req.body;
+
+//     // Validate required field
+//     if (!senderName) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "senderName is required"
+//       });
+//     }
+
+//     const query = { senderName };
+
+//     const bookings = await Booking.find(query).select(
+//       "grnNo bookingDate agent senderName senderAddress fromCity toCity packages parcelGstAmount grandTotal"
+//     );
+
+//     let allGrandTotal = 0;
+
+//     const result = bookings.map(b => {
+//       const totalWeight = b.packages.reduce((sum, pkg) => sum + (pkg.weight || 0), 0);
+//       const totalPackages = b.packages.length;
+
+//       allGrandTotal += b.grandTotal || 0;
+
+//       return {
+//         grnNo: b.grnNo,
+//         bookingDate: b.bookingDate,
+//         fromCity: b.fromCity,
+//         senderName: b.senderName,
+//         agent: b.agent,
+//         senderAddress: b.senderAddress,
+//         toCity: b.toCity,
+//         packageDetails: b.packages,
+//         totalPackages,
+//         parcelGstAmount: b.parcelGstAmount || 0,
+//         totalWeight,
+//         grandTotal: b.grandTotal || 0
+//       };
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       totalRecords: bookings.length,
+//       data: result,
+//       allGrandTotal
+//     });
+
+//   } catch (error) {
+//     console.error("Error fetching voucher details:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Server Error",
+//       error: error.message
+//     });
+//   }
+// };
+
+
 const voucherDetailsPrint = async (req, res) => {
   try {
     const { senderName } = req.body;
@@ -405,14 +465,15 @@ const voucherDetailsPrint = async (req, res) => {
     if (!senderName) {
       return res.status(400).json({
         success: false,
-        message: "senderName is required"
+        message: "senderName is required",
+        senderName
       });
     }
 
     const query = { senderName };
 
     const bookings = await Booking.find(query).select(
-      "grnNo bookingDate agent senderAddress fromCity toCity packages parcelGstAmount grandTotal"
+      "grnNo bookingDate agent senderName senderAddress fromCity toCity packages parcelGstAmount grandTotal"
     );
 
     let allGrandTotal = 0;
@@ -427,6 +488,7 @@ const voucherDetailsPrint = async (req, res) => {
         grnNo: b.grnNo,
         bookingDate: b.bookingDate,
         fromCity: b.fromCity,
+        senderName: b.senderName,
         agent: b.agent,
         senderAddress: b.senderAddress,
         toCity: b.toCity,
@@ -438,8 +500,13 @@ const voucherDetailsPrint = async (req, res) => {
       };
     });
 
+    // Get senderAddress from the first record (if available)
+    const senderAddress = bookings.length > 0 ? bookings[0].senderAddress : "";
+
     res.status(200).json({
       success: true,
+      senderName,
+      senderAddress,
       totalRecords: bookings.length,
       data: result,
       allGrandTotal
@@ -450,7 +517,8 @@ const voucherDetailsPrint = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server Error",
-      error: error.message
+      error: error.message,
+      senderName: req.body?.senderName || null
     });
   }
 };
