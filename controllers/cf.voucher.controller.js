@@ -54,7 +54,6 @@ import {Booking} from '../models/booking.model.js'
 // };
 
 
-
 const creditForVoucherGenerate = async (req, res) => {
   try {
     const { fromDate, toDate, senderName } = req.body;
@@ -97,9 +96,6 @@ const creditForVoucherGenerate = async (req, res) => {
 };
 
 
-
-
-
 const generateVoucher = async () => {
 
     const lastVoucher = await CFVoucher.findOne().sort({ voucherNo: -1 });
@@ -110,37 +106,6 @@ const generateVoucher = async () => {
 
     return lastVoucher.voucherNo + 1; // Increment the last voucher number
 };
-
-//  const createCFVoucher = async (req, res) => {
-//     try {
-//         const { grnNo,lrNumber, creditForAgent, fromBranch, toBranch, consignor, bookingStatus, charge } = req.body;
-
-//         const voucherNo = await generateVoucher();
-//         const newVoucher = new CFVoucher({
-//             voucherNo, 
-//             grnNo, 
-//             lrNumber,
-//             creditForAgent, 
-//             fromBranch, 
-//             toBranch, 
-//             consignor, 
-//             bookingStatus, 
-//             charge
-//         });
-
-//         await newVoucher.save();
-
-//         await CFMaster.updateOne(
-//             { grnNo: grnNo },
-//             { $set: { bookingStatus: 1 } }
-//         );
-
-//         res.status(201).json({ message: "CF Voucher created successfully", newVoucher });
-//     } catch (error) {
-//         res.status(500).json({ error: error.message });
-//     }
-// };
-
 
 
 const createCFVoucher = async (req, res) => {
@@ -172,22 +137,29 @@ const createCFVoucher = async (req, res) => {
 
     await newVoucher.save();
 
-    const grnList = Array.isArray(grnNo) ? grnNo.map(Number) : [Number(grnNo)];
+    const grnList = Array.isArray(grnNo)
+      ? grnNo.map((no) => Number(no))
+      : [Number(grnNo)];
 
-    const updateResult = await CFMaster.updateMany(
+
+    const foundBookings = await Booking.find({ grnNo: { $in: grnList } });
+    
+
+    const updateResult = await Booking.updateMany(
       { grnNo: { $in: grnList } },
       { $set: { bookingStatus: 1 } }
     );
 
-    console.log("Update result:", updateResult);
+    
 
     res.status(201).json({ message: "CF Voucher created successfully", newVoucher });
 
   } catch (error) {
-    console.error(error);
+    console.error("Error in createCFVoucher:", error);
     res.status(500).json({ error: error.message });
   }
 };
+
 
 
 
