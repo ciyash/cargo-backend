@@ -116,7 +116,7 @@ const generateVocherNoUnique = () => {
 //   }
 // };
 
-
+  
 
 const getBookingsBetweenDates = async (req, res) => {
   try {
@@ -460,7 +460,7 @@ const deleteParcel = async (req, res) => {
 //     const { fromBranch, fromCity, toCity, fromBookingDate, toBookingDate } = req.body;
 
 //     // Construct query dynamically
-//     let query = {};
+//     let query = {}
 
 //     if (fromBranch) query.fromBranch = fromBranch;
 //     if (fromCity) query.fromCity = fromCity;
