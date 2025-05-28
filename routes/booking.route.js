@@ -5,16 +5,16 @@ import bookingController from '../controllers/booking.controller.js'
  
 const router=express.Router()  
 
-
+   
 //users 
  
-router.get("/users",bookingController.getAllUsers)  
+router.get("/users",auth,bookingController.getAllUsers)  
 
-router.get("/users/search",bookingController.getUsersBySearch)
+router.get("/users/search",auth,bookingController.getUsersBySearch)
 
-router.get("/user/:senderMobile",bookingController.getUserByMobile)
+router.get("/user/:senderMobile",auth,bookingController.getUserByMobile)
 
-router.get("/user/credit",bookingController.getCreditBookings)
+router.get("/user/credit",auth,bookingController.getCreditBookings)
 
 // bookings 
  
@@ -26,32 +26,31 @@ router.get("/",bookingController.getAllBookings)
 
    
 router.get("/todaybookings",auth,bookingController.getBookingBydate)
-   
-router.get("/grnNo/:grnNo",bookingController.getBookingByGrnNo)
- 
-router.get("/adminUniqueId/:adminUniqueId",bookingController.getBookingadminUniqueId)
- 
-router.post("/search-data", bookingController.getBookingsByAnyField);
+
+router.get("/grnNo/:grnNo",auth,bookingController.getBookingByGrnNo)
+
+router.get("/adminUniqueId/:adminUniqueId",auth,bookingController.getBookingadminUniqueId)
+
+router.post("/search-data",auth, bookingController.getBookingsByAnyField);
 
 
-router.get("/pages",bookingController.getAllBookingsPages)
- 
-router.get("/fromCity/:fromCity/toCity/:toCity/:vehicalNumber",bookingController.getBookingsfromCityTotoCity)
- 
+router.get("/pages",auth,bookingController.getAllBookingsPages)
 
- 
-router.post("/get-lrNumber",bookingController.getBookinglrNumber)
- 
-router.delete("/:id",bookingController.deleteBookings)
- 
-router.patch("/:id",bookingController.updateBookings)
- 
-router.patch("/grnNo/:grnNo",bookingController.updateGRNBookings)
- 
-router.post("/updateAllGrnNumbers",bookingController.updateAllGrnNumbers)
+router.get("/fromCity/:fromCity/toCity/:toCity/:vehicalNumber",auth,bookingController.getBookingsfromCityTotoCity)
 
-router.post("/unreceived-booking",bookingController.unReceivedBookings)
-  
+
+router.post("/get-lrNumber",auth,bookingController.getBookinglrNumber)
+
+router.delete("/:id",auth,bookingController.deleteBookings)
+
+router.patch("/:id",auth,bookingController.updateBookings)
+
+router.patch("/grnNo/:grnNo",auth,bookingController.updateGRNBookings)
+
+router.post("/updateAllGrnNumbers",auth,bookingController.updateAllGrnNumbers)
+
+router.post("/unreceived-booking",auth,bookingController.unReceivedBookings)
+
 router.post("/receivedBooking",auth,bookingController.receivedBooking)
 
 router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)   
@@ -62,32 +61,32 @@ router.post("/parcel-booking-reports",auth,bookingController.parcelBookingReport
 router.post("/all-parcel-booking-report",auth,bookingController.allParcelBookingReport)
 router.post("/parcel-report-serialNo",auth,bookingController.parcelReportSerialNo)
 router.post('/parcel-cancel-report',auth,bookingController.parcelCancelReport)
-router.post("/parcel-booking-summary-report",bookingController.parcelBookingSummaryReport)
+router.post("/parcel-booking-summary-report",auth,bookingController.parcelBookingSummaryReport)
 router.post("/parcel-booking-mobileNumber",auth,bookingController.parcelBookingMobileNumber)
-router.post("/regular-customer-booking",bookingController.regularCustomerBooking)
+router.post("/regular-customer-booking",auth,bookingController.regularCustomerBooking)
 
-router.post("/branch-Wise-collection-report",bookingController.branchWiseCollectionReport)
-router.post("/parcel-branch-consolidated-report",bookingController.parcelBranchConsolidatedReport)
-router.post("/parcel-branch-wise-gst-report",bookingController.parcelBranchWiseGSTReport)
-router.post("/sender-receiver-gst-report",bookingController.senderReceiverGSTReport)
-router.post("/pending-delivery-stock-report",bookingController.pendingDeliveryStockReport) //sudheer 
-router.post("/parcel-status-date-difference-report",bookingController.parcelStatusDateDifferenceReport)
-router.post("/pending-delivery-luggage-report",bookingController.pendingDeliveryLuggageReport)
-router.post("/parcel-received-stock-report",bookingController.parcelReceivedStockReport)
-router.post("/delivered-stock-report",bookingController.deliveredStockReport) 
-router.post("/pending-dispatch-stock-report",bookingController.pendingDispatchStockReport)
-router.post("/dispatched-memo-report",bookingController.dispatchedMemoReport)
-router.post("/parcel-incoming-luggages-report",bookingController.parcelIncomingLuggagesReport)
-router.post("/grnNolrNo", bookingController.getBookingByGrnOrLrNumber);
+router.post("/branch-Wise-collection-report",auth,bookingController.branchWiseCollectionReport)
+router.post("/parcel-branch-consolidated-report",auth,bookingController.parcelBranchConsolidatedReport)
+router.post("/parcel-branch-wise-gst-report",auth,bookingController.parcelBranchWiseGSTReport)
+router.post("/sender-receiver-gst-report",auth,bookingController.senderReceiverGSTReport)
+router.post("/pending-delivery-stock-report",auth,bookingController.pendingDeliveryStockReport) //sudheer
+router.post("/parcel-status-date-difference-report",auth,bookingController.parcelStatusDateDifferenceReport)
+router.post("/pending-delivery-luggage-report",auth,bookingController.pendingDeliveryLuggageReport)
+router.post("/parcel-received-stock-report",auth,bookingController.parcelReceivedStockReport)
+router.post("/delivered-stock-report",auth,bookingController.deliveredStockReport)
+router.post("/pending-dispatch-stock-report",auth,bookingController.pendingDispatchStockReport)
+router.post("/dispatched-memo-report",auth,bookingController.dispatchedMemoReport)
+router.post("/parcel-incoming-luggages-report",auth,bookingController.parcelIncomingLuggagesReport)
+router.post("/grnNolrNo",auth, bookingController.getBookingByGrnOrLrNumber);
 
 //dashboard booking
 
-router.get("/get-above700",bookingController.getAllBookingsAbove700)
-router.post("/sales-summary-branchwise",bookingController.salesSummaryByBranchWise)
-router.post("/summary-report",bookingController.collectionSummaryReport)
-router.post("/branch-account",bookingController.branchAccount)
-router.post("/acparty-account",bookingController.acPartyAccount)
-router.get("/status-wise-summary",bookingController.statusWiseSummary)
+router.get("/get-above700",auth,bookingController.getAllBookingsAbove700)
+router.post("/sales-summary-branchwise",auth,bookingController.salesSummaryByBranchWise)
+router.post("/summary-report",auth,bookingController.collectionSummaryReport)
+router.post("/branch-account",auth,bookingController.branchAccount)
+router.post("/acparty-account",auth,bookingController.acPartyAccount)
+router.get("/status-wise-summary",auth,bookingController.statusWiseSummary)
 
 router.post("/get-total",bookingController.getTotalByBranchAndDate)
 

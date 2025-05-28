@@ -4,7 +4,7 @@ import auth from '../config/auth.middleware.js'
 
 const router=express.Router()   
 
-router.post("/parcel-loding-load" ,parcelController.getBookingsBetweenDates);
+router.post("/parcel-loding-load" ,auth,parcelController.getBookingsBetweenDates);
 
 router.post("/",auth,parcelController.createParcel)
  
@@ -16,27 +16,27 @@ router.get("/vocherNoUnique/:vocherNoUnique",parcelController.getParcelVocherNoU
 
 router.get("/voucher-details-print/:vocherNoUnique",parcelController.offlineParcelVoucherDetailsPrint)
 
-router.patch("/:id",parcelController.updateParcel)
-  
-router.delete("/:id",parcelController.deleteParcel)
+router.patch("/:id",auth,parcelController.updateParcel)
 
-router.post("/updateGrnNumbers",parcelController.updateAllGrnNumbers)
+router.delete("/:id",auth,parcelController.deleteParcel)
 
-router.post("/get-lrNumber",parcelController.getParcelByLrNumber)
+router.post("/updateGrnNumbers",auth,parcelController.updateAllGrnNumbers)
 
-router.get("/grnNo/:grnNo",parcelController.getParcelByGrnNo)
+router.post("/get-lrNumber",auth,parcelController.getParcelByLrNumber)
 
-router.get("/vehicalNumber/:vehicalNumber",parcelController.getParcelByVehicalNumber)
+router.get("/grnNo/:grnNo",auth,parcelController.getParcelByGrnNo)
 
-router.post("/offline-parcel-voucher-details",parcelController.offlineParcelVoucherDetails)
+router.get("/vehicalNumber/:vehicalNumber",auth,parcelController.getParcelByVehicalNumber)
 
-router.post("/parcel-offline-report",parcelController.parcelOfflineReport) // parcel offline report
+router.post("/offline-parcel-voucher-details",auth,parcelController.offlineParcelVoucherDetails)
 
-router.post("/parcel-status-report",parcelController.parcelStatusReport)  //parcel status date difference report
+router.post("/parcel-offline-report",auth,parcelController.parcelOfflineReport) // parcel offline report
 
-router.post("/parcel-pending-report",parcelController.parcelPendingReport)  // parcel pending delivery stockreport 
+router.post("/parcel-status-report",auth,parcelController.parcelStatusReport)  //parcel status date difference report
 
-router.post("/branch-to-branch-load",parcelController.getBookingsByDateAndBranch) //branch to branch loading
+router.post("/parcel-pending-report",auth, parcelController.parcelPendingReport)  // parcel pending delivery stockreport
+
+router.post("/branch-to-branch-load",auth,parcelController.getBookingsByDateAndBranch) //branch to branch loading
 
 router.post("/branch-to-branch-post",auth,parcelController.createBranchToBranch)  // branch to branch post
 
