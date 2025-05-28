@@ -7,7 +7,7 @@ const masterSchema = new mongoose.Schema({
     state: { type: String, required: true },
     city: { type: String, required: true },
     code: { type: String, default:null },
-    name: { type: String, required: true,trim:true },
+    name: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String, required: true }, 
     address: { type: String, required: true },
