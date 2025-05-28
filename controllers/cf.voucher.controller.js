@@ -412,7 +412,7 @@ const voucherDetailsPrint = async (req, res) => {
     const query = { senderName };
 
     const bookings = await Booking.find(query).select(
-      "grnNo bookingDate agent fromCity toCity packages parcelGstAmount grandTotal"
+      "grnNo bookingDate agent senderAddress fromCity toCity packages parcelGstAmount grandTotal"
     );
 
     let allGrandTotal = 0;
@@ -428,6 +428,7 @@ const voucherDetailsPrint = async (req, res) => {
         bookingDate: b.bookingDate,
         fromCity: b.fromCity,
         agent: b.agent,
+        senderAddress: b.senderAddress,
         toCity: b.toCity,
         packageDetails: b.packages,
         totalPackages,
