@@ -60,6 +60,64 @@ const generateVocherNoUnique = () => {
 
 
 
+// const getBookingsBetweenDates = async (req, res) => {
+//   try {
+//     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
+
+//     if (!startDate || !endDate) {
+//       return res.status(400).json({ message: "Start date and end date are required!" });
+//     }
+
+//     const start = new Date(startDate);
+//     const end = new Date(endDate);
+//     start.setHours(0, 0, 0, 0);
+//     end.setHours(23, 59, 59, 999);
+
+//     // Initial filter: bookings between dates + user bookings (agent === "")
+//     let filter = {
+//       bookingDate: { $gte: start, $lte: end },
+//       bookingStatus: 0,
+//       agent: "", // user bookings only
+//     };
+
+//     // Optional filters
+//     if (fromCity) {
+//       filter.fromCity = new RegExp(`^${fromCity}$`, "i");
+//     }
+
+//     if (Array.isArray(toCity) && toCity.length > 0) {
+//       filter.toCity = {
+//         $in: toCity.map((city) => new RegExp(`^${city}$`, "i")),
+//       };
+//     } else if (toCity) {
+//       filter.toCity = new RegExp(`^${toCity}$`, "i");
+//     }
+
+//     if (pickUpBranch) {
+//       filter.pickUpBranch = pickUpBranch;
+//     }
+
+//     // Fetch bookings
+//     const bookings = await Booking.find(filter);
+
+//     if (!bookings.length) {
+//       return res.status(404).json({
+//         message: "No user bookings found for the given filters!",
+//         data: [],
+//       });
+//     }
+
+//     // Return user bookings directly
+//     res.status(200).json(bookings);
+
+//   } catch (error) {
+//     console.error("Error fetching bookings:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
+
+
+
 const getBookingsBetweenDates = async (req, res) => {
   try {
     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
@@ -73,17 +131,15 @@ const getBookingsBetweenDates = async (req, res) => {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
-    // Initial filter: bookings between dates + user bookings (agent === "")
+    // Step 1: Prepare main filter
     let filter = {
       bookingDate: { $gte: start, $lte: end },
       bookingStatus: 0,
-      agent: "", // user bookings only
+      agent: "", // Only user bookings
     };
 
-    // Optional filters
-    if (fromCity) {
-      filter.fromCity = new RegExp(`^${fromCity}$`, "i");
-    }
+    // Step 2: Apply optional filters
+    if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
 
     if (Array.isArray(toCity) && toCity.length > 0) {
       filter.toCity = {
@@ -93,22 +149,37 @@ const getBookingsBetweenDates = async (req, res) => {
       filter.toCity = new RegExp(`^${toCity}$`, "i");
     }
 
-    if (pickUpBranch) {
-      filter.pickUpBranch = pickUpBranch;
-    }
+    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
 
-    // Fetch bookings
+    // Step 3: Get bookings
     const bookings = await Booking.find(filter);
 
     if (!bookings.length) {
       return res.status(404).json({
-        message: "No user bookings found for the given filters!",
+        message: "No bookings found for the given filters!",
         data: [],
       });
     }
 
-    // Return user bookings directly
-    res.status(200).json(bookings);
+    // Step 4: Get senderNames from bookings
+    const senderNames = bookings
+      .map((b) => b.senderName?.trim())
+      .filter(Boolean); // removes undefined/null/empty
+
+    // Step 5: Find which senderNames are company names (CFMaster.name)
+    const cfSenders = await CFMaster.find({
+      name: { $in: senderNames },
+    }).select("name");
+
+    const companyNames = cfSenders.map((cf) => cf.name.trim());
+
+    // Step 6: Filter out company bookings
+    const userBookings = bookings.filter(
+      (b) => !companyNames.includes(b.senderName?.trim())
+    );
+
+    // Step 7: Send final user bookings
+    res.status(200).json(userBookings);
 
   } catch (error) {
     console.error("Error fetching bookings:", error);
