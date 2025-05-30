@@ -404,66 +404,14 @@ const deleteParcel = async (req, res) => {
   }
 };
 
-// const getParcelsByFilter = async (req, res) => {
-//   try {
-//     const { fromBranch, fromCity, toCity, fromBookingDate, toBookingDate } = req.body;
 
-//     // Construct query dynamically
-//     let query = {}
-
-//     if (fromBranch) query.fromBranch = fromBranch;
-//     if (fromCity) query.fromCity = fromCity;
-//     if (toCity) query.toCity = { $in: toCity }; // Match any city in the array
-//     if (fromBookingDate) query.fromBookingDate = { $gte: new Date(fromBookingDate) };
-//     if (toBookingDate) {
-//       const toDate = new Date(toBookingDate);
-//       toDate.setHours(23, 59, 59, 999); // Extend to end of day
-//       query.toBookingDate = { $lte: toDate };
-//     }
-
-//     // Fetch parcels based on filters and select only necessary fields
-//     const parcels = await ParcelLoading.find(query)
-//       .select("grnNo vehicleNumber driverName")
-//       .sort({ fromBookingDate: -1 });
-
-//     if (!parcels.length) {
-//       return res.status(200).json({ success: true, message: "No parcels found", data: [] });
-//     }
-
-//     // Extract all grnNo values
-//     const grnNos = parcels.flatMap(parcel => parcel.grnNo); // Flatten in case of nested arrays
-
-//     // Find corresponding booking records where grnNo matches
-//     const bookings = await Booking.find({ grnNo: { $in: grnNos } })
-//       .select("lrNumber totalQuantity remarks valueOfGoods grandTotal  packages.packageType") // Include contains from packages
-//       .lean();
-
-//     // Ensure contains is extracted from packages array
-//     const formattedBookings = bookings.map(booking => ({
-//       ...booking,
-//       contains: booking.packages?.map(pkg => pkg.contains) || []
-//     }));
-
-//     return res.status(200).json({
-//         parcelLoadingDetails: parcels,
-//         bookingDetails: formattedBookings
-//       })
-
-//   } catch (error) {
-//     console.error("Error fetching parcels and bookings:", error);
-//     res.status(500).json({ success: false, message: "Internal Server Error" });
-//   }
-// };
 
 const parcelOfflineReport = async (req, res) => {
   try {
-    const { fromDate, toDate, fromCity, toCity, fromBranch, dropBranch } =
-      req.body;
+    const { fromDate, toDate, fromCity, toCity, fromBranch, dropBranch } = req.body;
 
     if (!fromDate || !toDate) {
-      return res
-        .status(400)
-        .json({ message: "fromDate and toDate are required!" });
+      return res.status(400).json({ message: "fromDate and toDate are required!" });
     }
 
     const startDate = new Date(fromDate);
@@ -474,41 +422,53 @@ const parcelOfflineReport = async (req, res) => {
       return res.status(400).json({ message: "Invalid date format!" });
     }
 
-    // Build the filter
+    // Step 1: Build filter for ParcelLoading
     const filter = {
-      bookingDate: { $gte: startDate, $lte: endDate },
-
+      loadingDate: { $gte: startDate, $lte: endDate },
     };
 
     if (fromCity) filter.fromCity = fromCity;
 
-    // ✅ If toCity is an array, use $in
     if (Array.isArray(toCity) && toCity.length > 0) {
       filter.toCity = { $in: toCity };
     } else if (typeof toCity === "string") {
       filter.toCity = toCity;
     }
 
-    if (fromBranch) filter.pickUpBranch = fromBranch;
-    if (dropBranch) filter.dropBranch = dropBranch;
+    if (fromBranch) filter.fromBranch = fromBranch;
+    // dropBranch does not exist in ParcelLoading schema; skip or adjust based on your logic
 
-    const bookings = await Booking.find(filter).sort({ createdAt: -1 }).lean();
+    // Step 2: Get ParcelLoading records
+    const parcelLoadings = await ParcelLoading.find(filter, { grnNo: 1 }).lean();
+
+    if (!parcelLoadings.length) {
+      return res.status(404).json({ message: "No parcel loadings found in given criteria." });
+    }
+
+    // Step 3: Flatten all grnNos into a single array
+    const grnNoList = parcelLoadings.flatMap(p => p.grnNo);
+
+    // Step 4: Find Bookings using those grnNo values
+    const bookings = await Booking.find({ grnNo: { $in: grnNoList } })
+      .sort({ createdAt: -1 })
+      .lean();
 
     if (!bookings.length) {
-      return res
-        .status(404)
-        .json({ message: "No bookings found in the given criteria." });
+      return res.status(404).json({ message: "No bookings found for the matched grnNo list." });
     }
 
     res.status(200).json({
       count: bookings.length,
       data: bookings,
     });
+
   } catch (error) {
     console.error("Error in parcelOfflineReport:", error);
     res.status(500).json({ message: "Server error." });
   }
 };
+
+
 
 const updateAllGrnNumbers = async (req, res) => {
   try {
