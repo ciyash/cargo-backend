@@ -24,7 +24,7 @@ router.post("/updateGrnNumbers",auth,parcelController.updateAllGrnNumbers)
 
 router.post("/get-lrNumber",auth,parcelController.getParcelByLrNumber)
 
-router.get("/grnNo/:grnNo",auth,parcelController.getParcelByGrnNo)
+router.get("/grnNo/:grnNo",parcelController.getParcelByGrnNo)
 
 router.get("/vehicalNumber/:vehicalNumber",auth,parcelController.getParcelByVehicalNumber)
 

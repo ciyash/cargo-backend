@@ -27,11 +27,11 @@ router.get("/",bookingController.getAllBookings)
    
 router.get("/todaybookings",auth,bookingController.getBookingBydate)
 
-router.get("/grnNo/:grnNo",auth,bookingController.getBookingByGrnNo)
+router.get("/grnNo/:grnNo",bookingController.getBookingByGrnNo)
 
 router.get("/adminUniqueId/:adminUniqueId",auth,bookingController.getBookingadminUniqueId)
 
-router.post("/search-data",auth, bookingController.getBookingsByAnyField);
+router.post("/search-data", bookingController.getBookingsByAnyField);
 
 
 router.get("/pages",auth,bookingController.getAllBookingsPages)

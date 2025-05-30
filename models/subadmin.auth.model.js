@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 const adminSchema = new mongoose.Schema(
   {  
-    subadminUniqueId: { type: Number, required: true }, 
-    branchId: { type: mongoose.Schema.Types.ObjectId,ref:"Branch",required:true},  
+    subadminUniqueId: { type: Number, required: true }, //auto generated unique ID
+    branchId: { type: mongoose.Schema.Types.ObjectId,ref:"Branch",required:true},  //auto generated unique ID
     name: { type: String, required: true },
     email: { type: String, required: true },
     password: { type: String, required: true },

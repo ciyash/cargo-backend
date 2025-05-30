@@ -205,6 +205,10 @@ const createParcel = async (req, res) => {
       ...new Set(toCity.map((city) => city.trim().toLowerCase())),
     ];
 
+    if(!req.user || !req.user.id) { 
+      throw new Error("User ID is required for loadingBy field.");
+    }
+
     const vocherNoUnique = generateVocherNoUnique();
     const loadingBy = req.user.id;
     const loadingDate = new Date();

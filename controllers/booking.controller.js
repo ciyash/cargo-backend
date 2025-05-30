@@ -150,6 +150,18 @@ const createBooking = async (req, res) => {
         });
     }
 
+
+// Enforce agent requirement for credit bookings
+if (bookingType === "credit" && (!agent || agent.trim() === "")) {
+  return res
+    .status(400)
+    .json({
+      success: false,
+      message: "Agent is required when booking type is 'credit'",
+    });
+}
+
+
     const [pickUpBranchdata, dropBranchdata] = await Promise.all([
       Branch.findOne({ branchUniqueId: pickUpBranch }).lean(),
       Branch.findOne({ branchUniqueId: dropBranch }).lean(),
