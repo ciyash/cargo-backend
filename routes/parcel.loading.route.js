@@ -30,7 +30,7 @@ router.get("/vehicalNumber/:vehicalNumber",auth,parcelController.getParcelByVehi
 
 router.post("/offline-parcel-voucher-details",auth,parcelController.offlineParcelVoucherDetails)
 
-router.post("/parcel-offline-report",auth,parcelController.parcelOfflineReport) // parcel offline report
+router.post("/parcel-offline-report",parcelController.parcelOfflineReport) // parcel offline report
 
 router.post("/parcel-status-report",auth,parcelController.parcelStatusReport)  //parcel status date difference report
 

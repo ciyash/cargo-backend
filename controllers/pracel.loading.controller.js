@@ -477,7 +477,7 @@ const parcelOfflineReport = async (req, res) => {
     // Build the filter
     const filter = {
       bookingDate: { $gte: startDate, $lte: endDate },
-      bookingStatus: 0,
+
     };
 
     if (fromCity) filter.fromCity = fromCity;
