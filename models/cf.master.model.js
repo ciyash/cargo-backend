@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const masterSchema = new mongoose.Schema({
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },    
     senderType:{type:String,default:"company"},
     gst:{type:String},
     country: { type: String, required: true },

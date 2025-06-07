@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const chargeSchema = new mongoose.Schema({
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
     fromCity: { type: String, required: true },
     toCity: { type: String, required: true },
     GST: { type: String, required: false }, 

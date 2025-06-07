@@ -8,10 +8,18 @@ const generateUniqueId = (city, name) => {
   return `${cityCode}${nameCode}${randomNum}`;
 };
 
-
-
 const createBranch = async (req, res) => {
   try {
+    // Get companyId from logged in user
+    const companyId = req.user?.companyId;
+
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID not found in user session",
+      });
+    }
+
     const {
       name,
       openingBalance,
@@ -39,13 +47,13 @@ const createBranch = async (req, res) => {
       });
     }
 
-    // ✅ Main branch check logic
+    // Check main branch existence for the user's company + city
     if (branchType === "main") {
-      const existingMain = await Branch.findOne({ city, branchType: "main" });
+      const existingMain = await Branch.findOne({ companyId, city, branchType: "main" });
       if (existingMain) {
         return res.status(400).json({
           success: false,
-          message: "Main branch already exists in this city",
+          message: "Main branch already exists in this city for your company",
         });
       }
     }
@@ -70,6 +78,7 @@ const createBranch = async (req, res) => {
       state,
       country,
       alternateMobile,
+      companyId,  // from logged-in user
     });
 
     await newBranch.save();
@@ -83,12 +92,15 @@ const createBranch = async (req, res) => {
   }
 };
 
+
 const getAllBranches = async (req, res) => {
   try {
-    const branches = await Branch.find()
-    // .populate("createdBy")
-    if(!branches){
-      return res.status(404).json({message:"No data found in branches"})
+    const { companyId } = req.query; // optional filter
+    const query = companyId ? { companyId } : {};
+
+    const branches = await Branch.find(query);
+    if (!branches || branches.length === 0) {
+      return res.status(404).json({ message: "No branches found" });
     }
     res.status(200).json(branches);
   } catch (error) {
@@ -96,59 +108,70 @@ const getAllBranches = async (req, res) => {
   }
 };
 
-// Get Branch by ID
 const getBranchByUniqueId = async (req, res) => {
   try {
     const { branchUniqueId } = req.params;
-    const branch = await Branch.findOne({branchUniqueId}).populate("createdBy",'name location')
+    const { companyId } = req.query;
+
+    const query = { branchUniqueId };
+    if (companyId) query.companyId = companyId;
+
+    const branch = await Branch.findOne(query).populate("createdBy", "name location");
 
     if (!branch) {
-       return res.status(404).json({ success: false, message: "Branch not found" });
-       }
-
+      return res.status(404).json({ success: false, message: "Branch not found" });
+    }
     res.status(200).json(branch);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-const getbranchId=async(req,res) => {
-  try{
-    const {id}=req.params
-    const branch=await Branch.findById(id)
-    if(!branch){
-      return res.status(404).json({message:"branch id not found !"})
-    }
-    res.status(200).json(branch)
-  }
-  catch(error){
-    res.status(500).json({error:error.message})
-  }
-}
+const getbranchId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const branch = await Branch.findById(id);
 
-// Update Branch
+    if (!branch) {
+      return res.status(404).json({ message: "Branch ID not found!" });
+    }
+    res.status(200).json(branch);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const updateBranch = async (req, res) => {
   try {
     const { id } = req.params;
-     
-    const updatedBranch = await Branch.findByIdAndUpdate(
-      id,req.body,      
-      { new: true }
-    );
+
+    // Optionally, you could validate companyId here if you want strict company control
+    const updatedBranch = await Branch.findByIdAndUpdate(id, req.body, { new: true });
 
     if (!updatedBranch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
+      return res.status(404).json({ success: false, message: "Branch not found" });
     }
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Branch updated successfully",
-        data: updatedBranch,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Branch updated successfully",
+      data: updatedBranch,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const deleteBranch = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedBranch = await Branch.findByIdAndDelete(id);
+
+    if (!deletedBranch) {
+      return res.status(404).json({ success: false, message: "Branch not found" });
+    }
+
+    res.status(200).json({ success: true, message: "Branch deleted successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -156,49 +179,47 @@ const updateBranch = async (req, res) => {
 
 const getBranchByDateRange = async (req, res) => {
   try {
-      const { startDate, endDate } = req.body;
+    const { startDate, endDate, companyId } = req.body;
 
-      // Validate required fields
-      if (!startDate || !endDate) {
-          return res.status(400).json({ success: false, message: "Start date and end date are required" });
-      }
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, message: "Start date and end date are required" });
+    }
 
-      // Convert to Date objects
-      const start = new Date(startDate);  
-      const end = new Date(endDate);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ success: false, message: "Invalid date format" });
+    }
 
-      // Validate date conversion
-      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-          return res.status(400).json({ success: false, message: "Invalid date format" });
-      }
+    end.setHours(23, 59, 59, 999);
 
-      // Ensure end date includes the full day
-      end.setHours(23, 59, 59, 999);
+    const query = {
+      branchDate: { $gte: start, $lte: end },
+    };
+    if (companyId) {
+      query.companyId = companyId;
+    }
 
-      // Query branches within date range
-      const branches = await Branch.find({
-          branchDate: { $gte: start, $lte: end } // Ensure correct field name
-      });
+    const branches = await Branch.find(query);
+    if (branches.length === 0) {
+      return res.status(404).json({ success: false, message: "No branches found in this date range" });
+    }
 
-      if (branches.length === 0) {
-          return res.status(404).json({ success: false, message: "No branches found in this date range" });
-      }
-
-      res.status(200).json(branches);
+    res.status(200).json(branches);
   } catch (error) {
-      res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
-   
+
 const getBranchBySubadminUniqueId = async (req, res) => {
   try {
     const { subadminUniqueId } = req.params;
 
-    // Fetch all branches and populate `createdBy`
+    // Fetch all branches and populate createdBy
     const branches = await Branch.find().populate("createdBy", "subadminUniqueId name");
 
-    // Filter branch where `createdBy.subadminUniqueId` matches `subadminId`
-    const matchedBranch = branches.find(branch => 
+    // Find the branch where createdBy.subadminUniqueId matches
+    const matchedBranch = branches.find(branch =>
       branch.createdBy && branch.createdBy.subadminUniqueId == subadminUniqueId
     );
 
@@ -206,63 +227,40 @@ const getBranchBySubadminUniqueId = async (req, res) => {
       return res.status(404).json({ message: "Subadmin not found or no branch assigned!" });
     }
 
-    console.log("Matched Branch:", matchedBranch);
-
     res.status(200).json(matchedBranch);
-  
   } catch (error) {
-    console.error("Error fetching branch:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 
-
 const getBranchCity = async (req, res) => {
   try {
     const { city } = req.params;
+    const { companyId } = req.query;
 
-    // Case-insensitive search for city
-    const branches = await Branch.find({ city: { $regex: new RegExp(`^${city}$`, "i") } });
+    const query = { city: { $regex: new RegExp(`^${city}$`, "i") } };
+    if (companyId) {
+      query.companyId = companyId;
+    }
+
+    const branches = await Branch.find(query);
 
     if (branches.length === 0) {
       return res.status(404).json({ message: "City not found!" });
     }
 
-    // Extract only name & branchType
     const responseData = branches.map(branch => ({
-      city:branch.city,
+      city: branch.city,
       name: branch.name,
       branchType: branch.branchType,
-      branchUniqueId:branch.branchUniqueId
+      branchUniqueId: branch.branchUniqueId,
     }));
 
     res.status(200).json(responseData);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-}; 
-
-// Delete Branch
-const deleteBranch = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deletedBranch = await Branch.findByIdAndDelete(id);
-
-    if (!deletedBranch) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Branch not found" });
-    }
-
-    res
-      .status(200)
-      .json({ success: true, message: "Branch deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
 };
-
-
 
 export default {
   createBranch,
@@ -273,5 +271,5 @@ export default {
   deleteBranch,
   getBranchByDateRange,
   getBranchBySubadminUniqueId,
-  getBranchCity
+  getBranchCity,
 };

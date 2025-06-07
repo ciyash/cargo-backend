@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const userSchema = new mongoose.Schema(
  
     {
+       companyId: {type: mongoose.Schema.Types.ObjectId,ref: "Company", required: true},
       senderType:{
         type:String,
         default:"user"

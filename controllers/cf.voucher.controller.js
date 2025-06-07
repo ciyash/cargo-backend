@@ -1,115 +1,52 @@
-import CFVoucher from '../models/cf.voucher.generate.model.js' 
-import CFMaster from '../models/cf.master.model.js '
-import {Booking} from '../models/booking.model.js'
+import CFVoucher from '../models/cf.voucher.generate.model.js';
+import { Booking } from '../models/booking.model.js';
 
-// const creditForVoucherGenerate = async (req, res) => {
-//   try {
-//     const { fromDate, toDate, senderName } = req.body;
+// Generate the next voucher number
+const generateVoucher = async () => {
+  const lastVoucher = await CFVoucher.findOne().sort({ voucherNo: -1 });
+  return lastVoucher ? lastVoucher.voucherNo + 1 : 100;
+};
 
-//     // Step 1: Validate dates
-//     if (!fromDate || !toDate) {
-//       return res.status(400).json({ success: false, message: "Missing required query parameters" });
-//     }
-
-//     const from = new Date(fromDate);
-//     const to = new Date(toDate);
-//     to.setHours(23, 59, 59, 999); // Full day
-
-//     if (isNaN(from) || isNaN(to)) {
-//       return res.status(400).json({ success: false, message: "Invalid date format" });
-//     }
-
-//     // Step 2: Get sender names from CFMaster
-//     let cfMasterQuery = {};
-//     if (senderName) {
-//       cfMasterQuery.name = { $regex: `^${senderName}$`, $options: "i" };
-//     }
-
-//     const matchedMasters = await CFMaster.find(cfMasterQuery).select("name");
-
-//     if (!matchedMasters.length) {
-//       return res.status(404).json({ message: "No matching sender names found in CFMaster" });
-//     }
-
-//     const validSenderNames = matchedMasters.map(master => master.name);
-
-//     // Step 3: Booking query with senderName IN validSenderNames
-//     const bookingQuery = {
-//       bookingTime: { $gte: from, $lte: to },
-//       senderName: { $in: validSenderNames }
-//     };
-
-//     const bookings = await Booking.find(bookingQuery)
-//       .sort({ bookingTime: -1 })
-//       .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingTime");
-
-//     if (!bookings.length) {
-//       return res.status(404).json({ message: "No bookings found for given date and sender match" });
-//     }
-
-//     res.status(200).json(bookings);
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: "Server Error", error: error.message });
-//   }
-// };
-
-
+// Fetch bookings eligible for voucher generation
 const creditForVoucherGenerate = async (req, res) => {
   try {
     const { fromDate, toDate, senderName } = req.body;
+    const companyId = req.user?.companyId;
+    if (!companyId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    if (!fromDate || !toDate) {
-      return res.status(400).json({ success: false, message: "Missing required date parameters" });
-    }
+    if (!fromDate || !toDate) return res.status(400).json({ message: "Missing date filters" });
 
     const from = new Date(fromDate);
     const to = new Date(toDate);
-    to.setHours(23, 59, 59, 999); // include entire 'toDate'
-
-    if (isNaN(from) || isNaN(to)) {
-      return res.status(400).json({ success: false, message: "Invalid date format" });
-    }
+    to.setHours(23, 59, 59, 999);
 
     const query = {
-      bookingDate: { $gte: from, $lte: to }, // ✅ corrected field
-      agent: { $exists: true, $type: "string", $ne: "" }, // ✅ only if agent length > 0
+      companyId,
+      bookingDate: { $gte: from, $lte: to },
+      agent: { $exists: true, $type: "string", $ne: "" },
       bookingStatus: 0
     };
 
-    if (senderName) {
-      query.senderName = { $regex: `^${senderName}$`, $options: "i" };
-    }
+    if (senderName) query.senderName = { $regex: `^${senderName}$`, $options: "i" };
 
     const bookings = await Booking.find(query)
       .sort({ bookingDate: -1 })
       .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingDate agent");
 
-    if (!bookings.length) {
-      return res.status(404).json({ message: "No company bookings found for given criteria" });
-    }
+    if (!bookings.length) return res.status(404).json({ message: "No bookings found" });
 
-    res.status(200).json(bookings);
+    res.status(200).json({ success: true, data: bookings });
   } catch (error) {
-    console.error("Error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-
-const generateVoucher = async () => {
-
-    const lastVoucher = await CFVoucher.findOne().sort({ voucherNo: -1 });
-
-    if (!lastVoucher) {
-        return 100; // Start from 100 if no vouchers exist
-    }
-
-    return lastVoucher.voucherNo + 1; // Increment the last voucher number
-};
-
-
+// Create new voucher and update booking statuses
 const createCFVoucher = async (req, res) => {
   try {
+    const companyId = req.user?.companyId;
+    if (!companyId) return res.status(401).json({ message: "Unauthorized" });
+
     const {
       grnNo,
       lrNumber,
@@ -124,6 +61,7 @@ const createCFVoucher = async (req, res) => {
     const voucherNo = await generateVoucher();
 
     const newVoucher = new CFVoucher({
+      companyId,
       voucherNo,
       grnNo,
       lrNumber,
@@ -137,351 +75,146 @@ const createCFVoucher = async (req, res) => {
 
     await newVoucher.save();
 
-    const grnList = Array.isArray(grnNo)
-      ? grnNo.map((no) => Number(no))
-      : [Number(grnNo)];
+    const grnList = Array.isArray(grnNo) ? grnNo.map(Number) : [Number(grnNo)];
 
-
-    const foundBookings = await Booking.find({ grnNo: { $in: grnList } });
-    
-
-    const updateResult = await Booking.updateMany(
-      { grnNo: { $in: grnList } },
+    await Booking.updateMany(
+      { grnNo: { $in: grnList }, companyId },
       { $set: { bookingStatus: 1 } }
     );
 
-    
-
-    res.status(201).json({ message: "CF Voucher created successfully", newVoucher });
-
+    res.status(201).json({ message: "CF Voucher created", newVoucher });
   } catch (error) {
-    console.error("Error in createCFVoucher:", error);
     res.status(500).json({ error: error.message });
   }
 };
 
-
-
-
- const getAllCFVouchers = async (req, res) => {
-    try {
-        const vouchers = await CFVoucher.find();
-        res.status(200).json(vouchers);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+// Get all vouchers for current company
+const getAllCFVouchers = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    const vouchers = await CFVoucher.find({ companyId });
+    res.status(200).json(vouchers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
-
- const getCFVoucherById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const voucher = await CFVoucher.findById(id);
-
-        if (!voucher) {
-            return res.status(404).json({ message: "CF Voucher not found" });
-        }
-
-        res.status(200).json(voucher);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};      
-   
-
- const updateCFVoucher = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const updatedVoucher = await CFVoucher.findByIdAndUpdate(id, req.body, { new: true });
-
-        if (!updatedVoucher) {
-            return res.status(404).json({ message: "CF Voucher not found" });
-        }
-
-        res.status(200).json({ message: "CF Voucher updated successfully", updatedVoucher });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+// Get voucher by ID with company scope
+const getCFVoucherById = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    const { id } = req.params;
+    const voucher = await CFVoucher.findOne({ _id: id, companyId });
+    if (!voucher) return res.status(404).json({ message: "CF Voucher not found" });
+    res.status(200).json(voucher);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
- const deleteCFVoucher = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const deletedVoucher = await CFVoucher.findByIdAndDelete(id);
-
-        if (!deletedVoucher) {
-            return res.status(404).json({ message: "CF Voucher not found" });
-        }
-
-        res.status(200).json({ message: "CF Voucher deleted successfully" });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+// Update voucher
+const updateCFVoucher = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    const { id } = req.params;
+    const updatedVoucher = await CFVoucher.findOneAndUpdate(
+      { _id: id, companyId },
+      req.body,
+      { new: true }
+    );
+    if (!updatedVoucher) return res.status(404).json({ message: "CF Voucher not found" });
+    res.status(200).json({ message: "Updated successfully", updatedVoucher });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
-// const voucherDetails = async (req, res) => {
-//   try {
-//     const { fromDate, toDate, senderName } = req.body;
+// Delete voucher
+const deleteCFVoucher = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    const { id } = req.params;
+    const deletedVoucher = await CFVoucher.findOneAndDelete({ _id: id, companyId });
+    if (!deletedVoucher) return res.status(404).json({ message: "CF Voucher not found" });
+    res.status(200).json({ message: "Deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
-//     // Validate input
-//     if (!fromDate || !toDate) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "fromDate and toDate are required",
-//       });
-//     }
-
-//     const start = new Date(fromDate);
-//     start.setHours(0, 0, 0, 0);
-
-//     const end = new Date(toDate);
-//     end.setHours(23, 59, 59, 999);
-
-//     // Build CFVoucher query
-//     const cfVoucherQuery = {
-//       generateDate: { $gte: start, $lte: end },
-//     };
-//     if (senderName) {
-//       cfVoucherQuery.consignor = senderName;
-//     }
-
-//     // Fetch vouchers
-//     const cfVouchers = await CFVoucher
-//       .find(cfVoucherQuery)
-//       .select("grnNo voucherNo")
-//       .sort({ generateDate: -1 });
-
-//     if (!cfVouchers.length) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "No vouchers found for given criteria",
-//       });
-//     }
-
-//     // Flatten grnNos from vouchers
-//     const grnNos = cfVouchers.flatMap(v => v.grnNo);
-
-//     // Get corresponding bookings
-//     const bookings = await Booking
-//       .find({ grnNo: { $in: grnNos } })
-//       .select("grnNo bookingDate fromCity toCity senderName packages grandTotal");
-
-//     // Create a map for quick lookup
-//     const bookingMap = new Map();
-//     bookings.forEach(b => bookingMap.set(b.grnNo, b));
-
-//     let totalGrandTotal = 0;
-
-//     // Merge vouchers with booking info
-//     const result = cfVouchers.map(voucher => {
-//       const matchedGrns = voucher.grnNo.map(grn => {
-//         const booking = bookingMap.get(grn);
-//         const grandTotal = booking?.grandTotal || 0;
-//         totalGrandTotal += grandTotal;
-
-//         return {
-//           grnNo: grn,
-//           senderName: booking?.senderName || null,
-//           grandTotal: grandTotal,
-//           numberOfPackages: booking?.packages?.length || 0,
-//           packages: booking?.packages || [],
-//           bookingDate: booking?.bookingDate || null,
-//           fromCity: booking?.fromCity || null,
-//           toCity: booking?.toCity || null,
-//         };
-//       });
-
-//       return {
-//         voucherNo: voucher.voucherNo,
-//         grns: matchedGrns,
-//       };
-//     });
-
-//     return res.status(200).json({
-//       totalGrandTotal,
-//       data: result,
-//     });
-
-//   } catch (error) {
-//     return res.status(500).json({
-//       success: false,
-//       message: "Server Error",
-//       error: error.message,
-//     });
-//   }
-// };
-
-
+// Summary of vouchers by date range
 const voucherDetails = async (req, res) => {
   try {
     const { fromDate, toDate, senderName } = req.body;
-
-    if (!fromDate || !toDate) {
-      return res.status(400).json({
-        success: false,
-        message: "fromDate and toDate are required",
-      });
+    const companyId = req.user?.companyId;
+    if (!fromDate || !toDate || !companyId) {
+      return res.status(400).json({ message: "Required parameters missing" });
     }
 
     const start = new Date(fromDate);
     start.setHours(0, 0, 0, 0);
-
     const end = new Date(toDate);
     end.setHours(23, 59, 59, 999);
 
-    const cfVoucherQuery = {
-      generateDate: { $gte: start, $lte: end },
+    const query = {
+      companyId,
+      generateDate: { $gte: start, $lte: end }
     };
+    if (senderName) query.consignor = senderName;
 
-    if (senderName) {
-      cfVoucherQuery.consignor = senderName;
-    }
-
-    const cfVouchers = await CFVoucher
-      .find(cfVoucherQuery)
+    const vouchers = await CFVoucher.find(query)
       .select("grnNo voucherNo consignor")
       .sort({ generateDate: -1 });
 
-    if (!cfVouchers.length) {
-      return res.status(404).json({
-        success: false,
-        message: "No vouchers found for given criteria",
-      });
-    }
+    if (!vouchers.length) return res.status(404).json({ message: "No vouchers found" });
 
-    const grnNos = cfVouchers.flatMap(v => v.grnNo);
-
-    const bookings = await Booking
-      .find({ grnNo: { $in: grnNos } })
-      .select("grnNo packages grandTotal");
+    const grnNos = vouchers.flatMap(v => v.grnNo);
+    const bookings = await Booking.find({ grnNo: { $in: grnNos }, companyId }).select("grnNo packages grandTotal");
 
     const bookingMap = new Map();
     bookings.forEach(b => bookingMap.set(b.grnNo, b));
 
     let totalGrandTotal = 0;
-
-    const result = cfVouchers.map(voucher => {
+    const data = vouchers.map(v => {
       let totalAmount = 0;
       let totalPackages = 0;
-
-      voucher.grnNo.forEach(grn => {
-        const booking = bookingMap.get(grn);
-        if (booking) {
-          totalAmount += booking.grandTotal || 0;
-          totalPackages += booking.packages?.length || 0;
+      v.grnNo.forEach(grn => {
+        const b = bookingMap.get(grn);
+        if (b) {
+          totalAmount += b.grandTotal || 0;
+          totalPackages += b.packages?.length || 0;
         }
       });
-
       totalGrandTotal += totalAmount;
-
       return {
-        voucherNo: voucher.voucherNo,
-        agentName: voucher.consignor,
+        voucherNo: v.voucherNo,
+        agentName: v.consignor,
         noOfParcel: totalPackages,
         amount: totalAmount
       };
     });
 
-    return res.status(200).json({
-      totalAmount: totalGrandTotal,
-      data: result
-    });
-
+    res.status(200).json({ totalAmount: totalGrandTotal, data });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message
-    });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-
-// const voucherDetailsPrint = async (req, res) => {
-//   try {
-//     const { senderName } = req.body;
-
-//     // Validate required field
-//     if (!senderName) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "senderName is required"
-//       });
-//     }
-
-//     const query = { senderName };
-
-//     const bookings = await Booking.find(query).select(
-//       "grnNo bookingDate agent senderName senderAddress fromCity toCity packages parcelGstAmount grandTotal"
-//     );
-
-//     let allGrandTotal = 0;
-
-//     const result = bookings.map(b => {
-//       const totalWeight = b.packages.reduce((sum, pkg) => sum + (pkg.weight || 0), 0);
-//       const totalPackages = b.packages.length;
-
-//       allGrandTotal += b.grandTotal || 0;
-
-//       return {
-//         grnNo: b.grnNo,
-//         bookingDate: b.bookingDate,
-//         fromCity: b.fromCity,
-//         senderName: b.senderName,
-//         agent: b.agent,
-//         senderAddress: b.senderAddress,
-//         toCity: b.toCity,
-//         packageDetails: b.packages,
-//         totalPackages,
-//         parcelGstAmount: b.parcelGstAmount || 0,
-//         totalWeight,
-//         grandTotal: b.grandTotal || 0
-//       };
-//     });
-
-//     res.status(200).json({
-//       success: true,
-//       totalRecords: bookings.length,
-//       data: result,
-//       allGrandTotal
-//     });
-
-//   } catch (error) {
-//     console.error("Error fetching voucher details:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Server Error",
-//       error: error.message
-//     });
-//   }
-// };
-
-
+// Print detailed voucher info by sender
 const voucherDetailsPrint = async (req, res) => {
   try {
     const { senderName } = req.body;
+    const companyId = req.user?.companyId;
+    if (!senderName || !companyId) return res.status(400).json({ message: "Missing required fields" });
 
-    // Validate required field
-    if (!senderName) {
-      return res.status(400).json({
-        success: false,
-        message: "senderName is required",
-        senderName
-      });
-    }
-
-    const query = { senderName };
-
-    const bookings = await Booking.find(query).select(
+    const bookings = await Booking.find({ senderName, companyId }).select(
       "grnNo bookingDate agent senderName senderAddress fromCity toCity packages parcelGstAmount grandTotal"
     );
 
     let allGrandTotal = 0;
-
-    const result = bookings.map(b => {
+    const data = bookings.map(b => {
       const totalWeight = b.packages.reduce((sum, pkg) => sum + (pkg.weight || 0), 0);
       const totalPackages = b.packages.length;
-
       allGrandTotal += b.grandTotal || 0;
 
       return {
@@ -500,7 +233,6 @@ const voucherDetailsPrint = async (req, res) => {
       };
     });
 
-    // Get senderAddress from the first record (if available)
     const senderAddress = bookings.length > 0 ? bookings[0].senderAddress : "";
 
     res.status(200).json({
@@ -508,26 +240,17 @@ const voucherDetailsPrint = async (req, res) => {
       senderName,
       senderAddress,
       totalRecords: bookings.length,
-      data: result,
+      data,
       allGrandTotal
     });
 
   } catch (error) {
-    console.error("Error fetching voucher details:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-      error: error.message,
-      senderName: req.body?.senderName || null
-    });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-
-  
-  
 export default {
-creditForVoucherGenerate,
+  creditForVoucherGenerate,
   createCFVoucher,
   getAllCFVouchers,
   getCFVoucherById,
@@ -535,4 +258,4 @@ creditForVoucherGenerate,
   deleteCFVoucher,
   voucherDetails,
   voucherDetailsPrint
-}
+};

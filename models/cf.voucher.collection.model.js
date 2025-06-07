@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const voucherCollection=new mongoose.Schema({
+companyId:{type:mongoose.Schema.Types.ObjectId,ref:"Company",required:true},
 admin:{type:mongoose.Schema.Types.ObjectId,ref:'Subadmin',required:true},
 fromDate:{type:String,required:true},
 toDate:{type:String,required:true},

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const cfVoucher=new mongoose.Schema({
+    companyId:{type:mongoose.Schema.Types.ObjectId,ref:"Company",required:true},
     voucherNo:{type:Number,required:true},
     grnNo:[{type:Number,required:true}],
     lrNumber:[{type:String,required:true}],

@@ -3,6 +3,11 @@ import CFMaster from '../models/cf.master.model.js';
 // Create a new master record
 const createMaster = async (req, res) => {
   try {
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ success: false, message: "Unauthorized: companyId missing" });
+    }
+
     const {
       gst,
       country,
@@ -25,7 +30,7 @@ const createMaster = async (req, res) => {
       exDate,
       partyAccountEmail,
       transportEmail,
-      executiveName,  
+      executiveName,
       senderName,
       senderMobile,
       receiverName,
@@ -33,6 +38,7 @@ const createMaster = async (req, res) => {
     } = req.body;
 
     const newMaster = new CFMaster({
+      companyId,  // add companyId here
       gst,
       country,
       state,
@@ -70,22 +76,28 @@ const createMaster = async (req, res) => {
   }
 };
 
-// Get all master records
+// Get all master records for the company
 const getAllMasters = async (req, res) => {
   try {
-    const masters = await CFMaster.find();
+    const companyId = req.user?.companyId;
+    if (!companyId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const masters = await CFMaster.find({ companyId });
     res.status(200).json({ success: true, data: masters });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Get master records by name (or similar text search)
+// Get master records by name for the company (or similar text search)
 const getMasterByName = async (req, res) => {
   try {
+    const companyId = req.user?.companyId;
+    if (!companyId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
     const { name } = req.params;
 
-    const masters = await CFMaster.find({ name: { $regex: name, $options: 'i' } });
+    const masters = await CFMaster.find({ companyId, name: { $regex: name, $options: 'i' } });
 
     if (masters.length === 0) {
       return res.status(404).json({ success: false, message: 'No master records found for this name' });
@@ -97,13 +109,20 @@ const getMasterByName = async (req, res) => {
   }
 };
 
-// Update a master record by ID
+// Update a master record by ID for the company
 const updateMaster = async (req, res) => {
   try {
-    const updatedMaster = await CFMaster.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const companyId = req.user?.companyId;
+    if (!companyId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const updatedMaster = await CFMaster.findOneAndUpdate(
+      { _id: req.params.id, companyId },
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
 
     if (!updatedMaster) {
       return res.status(404).json({ success: false, message: 'Master record not found' });
@@ -115,10 +134,13 @@ const updateMaster = async (req, res) => {
   }
 };
 
-// Delete a master record by ID
+// Delete a master record by ID for the company
 const deleteMaster = async (req, res) => {
   try {
-    const deletedMaster = await CFMaster.findByIdAndDelete(req.params.id);
+    const companyId = req.user?.companyId;
+    if (!companyId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const deletedMaster = await CFMaster.findOneAndDelete({ _id: req.params.id, companyId });
 
     if (!deletedMaster) {
       return res.status(404).json({ success: false, message: 'Master record not found' });
@@ -130,19 +152,25 @@ const deleteMaster = async (req, res) => {
   }
 };
 
-const getCFMasterByCity=async(req,res) => {
-  try{
-    const {city}=req.params
-    const master=await CFMaster.find({city})
-    if(master.length===0){
-      return res.status(404).json({message:"city not found in data !"})
+// Get master records by city for the company
+const getCFMasterByCity = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    if (!companyId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    const { city } = req.params;
+
+    const masters = await CFMaster.find({ companyId, city });
+
+    if (masters.length === 0) {
+      return res.status(404).json({ message: "City not found in data!" });
     }
-    res.status(200).json(master)
+
+    res.status(200).json(masters);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-  catch(error){
-   res.status(500).json({error:error.message})
-  }
-}
+};
 
 export default {
   createMaster,

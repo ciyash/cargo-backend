@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const branchSchema = new mongoose.Schema({
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
   branchUniqueId: { type: String, required: true },
   openingBalance: { type: Number, default: 0 },
   createdBy: {

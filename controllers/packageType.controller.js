@@ -1,18 +1,19 @@
+
 import { PackageType } from '../models/multi.model.js';
 
 const createPackageType = async (req, res) => {
     try {
         const { name } = req.body;
+        const companyId = req.companyId;
 
-      
-        if (!name) {
-            return res.status(400).json({ success: false, message: "Name is required" });
+        if (!name || !companyId) {
+            return res.status(400).json({ success: false, message: "Name and company ID are required" });
         }
 
-        const newPackageType = new PackageType({ name });
+        const newPackageType = new PackageType({ name, companyId });
         await newPackageType.save();
 
-        res.status(201).json({message: "Package Type added", packageType: newPackageType });
+        res.status(201).json({ message: "Package Type added", packageType: newPackageType });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
@@ -20,7 +21,12 @@ const createPackageType = async (req, res) => {
 
 const getPackageTypes = async (req, res) => {
     try {
-        const packageTypes = await PackageType.find();
+        const companyId = req.companyId;
+        if (!companyId) {
+            return res.status(400).json({ success: false, message: "Company ID is required" });
+        }
+
+        const packageTypes = await PackageType.find({ companyId });
 
         if (packageTypes.length === 0) {
             return res.status(404).json({ success: false, message: "No package types found" });
@@ -35,7 +41,9 @@ const getPackageTypes = async (req, res) => {
 const getPackageTypeById = async (req, res) => {
     try {
         const { id } = req.params;
-        const packageType = await PackageType.findById(id);
+        const companyId = req.companyId;
+
+        const packageType = await PackageType.findOne({ _id: id, companyId });
 
         if (!packageType) {
             return res.status(404).json({ success: false, message: "Package Type not found" });
@@ -48,19 +56,23 @@ const getPackageTypeById = async (req, res) => {
 };
 
 const updatePackageType = async (req, res) => {
-    //....
     try {
         const { id } = req.params;
         const { name } = req.body;
+        const companyId = req.companyId;
 
         if (!name) {
             return res.status(400).json({ success: false, message: "Name is required" });
         }
 
-        const updatedPackageType = await PackageType.findByIdAndUpdate(id, { name }, { new: true });
+        const updatedPackageType = await PackageType.findOneAndUpdate(
+            { _id: id, companyId },
+            { name },
+            { new: true }
+        );
 
         if (!updatedPackageType) {
-            return res.status(404).json({ success: false, message: "Package Type not found" });
+            return res.status(404).json({ success: false, message: "Package Type not found or unauthorized" });
         }
 
         res.status(200).json({ success: true, message: "Package Type updated", packageType: updatedPackageType });
@@ -72,10 +84,12 @@ const updatePackageType = async (req, res) => {
 const deletePackageType = async (req, res) => {
     try {
         const { id } = req.params;
-        const deletedPackageType = await PackageType.findByIdAndDelete(id);
+        const companyId = req.companyId;
+
+        const deletedPackageType = await PackageType.findOneAndDelete({ _id: id, companyId });
 
         if (!deletedPackageType) {
-            return res.status(404).json({ success: false, message: "Package Type not found" });
+            return res.status(404).json({ success: false, message: "Package Type not found or unauthorized" });
         }
 
         res.status(200).json({ success: true, message: "Package Type deleted" });

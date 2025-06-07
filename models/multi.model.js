@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const citySchema = new mongoose.Schema({
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
     cityName: { type: String, required: true, trim: true },   
     state: { type: String, required: true, trim: true },
     address: {type:String},
@@ -8,15 +9,18 @@ const citySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const dispatchTypeSchema = new mongoose.Schema({
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
     name: { type: String, required: true, trim: true },
     isActive:{type:Boolean,default:false}
 }, { timestamps: true });
 
 const packageTypeSchema = new mongoose.Schema({
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
     name: { type: String, required: true, trim: true }
 }, { timestamps: true });
 
 const assetSchema = new mongoose.Schema({
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
     name: { type: String, required: true, trim: true },
     value: { type: Number, required: true }, // Changed to Number
     assetType: { type: String, required: true, trim: true },
@@ -24,6 +28,7 @@ const assetSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const expenditureSchema = new mongoose.Schema({
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
     name: { type: String, required: true, trim: true },
     expenditureType: { type: String, required: true, trim: true },
     value: { type: Number, required: true }, 

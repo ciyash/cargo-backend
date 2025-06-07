@@ -281,7 +281,7 @@ const getAllSubadmins = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
- 
+   
 const getSubadminsByBranchName = async (req, res) => {
   try {
     const { branchName } = req.body; // Get branch name from request body

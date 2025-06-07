@@ -9,7 +9,7 @@ router.post("/signup",companyAuth,subAdminAuthController.signup)
 
 router.post("/login",subAdminAuthController.login)
 
-router.get("/subadmins",subAdminAuthController.getAllSubadmins)
+router.get("/subadmins",auth,subAdminAuthController.getAllSubadmins)
 
 router.get("/profile",auth,subAdminAuthController.getSubadminById)
 
