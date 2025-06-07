@@ -89,8 +89,7 @@ const loginCompany = async (req, res) => {
 
     res.status(200).json({
       message: "Company logged in successfully",
-      token,
-      role:"admin"
+      token
     });
   } catch (err) {
     console.error("Login error:", err.message);
