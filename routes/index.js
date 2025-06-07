@@ -1,4 +1,5 @@
 import express from 'express'
+import companyRouter from '../routes/company.router.js'
 import subAdminAuthRouter from './subadmin.auth.route.js'
 import branchRouter from './branch.route.js'
 import bookingRouter from './booking.route.js'
@@ -23,7 +24,7 @@ import allRouter from './all.route.js'
 
 const app=express.Router()
 
-
+app.use("/company",companyRouter)
 app.use("/subadmin-auth",subAdminAuthRouter)
 app.use("/branch",branchRouter)
 app.use("/booking",bookingRouter)
@@ -46,6 +47,7 @@ app.use("/branch-report",branchReportRouter) // Assuming you have a branch repor
 // second version 
 
 app.use("/all",allRouter)
+
 
 
 export default app      

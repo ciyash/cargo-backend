@@ -97,23 +97,31 @@ const resetPassword = async (req, res) => {
   }
 };
   
+
 const signup = async (req, res) => {
   try {
-    const { name, username,companyName, address, phone, email, password, branchId, location, documents, role } = req.body;
- 
-    const existingSubadmin = await Subadmin.findOne({ $or: [{ email }, { phone }] });
-    if (existingSubadmin) {
-      return res.status(400).json({ message: "Subadmin already exists with this email or phone" });
+    const { name, username, address, phone, email, password, branchId, location, documents, role } = req.body;
+
+    const companyId = req.user.companyId; // ✅ extracted from token
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required in token" });
     }
- 
-    const subadminUniqueId = generateSubadminUniqueId();
+
+    const existingEmail = await Subadmin.findOne({ email });
+    if (existingEmail) return res.status(400).json({ message: "Subadmin already exists with this email" });
+
+    const existingPhone = await Subadmin.findOne({ phone });
+    if (existingPhone) return res.status(400).json({ message: "Subadmin already exists with this phone" });
+
+    const subadminUniqueId = generateSubadminUniqueId(); // your existing function
     const hashedPassword = await bcrypt.hash(password, 10);
- 
+
     const newSubadmin = new Subadmin({
+      companyId,
       subadminUniqueId,
       name,
       username,
-      companyName,
       address,
       phone,
       email,
@@ -123,14 +131,16 @@ const signup = async (req, res) => {
       documents,
       role,
     });
- 
+
     await newSubadmin.save();
     res.status(201).json({ message: "Subadmin signed up successfully", subadmin: newSubadmin });
-  } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
   }
 };
- 
+
+
+
 const login = async (req, res) => {
   try {
     const { identifier, password } = req.body;
@@ -180,6 +190,7 @@ const login = async (req, res) => {
       branchName,
       branchCity, 
       ipAddress,
+    companyId: subadmin.companyId?.toString() // 
     };
 
     // console.log(tokenPayload)
@@ -356,6 +367,6 @@ export default {
   deleteSubadmin,
   updateSubadmin,
   getSubadminsByBranchName
-};
+}; 
  
- 
+                   

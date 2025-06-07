@@ -4,68 +4,11 @@ import CFMaster from "../models/cf.master.model.js";
 const generateVocherNoUnique = () => {
   return Math.floor(100000 + Math.random() * 900000);
 };
-
-
-// const getBookingsBetweenDates = async (req, res) => {
-//   try {
-//     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
-
-//     if (!startDate || !endDate) {
-//       return res.status(400).json({ message: "Start date and end date are required!" });
-//     }
-
-//     const start = new Date(startDate);
-//     const end = new Date(endDate);
-//     start.setHours(0, 0, 0, 0);
-//     end.setHours(23, 59, 59, 999);
-
-//     // Initial filter: bookings between dates + user bookings (agent === "")
-//     let filter = {
-//       bookingDate: { $gte: start, $lte: end },
-//       bookingStatus: 0,
-//       agent: "", // user bookings only
-//     };
-
-//     // Optional filters
-//     if (fromCity) {
-//       filter.fromCity = new RegExp(`^${fromCity}$`, "i");
-//     }
-
-//     if (Array.isArray(toCity) && toCity.length > 0) {
-//       filter.toCity = {
-//         $in: toCity.map((city) => new RegExp(`^${city}$`, "i")),
-//       };
-//     } else if (toCity) {
-//       filter.toCity = new RegExp(`^${toCity}$`, "i");
-//     }
-
-//     if (pickUpBranch) {
-//       filter.pickUpBranch = pickUpBranch;
-//     }
-
-//     // Fetch bookings
-//     const bookings = await Booking.find(filter);
-
-//     if (!bookings.length) {
-//       return res.status(404).json({
-//         message: "No user bookings found for the given filters!",
-//         data: [],
-//       });
-//     }
-
-//     // Return user bookings directly
-//     res.status(200).json(bookings);
-
-//   } catch (error) {
-//     console.error("Error fetching bookings:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// };
-
-  
+ 
 
 const getBookingsBetweenDates = async (req, res) => {
   try {
+    const companyId = req.user.companyId;
     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
 
     if (!startDate || !endDate) {
@@ -77,15 +20,18 @@ const getBookingsBetweenDates = async (req, res) => {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
-    // Step 1: Prepare main filter
-    let filter = {
+    // Step 1: Base filter
+    const filter = {
+      companyId,
       bookingDate: { $gte: start, $lte: end },
       bookingStatus: 0,
       agent: "", // Only user bookings
     };
 
-    // Step 2: Apply optional filters
-    if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
+    // Step 2: Optional filters
+    if (fromCity) {
+      filter.fromCity = new RegExp(`^${fromCity}$`, "i");
+    }
 
     if (Array.isArray(toCity) && toCity.length > 0) {
       filter.toCity = {
@@ -95,9 +41,11 @@ const getBookingsBetweenDates = async (req, res) => {
       filter.toCity = new RegExp(`^${toCity}$`, "i");
     }
 
-    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+    if (pickUpBranch) {
+      filter.pickUpBranch = pickUpBranch;
+    }
 
-    // Step 3: Get bookings
+    // Step 3: Query bookings
     const bookings = await Booking.find(filter);
 
     if (!bookings.length) {
@@ -107,58 +55,68 @@ const getBookingsBetweenDates = async (req, res) => {
       });
     }
 
-    // Step 4: Get senderNames from bookings
+    // Step 4: Extract senderNames from bookings
     const senderNames = bookings
       .map((b) => b.senderName?.trim())
-      .filter(Boolean); // removes undefined/null/empty
+      .filter(Boolean);
 
-    // Step 5: Find which senderNames are company names (CFMaster.name)
+    // Step 5: Check which senders are in CFMaster (i.e. companies)
     const cfSenders = await CFMaster.find({
+      companyId,
       name: { $in: senderNames },
     }).select("name");
 
     const companyNames = cfSenders.map((cf) => cf.name.trim());
 
-    // Step 6: Filter out company bookings
+    // Step 6: Exclude bookings made by companies
     const userBookings = bookings.filter(
       (b) => !companyNames.includes(b.senderName?.trim())
     );
 
-    // Step 7: Send final user bookings
+    // Step 7: Respond with user bookings
     res.status(200).json(userBookings);
-
   } catch (error) {
     console.error("Error fetching bookings:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-
-
 const getParcelByGrnNo = async (req, res) => {
   try {
+    const companyId = req.user?.companyId;
     const { grnNo } = req.params;
+
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+    }
 
     if (!grnNo) {
       return res.status(400).json({ message: "grnNo is required" });
     }
 
-    const booking = await Booking.findOne({ grnNo, bookingStatus: 0 });
+    const booking = await Booking.findOne({ grnNo, bookingStatus: 0, companyId });
 
     if (!booking) {
-      return res
-        .status(404)
-        .json({ message: "No matching data found with bookingStatus 0" });
+      return res.status(404).json({
+        message: "No booking found for the given GRN number with bookingStatus 0.",
+      });
     }
 
     res.status(200).json(booking);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in getParcelByGrnNo:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
+
 const createParcel = async (req, res) => {
-  const session = await ParcelLoading.startSession(); // Start a transaction session
+  const companyId = req.user?.companyId;
+  if (!companyId) {
+    return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+  }
+
+  const session = await ParcelLoading.startSession();
   session.startTransaction();
 
   try {
@@ -176,7 +134,7 @@ const createParcel = async (req, res) => {
       fromBranch,
     } = req.body;
 
-    //  Validate required fields
+    // Validate required fields
     if (
       !fromCity ||
       !toCity ||
@@ -189,37 +147,49 @@ const createParcel = async (req, res) => {
       !Array.isArray(lrNumber) ||
       lrNumber.length === 0
     ) {
-      return res
-        .status(400)
-        .json({ message: "All required fields must be provided" });
+      return res.status(400).json({ message: "All required fields must be provided" });
     }
 
-    const existingBookings = await Booking.find({
-      grnNo: { $in: grnNo },
-    }).session(session);
-    if (existingBookings.length === 0) {
-      throw new Error("No matching GRN numbers found in Booking collection.");
-    }
-
-    const uniqueToCity = [
-      ...new Set(toCity.map((city) => city.trim().toLowerCase())),
-    ];
-
-    if(!req.user || !req.user.id) { 
+    if (!req.user || !req.user.id) {
       throw new Error("User ID is required for loadingBy field.");
     }
 
-    const vocherNoUnique = generateVocherNoUnique();
+    // Fetch bookings for the given GRNs and company, using the transaction session
+    const existingBookings = await Booking.find({
+      grnNo: { $in: grnNo },
+      companyId,
+    }).session(session);
+
+    // Check if all GRNs exist
+    if (existingBookings.length !== grnNo.length) {
+      const foundGrns = existingBookings.map(b => b.grnNo);
+      const missingGrns = grnNo.filter(grn => !foundGrns.includes(grn));
+      throw new Error(`Some GRNs not found: ${missingGrns.join(", ")}`);
+    }
+
+    // Check if any GRNs are already loaded (bookingStatus != 0)
+    const alreadyLoaded = existingBookings.filter(b => b.bookingStatus !== 0);
+    if (alreadyLoaded.length > 0) {
+      const already = alreadyLoaded.map(b => b.grnNo);
+      throw new Error(`These GRNs are already loaded: ${already.join(", ")}`);
+    }
+
+    // Normalize toCity array values (unique, trimmed, lowercase)
+    const uniqueToCity = [...new Set(toCity.map(city => city.trim().toLowerCase()))];
+
     const loadingBy = req.user.id;
     const loadingDate = new Date();
+    const vocherNoUnique = generateVocherNoUnique(); // your voucher number generator function
 
-    // Create the parcel record
+    // Create new ParcelLoading document
     const parcel = await new ParcelLoading({
       loadingType: "offload",
+      companyId,
       vehicalNumber,
       fromCity,
       toCity: uniqueToCity,
       fromBranch,
+      bookingStatus: 1, // assuming this means 'loaded' or 'active'
       parcelStatus,
       loadingBy,
       senderName,
@@ -230,45 +200,53 @@ const createParcel = async (req, res) => {
       remarks,
       grnNo,
       lrNumber,
-      loadingDate: new Date(),
     }).save({ session });
 
-    //  Update all bookings in a single query
-    const updateResult = await Booking.updateMany(
-      { grnNo: { $in: grnNo } },
+    // Update Booking documents for these GRNs to bookingStatus 1 and update other fields
+    await Booking.updateMany(
+      { grnNo: { $in: grnNo }, companyId },
       {
         $set: {
           bookingStatus: 1,
-          loadingDate: loadingDate,
-          vehicalNumber: vehicalNumber,
+          loadingDate,
+          vehicalNumber,
           ltDate: new Date(),
         },
       },
       { session }
     );
 
-    await session.commitTransaction(); //  Commit transaction
-    res
-      .status(201)
-      .json({
-        message: "Parcel created successfully and bookings updated",
-        parcel,
-      });
+    // Commit the transaction if all succeeds
+    await session.commitTransaction();
+
+    res.status(201).json({
+      message: "Parcel created successfully and bookings updated",
+      parcel,
+    });
+
   } catch (error) {
+    // Rollback if error occurs
     if (session.inTransaction()) {
-      await session.abortTransaction(); //  Abort transaction only if active
+      await session.abortTransaction();
     }
     console.error("Error creating parcel:", error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
   } finally {
-    session.endSession(); // Always end session
+    session.endSession();
   }
 };
 
+
+
 const createBranchToBranch = async (req, res) => {
   try {
+    const companyId = req.user?.companyId;
+    const loadingBy = req.user?.id;
+
+    if (!companyId || !loadingBy) {
+      return res.status(401).json({ message: "Unauthorized: Company ID or User ID missing" });
+    }
+
     const {
       fromCity,
       toCity,
@@ -279,13 +257,29 @@ const createBranchToBranch = async (req, res) => {
       remarks,
     } = req.body;
 
-    const vocherNoUnique = generateVocherNoUnique();
-    const loadingBy = req.user.id;
+    // Validation for required fields
+    if (
+      !fromCity ||
+      !toCity ||
+      !fromBranch ||
+      !vehicalNumber ||
+      !Array.isArray(grnNo) ||
+      grnNo.length === 0 ||
+      !Array.isArray(lrNumber) ||
+      lrNumber.length === 0
+    ) {
+      return res.status(400).json({ message: "Required fields are missing or invalid" });
+    }
+
     const uniqueToCity = [
       ...new Set(toCity.map((city) => city.trim().toLowerCase())),
     ];
+
+    const vocherNoUnique = generateVocherNoUnique();
+
     const parcel = new ParcelLoading({
       loadingType: "branchLoad",
+      companyId,
       vocherNoUnique,
       fromCity,
       toCity: uniqueToCity,
@@ -295,19 +289,28 @@ const createBranchToBranch = async (req, res) => {
       grnNo,
       vehicalNumber,
       remarks,
+      loadingDate: new Date(), // optional: add timestamp
     });
+
     await parcel.save();
-    res.status(201).json({ message: "parcel loading successfully", parcel });
+
+    return res.status(201).json({
+      message: "Parcel loading (branch to branch) created successfully",
+      parcel,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in createBranchToBranch:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
+ 
 
 const getAllParcels = async (req, res) => {
   try {
-    const parcels = await ParcelLoading.find();
-    if (!parcels) {
-      return res.status(400).json({ message: "no prcels found !" });
+    const companyId = req.user.companyId;
+    const parcels = await ParcelLoading.find({ companyId });
+    if (parcels.length === 0) {
+      return res.status(400).json({ message: "no parcels found !" });
     }
     res.status(200).json(parcels);
   } catch (error) {
@@ -315,23 +318,40 @@ const getAllParcels = async (req, res) => {
   }
 };   
 
+
 const getParcelVocherNoUnique = async (req, res) => {
   try {
+    const companyId = req.user?.companyId;
     const { vocherNoUnique } = req.params;
 
-    // Find the parcel by vocherNoUnique
-    const parcel = await ParcelLoading.findOne({ vocherNoUnique });
+    if (!companyId || !vocherNoUnique) {
+      return res.status(400).json({ message: "Company ID or Vocher number missing" });
+    }
+
+    // Step 1: Find the parcel
+    const parcel = await ParcelLoading.findOne({ vocherNoUnique, companyId });
 
     if (!parcel) {
-      return res.status(404).json({ message: "Data not found in parcels!" });
+      return res.status(404).json({ message: "No parcel found with this voucher number" });
     }
 
     const grnNos = parcel.grnNo || [];
 
-    // Fetch matching bookings
-    const bookings = await Booking.find({ grnNo: { $in: grnNos } });
+    if (!grnNos.length) {
+      return res.status(404).json({ message: "No GRNs linked to this parcel" });
+    }
 
-    // Prepare formatted data
+    // Step 2: Fetch bookings by GRN numbers
+    const bookings = await Booking.find({
+      grnNo: { $in: grnNos },
+      companyId,
+    });
+
+    if (!bookings.length) {
+      return res.status(404).json({ message: "No bookings found for the GRN numbers" });
+    }
+
+    // Step 3: Format booking data
     const formattedBookings = bookings.map((booking, index) => ({
       no: index + 1,
       grnNo: booking.grnNo,
@@ -343,72 +363,123 @@ const getParcelVocherNoUnique = async (req, res) => {
       payType: booking.bookingType,
       status: booking.bookingStatus,
       tranDate: booking.loadingDate
-        ? new Date(booking.bookingDate).toLocaleDateString("en-GB")
+        ? new Date(booking.loadingDate).toLocaleDateString("en-GB")
         : null,
       amount: booking.grandTotal || 0,
     }));
 
+    // Step 4: Send response
     res.status(200).json({
       vocherNo: vocherNoUnique,
       bookingList: formattedBookings,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error fetching parcel voucher:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
 
 const getParcelById = async (req, res) => {
   try {
+    const companyId = req.user?.companyId;
     const { id } = req.params;
-    const parcel = await ParcelLoading.findById(id).populate(
-      "branch",
-      "branchName"
-    );
 
-    if (!parcel) return res.status(404).json({ message: "Parcel not found" });
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+    }
+
+    if (!id) {
+      return res.status(400).json({ message: "Parcel ID is required" });
+    }
+
+    const parcel = await ParcelLoading.findOne({ _id: id, companyId })
+      .populate("fromBranch", "branchName")
+      .populate("toCity") // if needed, adjust or remove
+      .lean();
+
+    if (!parcel) {
+      return res.status(404).json({ message: "Parcel not found" });
+    }
 
     res.status(200).json(parcel);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error in getParcelById:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
 
 const updateParcel = async (req, res) => {
   try {
+    const companyId = req.user?.companyId;
     const { id } = req.params;
-    const updatedParcel = await ParcelLoading.findByIdAndUpdate(id, req.body, {
-      new: true,
-      runValidators: true,
-    });
 
-    if (!updatedParcel)
-      return res.status(404).json({ message: "Parcel not found" });
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+    }
 
-    res.status(200).json(updatedParcel);
+    if (!id) {
+      return res.status(400).json({ message: "Parcel ID is required" });
+    }
+
+    // Only update if the parcel belongs to the same company
+    const updatedParcel = await ParcelLoading.findOneAndUpdate(
+      { _id: id, companyId },
+      req.body,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!updatedParcel) {
+      return res.status(404).json({ message: "Parcel not found or unauthorized access" });
+    }
+
+    res.status(200).json({ message: "Parcel updated successfully", parcel: updatedParcel });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error updating parcel:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
-};
+}; 
 
 const deleteParcel = async (req, res) => {
   try {
     const { id } = req.params;
-    const deletedParcel = await ParcelLoading.findByIdAndDelete(id);
+    const companyId = req.user?.companyId;
 
-    if (!deletedParcel)
-      return res.status(404).json({ message: "Parcel not found" });
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+    }
+
+    if (!id) {
+      return res.status(400).json({ message: "Parcel ID is required" });
+    }
+
+    // Only delete if the parcel belongs to the current company
+    const deletedParcel = await ParcelLoading.findOneAndDelete({ _id: id, companyId });
+
+    if (!deletedParcel) {
+      return res.status(404).json({ message: "Parcel not found or unauthorized access" });
+    }
 
     res.status(200).json({ message: "Parcel deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error deleting parcel:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
-
-
 const parcelOfflineReport = async (req, res) => {
   try {
-    const { fromDate, toDate, fromCity, toCity, fromBranch, dropBranch } = req.body;
+    const companyId = req.user?.companyId;
+
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+    }
+
+    const { fromDate, toDate, fromCity, toCity, fromBranch } = req.body;
 
     if (!fromDate || !toDate) {
       return res.status(400).json({ message: "fromDate and toDate are required!" });
@@ -422,39 +493,46 @@ const parcelOfflineReport = async (req, res) => {
       return res.status(400).json({ message: "Invalid date format!" });
     }
 
-    // Step 1: Build filter for ParcelLoading
+    // Step 1: Build filter
     const filter = {
+      companyId,
       loadingDate: { $gte: startDate, $lte: endDate },
     };
 
-    if (fromCity) filter.fromCity = fromCity;
+    if (fromCity) filter.fromCity = new RegExp(`^${fromCity}$`, "i");
 
     if (Array.isArray(toCity) && toCity.length > 0) {
-      filter.toCity = { $in: toCity };
-    } else if (typeof toCity === "string") {
-      filter.toCity = toCity;
+      filter.toCity = { $in: toCity.map(city => new RegExp(`^${city}$`, "i")) };
+    } else if (typeof toCity === "string" && toCity.trim()) {
+      filter.toCity = new RegExp(`^${toCity}$`, "i");
     }
 
     if (fromBranch) filter.fromBranch = fromBranch;
-    // dropBranch does not exist in ParcelLoading schema; skip or adjust based on your logic
 
-    // Step 2: Get ParcelLoading records
+    // Step 2: Get ParcelLoading data
     const parcelLoadings = await ParcelLoading.find(filter, { grnNo: 1 }).lean();
 
     if (!parcelLoadings.length) {
       return res.status(404).json({ message: "No parcel loadings found in given criteria." });
     }
 
-    // Step 3: Flatten all grnNos into a single array
-    const grnNoList = parcelLoadings.flatMap(p => p.grnNo);
+    // Step 3: Extract GRNs
+    const grnNoList = parcelLoadings.flatMap(p => p.grnNo).filter(Boolean);
 
-    // Step 4: Find Bookings using those grnNo values
-    const bookings = await Booking.find({ grnNo: { $in: grnNoList } })
+    if (!grnNoList.length) {
+      return res.status(404).json({ message: "No GRN numbers found in parcel loadings." });
+    }
+
+    // Step 4: Fetch bookings based on GRN numbers
+    const bookings = await Booking.find({
+      grnNo: { $in: grnNoList },
+      companyId
+    })
       .sort({ createdAt: -1 })
       .lean();
 
     if (!bookings.length) {
-      return res.status(404).json({ message: "No bookings found for the matched grnNo list." });
+      return res.status(404).json({ message: "No bookings found for the matched GRN numbers." });
     }
 
     res.status(200).json({
@@ -464,20 +542,19 @@ const parcelOfflineReport = async (req, res) => {
 
   } catch (error) {
     console.error("Error in parcelOfflineReport:", error);
-    res.status(500).json({ message: "Server error." });
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
 
-
 const updateAllGrnNumbers = async (req, res) => {
   try {
+    const companyId = req.user?.companyId;
+
     const { grnNumbers, updateFields } = req.body;
 
     if (!grnNumbers || !Array.isArray(grnNumbers) || grnNumbers.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Invalid or missing grnNumbers array" });
+      return res.status(400).json({ message: "Invalid or missing grnNumbers array" });
     }
 
     if (
@@ -485,25 +562,28 @@ const updateAllGrnNumbers = async (req, res) => {
       typeof updateFields !== "object" ||
       Object.keys(updateFields).length === 0
     ) {
-      return res
-        .status(400)
-        .json({ message: "Invalid or missing updateFields object" });
+      return res.status(400).json({ message: "Invalid or missing updateFields object" });
     }
 
-    // Add `updatedAt` field to the update object
+    // Add updatedAt timestamp
     updateFields.updatedAt = new Date();
 
-    // Find all bookings before update
-    const beforeUpdate = await Booking.find({ grnNumber: { $in: grnNumbers } });
+    // Prepare query filter with companyId for security if applicable
+    const filter = {
+      grnNo: { $in: grnNumbers },
+    };
+    if (companyId) {
+      filter.companyId = companyId;
+    }
 
-    // Update all records matching grnNumbers with dynamic fields
-    const updateResult = await Booking.updateMany(
-      { grnNumber: { $in: grnNumbers } },
-      { $set: updateFields }
-    );
+    // Find all bookings before update
+    const beforeUpdate = await Booking.find(filter);
+
+    // Update all matched bookings
+    const updateResult = await Booking.updateMany(filter, { $set: updateFields });
 
     // Fetch all updated records
-    const afterUpdate = await Booking.find({ grnNumber: { $in: grnNumbers } });
+    const afterUpdate = await Booking.find(filter);
 
     return res.status(200).json({
       message: `Successfully updated ${updateResult.modifiedCount} records`,
@@ -512,25 +592,39 @@ const updateAllGrnNumbers = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating GRN numbers:", error);
-    return res
-      .status(500)
-      .json({ message: "Internal Server Error", error: error.message });
+    return res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
 
+
 const getParcelByLrNumber = async (req, res) => {
   try {
-    const { lrNumber } = req.body;
+    let { lrNumber } = req.body;
 
     if (!lrNumber) {
       return res.status(400).json({ message: "lrNumber is required" });
     }
 
-    // Fetch parcels where lrNumber matches
-    const parcels = await ParcelLoading.find({ lrNumber: { $in: lrNumber } });
+    // Normalize lrNumber to array
+    if (!Array.isArray(lrNumber)) {
+      lrNumber = [lrNumber];
+    }
 
-    // Fetch booking data separately
-    const bookings = await Booking.find({ lrNumber: { $in: lrNumber } });
+    // Optional: Trim each lrNumber string
+    lrNumber = lrNumber.map((lr) => lr.trim());
+
+    const companyId = req.user?.companyId;
+    const filter = { lrNumber: { $in: lrNumber } };
+
+    if (companyId) {
+      filter.companyId = companyId;
+    }
+
+    // Fetch parcels and bookings in parallel
+    const [parcels, bookings] = await Promise.all([
+      ParcelLoading.find(filter),
+      Booking.find(filter),
+    ]);
 
     if (parcels.length === 0 && bookings.length === 0) {
       return res.status(404).json({ message: "No matching data found" });
@@ -544,107 +638,175 @@ const getParcelByLrNumber = async (req, res) => {
 
 const getParcelByVehicalNumber = async (req, res) => {
   try {
-    const { vehicalNumber } = req.params;
+    let { vehicalNumber } = req.params;
 
-    const parcel = await ParcelLoading.find({ vehicalNumber });
-
-    if (parcel.length === 0) {
-      return res.status(400).json({ message: "parcel not found !" });
+    if (!vehicalNumber || !vehicalNumber.trim()) {
+      return res.status(400).json({ success: false, message: "vehicalNumber is required" });
     }
 
-    res.status(200).json(parcel);
+    vehicalNumber = vehicalNumber.trim();
+    const companyId = req.user?.companyId;
+
+    if (!companyId) {
+      return res.status(401).json({ success: false, message: "Unauthorized: companyId missing" });
+    }
+
+    const filter = { vehicalNumber, companyId };
+
+    const parcels = await ParcelLoading.find(filter).sort({ loadingDate: -1 });
+
+    if (!parcels.length) {
+      return res.status(404).json({ success: false, message: "No parcels found for the given vehicalNumber" });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: parcels.length,
+      data: parcels,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error fetching parcels by vehicalNumber:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
+
 const parcelStatusReport = async (req, res) => {
   try {
-    const { startDate, endDate, fromCity, toCity, parcelStatus } = req.body;
+    const companyId = req.user?.companyId;
 
-    if (
-      !startDate ||
-      !endDate ||
-      !fromCity ||
-      !toCity ||
-      parcelStatus === undefined
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
+    if (!companyId) {
+      return res.status(401).json({ success: false, message: "Unauthorized: Company ID missing" });
     }
 
-    // Ensure date filtering works properly
+    const { startDate, endDate, fromCity, toCity, parcelStatus } = req.body;
+
+    if (!startDate || !endDate || !fromCity || !toCity || parcelStatus === undefined) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    if (isNaN(start) || isNaN(end)) {
+      return res.status(400).json({ success: false, message: "Invalid date format" });
+    }
+
+    // Build the query with companyId filtering
     const parcels = await ParcelLoading.find({
       fromCity,
       toCity,
       parcelStatus,
-      fromBookingDate: { $gte: new Date(startDate) },
-      toBookingDate: { $lte: new Date(endDate) },
+      companyId,
+      loadingDate: { $gte: start, $lte: end }, // Adjust if you use a different date field
     });
 
-    if (parcels.length === 0) {
-      return res.status(404).json({ message: "No parcels found" });
+    if (!parcels.length) {
+      return res.status(404).json({ success: false, message: "No parcels found" });
     }
 
-    res.status(200).json(parcels);
+    res.status(200).json({ success: true, count: parcels.length, data: parcels });
   } catch (error) {
+    console.error("Error in parcelStatusReport:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
+
 const parcelPendingReport = async (req, res) => {
   try {
-    const { fromCity, toCity, fromBranch, toBranch } = req.body;
 
-    if (!fromCity || !toCity || !fromBranch || !toBranch) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
+      const companyId = req.user?.companyId;
+
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
     }
 
+    let { fromCity, toCity, fromBranch, toBranch } = req.body;
+
+    // Check required fields
+    if (!fromCity || !toCity || !fromBranch || !toBranch) {
+      return res.status(400).json({
+        success: false,
+        message: "fromCity, toCity, fromBranch, and toBranch are required",
+      });
+    }
+
+    // Company check
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
+    }
+
+    // Normalize inputs
+    fromCity = fromCity.trim().toLowerCase();
+    toCity = toCity.trim().toLowerCase();
+    fromBranch = fromBranch.trim().toLowerCase();
+    toBranch = toBranch.trim().toLowerCase();
+
+    // Query pending parcels
     const pendingParcels = await ParcelLoading.find({
+      companyId,
       fromCity,
       toCity,
       fromBranch,
       toBranch,
+      parcelStatus: 0, // Assuming 0 means pending
     });
 
     if (pendingParcels.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No pending parcels found" });
+      return res.status(404).json({
+        success: false,
+        message: "No pending parcels found for the specified criteria",
+      });
     }
 
-    res.status(200).json(pendingParcels);
+    res.status(200).json({
+      success: true,
+      count: pendingParcels.length,
+      data: pendingParcels,
+    });
   } catch (error) {
+    console.error("Error in parcelPendingReport:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
+
 const getBookingsByDateAndBranch = async (req, res) => {
   try {
     const { fromBookingDate, toBookingDate, fromBranch } = req.body;
+    const { companyId } = req.user || {};
 
     if (!fromBookingDate || !toBookingDate || !fromBranch) {
-      return res
-        .status(400)
-        .json({
-          message:
-            "fromBookingDate, toBookingDate, and fromBranch are required",
-        });
+      return res.status(400).json({
+        message: "fromBookingDate, toBookingDate, and fromBranch are required",
+      });
+    }
+
+    if (!companyId) {
+      return res.status(401).json({
+        message: "Unauthorized: Company ID missing",
+      });
     }
 
     const from = new Date(fromBookingDate);
     const to = new Date(toBookingDate);
-    to.setHours(23, 59, 59, 999); // Extend to the end of the day
+    to.setHours(23, 59, 59, 999); // Include entire day
 
     const bookings = await Booking.find({
+      companyId,
       bookingDate: { $gte: from, $lte: to },
-      pickUpBranch: fromBranch, // Fixed: Ensure you're filtering by the correct field
+      pickUpBranch: fromBranch,
     }).sort({ bookingDate: -1 });
 
-    if (bookings.length === 0) {
+    if (!bookings.length) {
       return res.status(200).json({ message: "No parcels available" });
     }
 
@@ -657,85 +819,21 @@ const getBookingsByDateAndBranch = async (req, res) => {
   }
 };
 
-// const offlineParcelVoucherDetailsPrint = async (req, res) => {
-//   try {
-//     const { vocherNoUnique } = req.params;
-
-//     const parcel = await ParcelLoading.findOne({ vocherNoUnique });
-
-//     if (!parcel) {
-//       return res.status(404).json({ message: "Data not found in parcels!" });
-//     }
-
-//     const grnNos = parcel.grnNo || [];
-
-//     const bookings = await Booking.find(
-//       { grnNo: { $in: grnNos } },
-//       {
-//         fromCity: 1,
-//         grnNo: 1,
-//         lrNumber: 1,
-//         pickUpBranchname: 1,
-//         toCity: 1,
-//         dropBranchname: 1,
-//         senderName: 1,
-//         totalQuantity: 1,
-//         receiverName: 1,
-//         senderMobile: 1,
-//         receiverMobile: 1,
-//         bookingType: 1,
-//         vehicalNumber: 1,
-//         grandTotal: 1,
-//         packages: 1,
-//         _id: 0
-//       }
-//     );
-
-//     let allTotal = 0;
-//     let allQuantity = 0;
-
-//     const formattedBookings = bookings.map(booking => {
-//       // Add to totals
-//       allTotal += Number(booking.grandTotal) || 0;
-//       allQuantity += Number(booking.totalQuantity) || 0;
-
-//       return {
-//         grnNo: booking.grnNo,
-//         lrNumber: booking.lrNumber,
-//         fromCity: booking.fromCity,
-//         pickUpBranchname: booking.pickUpBranchname,
-//         toCity: booking.toCity,
-//         dropBranchname: booking.dropBranchname,
-//         Sender: booking.senderName,
-//         Receiver: booking.receiverName,
-//         senderMobile: booking.senderMobile,
-//         receiverMobile: booking.receiverMobile,
-//         Amount: booking.grandTotal,
-//         bookingType: booking.bookingType,
-//         BusNo: booking.vehicalNumber,
-//         totalQuantity: booking.totalQuantity,
-//         packages: (booking.packages || []).map(pkg => ({
-//           packageType: pkg.packageType,
-//           quantity: pkg.quantity
-//         }))
-//       };
-//     });
-
-//     res.status(200).json({
-//       bookings: formattedBookings,
-//       allTotal,
-//       allQuantity
-//     });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// };
 
 const offlineParcelVoucherDetailsPrint = async (req, res) => {
   try {
-    const { vocherNoUnique } = req.params;
+    const { companyId } = req.user || {};
+    const vocherNoUnique = req.params.vocherNoUnique?.trim();
 
-    const parcel = await ParcelLoading.findOne({ vocherNoUnique });
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+    }
+
+    if (!vocherNoUnique) {
+      return res.status(400).json({ message: "vocherNoUnique is required" });
+    }
+
+    const parcel = await ParcelLoading.findOne({ vocherNoUnique, companyId });
 
     if (!parcel) {
       return res.status(404).json({ message: "Data not found in parcels!" });
@@ -744,7 +842,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
     const grnNos = parcel.grnNo || [];
 
     const bookings = await Booking.find(
-      { grnNo: { $in: grnNos } },
+      { grnNo: { $in: grnNos }, companyId },
       {
         fromCity: 1,
         grnNo: 1,
@@ -780,12 +878,11 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
       const bookingTotal = Number(booking.grandTotal) || 0;
       const bookingQty = Number(booking.totalQuantity) || 0;
 
-      // Add to overall totals
       allTotal += bookingTotal;
       allQuantity += bookingQty;
 
-      // Add to bookingType summary
-      const type = booking.bookingType;
+      const type = booking.bookingType?.toString().toLowerCase();
+
       if (bookingTypeSummary[type]) {
         bookingTypeSummary[type].totalBookings += 1;
         bookingTypeSummary[type].grandTotal += bookingTotal;
@@ -824,28 +921,30 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
   }
 };
 
+
+
 const offlineParcelVoucherDetails = async (req, res) => {
   try {
-    const { fromDate, toDate, vehicalNumber, fromCity, toCity, fromBranch } =
-      req.body;
+    const { companyId } = req.user || {};
+    const { fromDate, toDate, vehicalNumber, fromCity, toCity, fromBranch } = req.body;
+
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+    }
 
     if (!fromDate || !toDate) {
-      return res
-        .status(400)
-        .json({ message: "fromBookingDate and toBookingDate are required!" });
+      return res.status(400).json({ message: "fromBookingDate and toBookingDate are required!" });
     }
 
     const startDate = new Date(fromDate);
     const endDate = new Date(toDate);
-
     if (isNaN(startDate) || isNaN(endDate)) {
       return res.status(400).json({ message: "Invalid date format!" });
     }
-
     endDate.setHours(23, 59, 59, 999);
 
-    // Build filter for ParcelLoading
     const filter = {
+      companyId,
       loadingDate: { $gte: startDate, $lte: endDate },
     };
 
@@ -854,44 +953,40 @@ const offlineParcelVoucherDetails = async (req, res) => {
     if (toCity) filter.toCity = toCity;
     if (fromBranch) filter.fromBranch = fromBranch;
 
-    // Fetch parcels
     const parcels = await ParcelLoading.find(filter).sort({ createdAt: -1 });
 
     if (!parcels.length) {
-      return res
-        .status(404)
-        .json({ message: "No parcels found in the given date range!" });
+      return res.status(404).json({ message: "No parcels found in the given date range!" });
     }
 
-    const grnNos = parcels.flatMap((parcel) => parcel.grnNo);
-    const bookings = await Booking.find({ grnNo: { $in: grnNos } });
+    const grnNos = parcels.flatMap((parcel) => parcel.grnNo || []);
+    const bookings = await Booking.find({ grnNo: { $in: grnNos }, companyId });
 
     const result = parcels.map((parcel) => {
       const matchingBookings = bookings.filter((booking) =>
-        parcel.grnNo.includes(booking.grnNo)
+        parcel.grnNo?.includes(booking.grnNo)
       );
 
       let totalQuantity = 0;
       let grandTotal = 0;
 
       matchingBookings.forEach((booking) => {
-        grandTotal += booking.grandTotal || 0;
-
+        grandTotal += Number(booking.grandTotal) || 0;
         if (Array.isArray(booking.packages)) {
           totalQuantity += booking.packages.reduce(
-            (sum, pkg) => sum + (pkg.quantity || 0),
+            (sum, pkg) => sum + (Number(pkg.quantity) || 0),
             0
           );
         }
       });
 
       return {
-        voucherNo: parcel.vocherNoUnique || "", // Adjust if field name is different
+        voucherNo: parcel.vocherNoUnique || "",
         fromCity: parcel.fromCity || "",
         toCity: parcel.toCity || "",
         loadingDate: parcel.loadingDate,
         vehicalNumber: parcel.vehicalNumber,
-        totalParcel: 1,
+        totalParcel: parcel.grnNo?.length || 0,
         totalQuantity,
         grandTotal,
       };
@@ -903,45 +998,63 @@ const offlineParcelVoucherDetails = async (req, res) => {
   }
 };
 
-//reports
 
 const dispatchedStockReport = async (req, res) => {
   try {
+    const { companyId } = req.user || {};
     const { fromDate, toDate, fromCity, toCity, fromBranch } = req.body;
 
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID missing", success: false });
+    }
+
     if (!fromDate || !toDate) {
-      return res
-        .status(400)
-        .json({ message: "fromDate and toDate are required" });
+      return res.status(400).json({ message: "fromDate and toDate are required", success: false });
     }
 
     const start = new Date(fromDate);
     const end = new Date(toDate);
     end.setHours(23, 59, 59, 999);
 
-    let query = { loadingDate: { $gte: start, $lte: end } }; // Filter by loadingDate
+    if (isNaN(start) || isNaN(end)) {
+      return res.status(400).json({ message: "Invalid date format", success: false });
+    }
+
+    const query = {
+      companyId, // <-- This is the important addition
+      loadingDate: { $gte: start, $lte: end },
+    };
 
     if (fromCity) query.fromCity = fromCity;
     if (toCity) query.toCity = toCity;
     if (fromBranch) query.fromBranch = fromBranch;
 
-    // Fetch data from ParcelLoading without select() (gets all fields)
-    const dispatchedStock = await ParcelLoading.find(query).lean();
+    const dispatchedStock = await ParcelLoading.find(query)
+      .sort({ loadingDate: -1 })
+      .lean();
 
     if (!dispatchedStock.length) {
-      return res
-        .status(404)
-        .json({ message: "No dispatched stock found for the given criteria" });
+      return res.status(404).json({
+        message: "No dispatched stock found for the given criteria",
+        success: false,
+      });
     }
 
-    res.status(200).json(dispatchedStock);
+    res.status(200).json({
+      success: true,
+      count: dispatchedStock.length,
+      data: dispatchedStock,
+    });
   } catch (error) {
     console.error("Error generating dispatched stock report:", error);
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+      success: false,
+    });
   }
 };
+
 
 export default {
   getBookingsBetweenDates,
@@ -963,7 +1076,5 @@ export default {
   getBookingsByDateAndBranch,
   dispatchedStockReport,
   offlineParcelVoucherDetailsPrint,
-
-  //
   parcelOfflineReport,
 };

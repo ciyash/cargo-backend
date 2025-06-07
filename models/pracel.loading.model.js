@@ -7,7 +7,8 @@ const parcelSchema = new mongoose.Schema({
     vocherNoUnique: { type: Number, required: true }, // Auto-generated
     loadingBy: { type: mongoose.Schema.Types.ObjectId, ref: "Subadmin", required: true }, //auto Loading employee
     loadingDate:{type:Date,default:()=>new Date()},
-
+    companyId: {type: mongoose.Schema.Types.ObjectId,ref: "Company", required: true    },
+    bookingStatus:{type:String,default:null}, 
     // frontend entered
     senderName:{type:String},
     vehicalNumber: { type: String, required: true },  
@@ -15,7 +16,7 @@ const parcelSchema = new mongoose.Schema({
     driverNo: { type: Number, default:null }, 
     grnNo: [{ type: Number, required: true }], 
     lrNumber: [{ type: String, required: true }],
-    parcelStatus: { type: Number, default: 0 },
+    parcelStatus: { type: Number, default: 0 }, 
     remarks: { type: String, default: "" },
     fromCity: { type: String, required: true },
     toCity: [{ type: String, required: true }], 

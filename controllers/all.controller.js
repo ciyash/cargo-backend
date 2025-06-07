@@ -1,8 +1,5 @@
 import { User, Booking } from "../models/booking.model.js";
 import CFMaster from "../models/cf.master.model.js";
-import ParcelLoading from "../models/pracel.loading.model.js";
-import ParcelUnloading from "../models/parcel.unloading.model.js";
-import Branch from "../models/branch.model.js";
 import moment from "moment";
 
 // subadmin access only

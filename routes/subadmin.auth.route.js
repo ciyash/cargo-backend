@@ -1,10 +1,11 @@
 import express from 'express'
 import subAdminAuthController from '../controllers/subadmin.auth.controller.js'
 import auth from '../config/auth.middleware.js'
+import companyAuth from '../config/company.auth.js'
 
 const router=express.Router()  
 
-router.post("/signup",subAdminAuthController.signup)
+router.post("/signup",companyAuth,subAdminAuthController.signup)
 
 router.post("/login",subAdminAuthController.login)
 

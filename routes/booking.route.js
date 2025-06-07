@@ -20,24 +20,19 @@ router.get("/user/credit",auth,bookingController.getCreditBookings)
  
 router.post("/",auth,bookingController.createBooking)
 
-router.get("/",bookingController.getAllBookings)
+router.get("/",auth,bookingController.getAllBookings)
 
+router.get("/todaybookings",auth,bookingController.toDayBookings)  
 
-
-   
-router.get("/todaybookings",auth,bookingController.getBookingBydate)
-
-router.get("/grnNo/:grnNo",bookingController.getBookingByGrnNo)
+router.get("/grnNo/:grnNo",auth,bookingController.getBookingByGrnNo)
 
 router.get("/adminUniqueId/:adminUniqueId",auth,bookingController.getBookingadminUniqueId)
 
-router.post("/search-data", bookingController.getBookingsByAnyField);
-
-
+router.post("/search-data", auth,bookingController.getBookingsByAnyField);
+ 
 router.get("/pages",auth,bookingController.getAllBookingsPages)
 
 router.get("/fromCity/:fromCity/toCity/:toCity/:vehicalNumber",auth,bookingController.getBookingsfromCityTotoCity)
-
 
 router.post("/get-lrNumber",auth,bookingController.getBookinglrNumber)
 
@@ -65,7 +60,7 @@ router.post("/parcel-booking-summary-report",auth,bookingController.parcelBookin
 router.post("/parcel-booking-mobileNumber",auth,bookingController.parcelBookingMobileNumber)
 router.post("/regular-customer-booking",auth,bookingController.regularCustomerBooking)
 
-router.post("/branch-Wise-collection-report",auth,bookingController.branchWiseCollectionReport)
+router.post("/branch-Wise-collection-report",bookingController.branchWiseCollectionReport)
 router.post("/parcel-branch-consolidated-report",auth,bookingController.parcelBranchConsolidatedReport)
 router.post("/parcel-branch-wise-gst-report",auth,bookingController.parcelBranchWiseGSTReport)
 router.post("/sender-receiver-gst-report",auth,bookingController.senderReceiverGSTReport)
@@ -91,4 +86,4 @@ router.get("/status-wise-summary",auth,bookingController.statusWiseSummary)
 router.post("/get-total",bookingController.getTotalByBranchAndDate)
 
 export default router
- 
+  

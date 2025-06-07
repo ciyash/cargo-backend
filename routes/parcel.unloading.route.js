@@ -4,31 +4,29 @@ import auth from '../config/auth.middleware.js'
 
 const router = express.Router();
 
-router.post("/parcel-filter-Unloading",parcelUnloadingController.getParcelsLoading)  //loading get
+router.post("/parcel-filter-Unloading",auth,parcelUnloadingController.getParcelsLoading)  //loading get
 
-router.get("/grnNo/:grnNo",parcelUnloadingController.getParcelunLoadingByGrnNumber)
+router.get("/grnNo/:grnNo", auth,parcelUnloadingController.getParcelunLoadingByGrnNumber)
 
 router.post("/",auth,parcelUnloadingController.createParcelUnloading)   //post
 
-router.get("/",parcelUnloadingController.getAllParcelUnloadings)
+router.get("/",auth,parcelUnloadingController.getAllParcelUnloadings)
 
-router.get("/:id",parcelUnloadingController.getParcelUnloadingById)
+router.get("/:id",auth,parcelUnloadingController.getParcelUnloadingById)
 
-router.get("/voucher/:voucher",parcelUnloadingController.getParcelUnloadingByVoucher)
+router.get("/voucher/:voucher",auth,parcelUnloadingController.getParcelUnloadingByVoucher)
 
-router.post("/filter",parcelUnloadingController.getParcelsByFilters)
+router.post("/filter",auth,parcelUnloadingController.getParcelsByFilters)
 
-router.patch("/:id",parcelUnloadingController.updateParcelUnloading)
+router.patch("/:id",auth,parcelUnloadingController.updateParcelUnloading)
 
-router.delete("/:id",parcelUnloadingController.deleteParcelUnloading)
+router.delete("/:id",auth,parcelUnloadingController.deleteParcelUnloading)
 
-router.post("/pending-delivery-report",parcelUnloadingController.getUnloadingReport)
+router.post("/pending-delivery-report",auth,parcelUnloadingController.getUnloadingReport)
 
-router.post("/branch-to-branch-load",parcelUnloadingController.parcelBranchToBranchUnloading)  //loading
-  
+router.post("/branch-to-branch-load",auth,parcelUnloadingController.parcelBranchToBranchUnloading)  //loading
+
 router.post("/branch-to-branch-post",auth,parcelUnloadingController.parcelBranchToBranchUnloadingPost)  //loading
   
-
-
 
 export default router

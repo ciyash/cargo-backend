@@ -8,9 +8,9 @@ router.post("/parcel-loding-load" ,auth,parcelController.getBookingsBetweenDates
 
 router.post("/",auth,parcelController.createParcel)
  
-router.get("/",parcelController.getAllParcels)
+router.get("/",auth,parcelController.getAllParcels)
 
-router.get("/:id",parcelController.getParcelById)  
+router.get("/:id",parcelController.getParcelById)   
 
 router.get("/vocherNoUnique/:vocherNoUnique",parcelController.getParcelVocherNoUnique)
 
@@ -24,7 +24,7 @@ router.post("/updateGrnNumbers",auth,parcelController.updateAllGrnNumbers)
 
 router.post("/get-lrNumber",auth,parcelController.getParcelByLrNumber)
 
-router.get("/grnNo/:grnNo",parcelController.getParcelByGrnNo)
+router.get("/grnNo/:grnNo",auth,parcelController.getParcelByGrnNo)
 
 router.get("/vehicalNumber/:vehicalNumber",auth,parcelController.getParcelByVehicalNumber)
 

@@ -1,14 +1,18 @@
 import mongoose from "mongoose";
 
 const adminSchema = new mongoose.Schema(
-  {  
+     {
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company", // assuming you have a Company model
+      required: true
+    },
     subadminUniqueId: { type: Number, required: true }, //auto generated unique ID
     branchId: { type: mongoose.Schema.Types.ObjectId,ref:"Branch",required:true},  //auto generated unique ID
     name: { type: String, required: true },
     email: { type: String, required: true },
     password: { type: String, required: true },
     role: { type: String, enum: ["superadmin","admin","subadmin", "employee","accountant","superviser","driver"], required: true },
-    companyName:{type:String,default:"Sree Kaleswari Logistics"},
     address:{type:String},
     ipAddress: { type: String },
     username: { type: String},
