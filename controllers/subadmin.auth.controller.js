@@ -287,8 +287,13 @@ const getSubadminById = async (req, res) => {
  
 const getAllSubadmins = async (req, res) => {
   try {
-    const subadmins = await Subadmin.find().populate("branchId",'name branchUniqueId branchType city location address');
- 
+    const companyId = req.user?.companyId; // Get companyId from token
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+    }
+
+    const subadmins = await Subadmin.find({ companyId }).populate("branchId",'name branchUniqueId branchType city location address');
+
     if (subadmins.length === 0) {
       return res.status(404).json({ message: "No subadmins in database" });
     }
