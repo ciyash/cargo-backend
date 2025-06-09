@@ -5,11 +5,14 @@ import companyAuth from '../config/company.auth.js'
 
 const router=express.Router()  
 
-router.post("/signup",companyAuth,subAdminAuthController.signup)
+
+router.post("/signup-by-company", companyAuth, subAdminAuthController.signup);
+
+router.post("/signup", auth, subAdminAuthController.signup)
 
 router.post("/login",subAdminAuthController.login)
 
-router.get("/subadmins",companyAuth,subAdminAuthController.getAllSubadmins)
+router.get("/subadmins",companyAuth,subAdminAuthController.getAllSubadmins)   
 
 router.get("/employees", auth, subAdminAuthController.getAllEmployees);
 

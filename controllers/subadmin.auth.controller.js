@@ -98,7 +98,6 @@ const resetPassword = async (req, res) => {
 };
   
 
-
 const signup = async (req, res) => {
   try {
     const {
@@ -114,31 +113,30 @@ const signup = async (req, res) => {
       role
     } = req.body;
 
-    const companyId = req.user.companyId;
+    let companyId = req.user?.companyId;
+
+    // If companyId is not present (e.g., admin is creating new employee), fetch it from admin's DB record
+    if (!companyId && req.user?._id) {
+      const admin = await Subadmin.findById(req.user._id);
+      if (!admin) return res.status(404).json({ message: "Admin not found" });
+      companyId = admin.companyId;
+    }
 
     if (!companyId) {
-      return res.status(400).json({ message: "companyId is required in token" });
+      return res.status(400).json({ message: "companyId is required" });
     }
 
-    // Check for existing email
+    // Check if email or phone already exists
     const existingEmail = await Subadmin.findOne({ email });
-    if (existingEmail) {
-      return res.status(400).json({ message: "Subadmin already exists with this email" });
-    }
+    if (existingEmail) return res.status(400).json({ message: "Email already registered" });
 
-    // Check for existing phone
     const existingPhone = await Subadmin.findOne({ phone });
-    if (existingPhone) {
-      return res.status(400).json({ message: "Subadmin already exists with this phone" });
-    }
+    if (existingPhone) return res.status(400).json({ message: "Phone already registered" });
 
-    // Generate unique ID and hash password
     const subadminUniqueId = generateSubadminUniqueId();
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    
     const finalBranchId = role === "admin" ? null : branchId;
-
 
     const newSubadmin = new Subadmin({
       companyId,
@@ -163,6 +161,73 @@ const signup = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
+
+
+// const signup = async (req, res) => {
+//   try {
+//     const {
+//       name,
+//       username,
+//       address,
+//       phone,
+//       email,
+//       password,
+//       branchId,
+//       location,
+//       documents,
+//       role
+//     } = req.body;
+
+//     const companyId = req.user.companyId;
+
+//     if (!companyId) {
+//       return res.status(400).json({ message: "companyId is required in token" });
+//     }
+
+//     // Check for existing email
+//     const existingEmail = await Subadmin.findOne({ email });
+//     if (existingEmail) {
+//       return res.status(400).json({ message: "Subadmin already exists with this email" });
+//     }
+
+//     // Check for existing phone
+//     const existingPhone = await Subadmin.findOne({ phone });
+//     if (existingPhone) {
+//       return res.status(400).json({ message: "Subadmin already exists with this phone" });
+//     }
+
+//     // Generate unique ID and hash password
+//     const subadminUniqueId = generateSubadminUniqueId();
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+    
+//     const finalBranchId = role === "admin" ? null : branchId;
+
+
+//     const newSubadmin = new Subadmin({
+//       companyId,
+//       subadminUniqueId,
+//       name,
+//       username,
+//       address,
+//       phone,
+//       email,
+//       password: hashedPassword,
+//       branchId: finalBranchId,
+//       location,
+//       documents,
+//       role,
+//     });
+
+//     await newSubadmin.save();
+
+//     res.status(201).json({ message: "Subadmin signed up successfully", subadmin: newSubadmin });
+
+//   } catch (err) {
+//     res.status(500).json({ message: "Server error", error: err.message });
+//   }
+// };
 
 
 
