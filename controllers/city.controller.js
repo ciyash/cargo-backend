@@ -4,7 +4,9 @@ import { City } from '../models/multi.model.js';
 const createCity = async (req, res) => {
   try {
     const { cityName, state, code, address } = req.body;
-    const companyId = req.companyId;
+
+   const companyId = req.user?.companyId;
+
 
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized: Company ID missing" });
