@@ -4,7 +4,7 @@ import auth from '../config/auth.middleware.js'
 import companyAuth from '../config/company.auth.js'
 
 const router=express.Router()  
-
+//
 
 router.post("/signup-by-company", companyAuth, subAdminAuthController.signup);
 
