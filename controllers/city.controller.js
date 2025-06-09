@@ -27,13 +27,17 @@ const createCity = async (req, res) => {
 // Get All Cities for the Company
 const getCities = async (req, res) => {
   try {
-    const companyId = req.companyId;
+   const companyId = req.user?.companyId;
+
 
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized: Company ID missing" });
     }
 
     const cities = await City.find({ companyId });
+    if( !cities || cities.length === 0) {
+      return res.status(404).json({ message: "No cities found for this company" });
+    }
     res.status(200).json(cities);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

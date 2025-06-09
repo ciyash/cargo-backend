@@ -4,17 +4,18 @@ import dispatchTypeController from "../controllers/dispatchType.controller.js";
 import packageTypeController from "../controllers/packageType.controller.js";
 import assetController from "../controllers/asset.controller.js";
 import expenditureController from "../controllers/expenditure.controller.js";
+import auth from '../config/auth.middleware.js'
 
 const router = express.Router();
 
 // City Routes
-router.post("/cities", cityController.createCity);
-router.get("/cities", cityController.getCities);
-router.patch("/cities/:id", cityController.updateCity);
-router.delete("/cities/:id", cityController.deleteCity);
+router.post("/cities",auth, cityController.createCity);
+router.get("/cities",auth, cityController.getCities);
+router.patch("/cities/:id",auth, cityController.updateCity);
+router.delete("/cities/:id",auth, cityController.deleteCity);
 
 //  Ensure it's a static route (not "/cities/:cityIds")
-router.post("/cities/delete-cities", cityController.deleteSelectedCities);
+router.post("/cities/delete-cities",auth, cityController.deleteSelectedCities);
 
 // DispatchType Routes
 router.post("/dispatch-types", dispatchTypeController.createDispatchType);

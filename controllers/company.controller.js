@@ -131,7 +131,6 @@ const updateCompany = async (req, res) => {
 };
 
 
-
 const getAllCompanies = async (req, res) => {
   try {
     const companies = await Company.find();
@@ -223,7 +222,6 @@ const toggleProjectAccess = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 
 // Delete Company
