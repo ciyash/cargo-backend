@@ -328,6 +328,33 @@ const getAllSubadmins = async (req, res) => {
   }
 };
  
+const getAllEmployees = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    const role = req.user?.role;
+
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+    }
+
+    if (role !== "admin") {
+      return res.status(403).json({ message: "Forbidden: Only admin can access this resource" });
+    }
+
+    const subadmins = await Subadmin.find({ companyId })
+      .populate("branchId", "name branchUniqueId branchType city location address")
+      .populate("companyId", "name email phone address state customerName");
+
+    if (subadmins.length === 0) {
+      return res.status(404).json({ message: "No subadmins in database" });
+    }
+
+    res.status(200).json(subadmins);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
    
 const getSubadminsByBranchName = async (req, res) => {
@@ -414,7 +441,8 @@ export default {
   getSubadminById,
   deleteSubadmin,
   updateSubadmin,
-  getSubadminsByBranchName
+  getSubadminsByBranchName,
+  getAllEmployees
 }; 
  
                    

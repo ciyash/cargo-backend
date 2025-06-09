@@ -11,19 +11,20 @@ router.post("/login",subAdminAuthController.login)
 
 router.get("/subadmins",companyAuth,subAdminAuthController.getAllSubadmins)
 
-router.get("/profile",auth,subAdminAuthController.getSubadminById)
+router.get("/employees", auth, subAdminAuthController.getAllEmployees);
 
-router.patch("/update-profile",auth,subAdminAuthController.updateSubadmin)
+router.get("/profile", auth, subAdminAuthController.getSubadminById)
 
-router.post("/change-password",auth,subAdminAuthController.changeSubadminPassword)
+router.patch("/update-profile", auth, subAdminAuthController.updateSubadmin)
 
-router.post("/reset-password",auth,subAdminAuthController.resetPassword)
+router.post("/change-password", auth, subAdminAuthController.changeSubadminPassword)
 
-router.post("/forgot-password",auth,subAdminAuthController.forgotPassword)
+router.post("/reset-password", auth, subAdminAuthController.resetPassword)
 
-router.delete("/delete-subadmin",auth,subAdminAuthController.deleteSubadmin)  
+router.post("/forgot-password", auth, subAdminAuthController.forgotPassword)
 
-router.get("/branch-wise/:branchName",auth,subAdminAuthController.getSubadminsByBranchName)
+router.delete("/delete-subadmin", auth, subAdminAuthController.deleteSubadmin);
 
+router.get("/branch-wise/:branchName", auth, subAdminAuthController.getSubadminsByBranchName);
 
 export default router
