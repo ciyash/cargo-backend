@@ -136,7 +136,7 @@ const signup = async (req, res) => {
     const subadminUniqueId = generateSubadminUniqueId();
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // If role is "admin", ignore provided branchId and set it as empty 
+    
     const finalBranchId = role === "admin" ? null : branchId;
 
 
