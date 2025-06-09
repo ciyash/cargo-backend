@@ -95,13 +95,19 @@ const createBranch = async (req, res) => {
 
 const getAllBranches = async (req, res) => {
   try {
-    const { companyId } = req.query; // optional filter
-    const query = companyId ? { companyId } : {};
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID not found in user session",
+      });
+    }
 
-    const branches = await Branch.find(query);
-    if (!branches || branches.length === 0) {
+    const branches = await Branch.find({ companyId });
+    if ( branches.length === 0) {
       return res.status(404).json({ message: "No branches found" });
     }
+
     res.status(200).json(branches);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
