@@ -42,7 +42,7 @@ const registerSubsidiaryCompany = async (req, res) => {
   }
 };
 
-// Login  
+// 
 
 const loginCompany = async (req, res) => {
   try {
