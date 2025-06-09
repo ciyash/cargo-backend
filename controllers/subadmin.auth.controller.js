@@ -98,26 +98,47 @@ const resetPassword = async (req, res) => {
 };
   
 
+
 const signup = async (req, res) => {
   try {
-    const { name, username, address, phone, email, password, branchId, location, documents, role } = req.body;
+    const {
+      name,
+      username,
+      address,
+      phone,
+      email,
+      password,
+      branchId,
+      location,
+      documents,
+      role
+    } = req.body;
 
-    const companyId = req.user.companyId; // ✅ extracted from token
+    const companyId = req.user.companyId;
 
     if (!companyId) {
       return res.status(400).json({ message: "companyId is required in token" });
     }
 
+    // Check for existing email
     const existingEmail = await Subadmin.findOne({ email });
-    if (existingEmail) return res.status(400).json({ message: "Subadmin already exists with this email" });
+    if (existingEmail) {
+      return res.status(400).json({ message: "Subadmin already exists with this email" });
+    }
 
+    // Check for existing phone
     const existingPhone = await Subadmin.findOne({ phone });
-    if (existingPhone) return res.status(400).json({ message: "Subadmin already exists with this phone" });
+    if (existingPhone) {
+      return res.status(400).json({ message: "Subadmin already exists with this phone" });
+    }
 
-    const subadminUniqueId = generateSubadminUniqueId(); // your existing function
+    // Generate unique ID and hash password
+    const subadminUniqueId = generateSubadminUniqueId();
     const hashedPassword = await bcrypt.hash(password, 10);
 
-     const finalBranchId = role === "admin" ? "" : branchId;
+    // If role is "admin", ignore provided branchId and set it as empty string
+    const finalBranchId = role === "admin" ? null : branchId;
+
 
     const newSubadmin = new Subadmin({
       companyId,
@@ -135,11 +156,14 @@ const signup = async (req, res) => {
     });
 
     await newSubadmin.save();
+
     res.status(201).json({ message: "Subadmin signed up successfully", subadmin: newSubadmin });
+
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 
 
