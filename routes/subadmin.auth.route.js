@@ -17,13 +17,13 @@ router.patch("/update-profile",auth,subAdminAuthController.updateSubadmin)
 
 router.post("/change-password",auth,subAdminAuthController.changeSubadminPassword)
 
-router.post("/reset-password",subAdminAuthController.resetPassword)
+router.post("/reset-password",auth,subAdminAuthController.resetPassword)
 
-router.post("/forgot-password",subAdminAuthController.forgotPassword) 
+router.post("/forgot-password",auth,subAdminAuthController.forgotPassword)
 
 router.delete("/delete-subadmin",auth,subAdminAuthController.deleteSubadmin)  
 
-router.get("/branch-wise/:branchName",subAdminAuthController.getSubadminsByBranchName)
+router.get("/branch-wise/:branchName",auth,subAdminAuthController.getSubadminsByBranchName)
 
 
 export default router
