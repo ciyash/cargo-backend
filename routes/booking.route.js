@@ -83,7 +83,7 @@ router.post("/branch-account",auth,bookingController.branchAccount)
 router.post("/acparty-account",auth,bookingController.acPartyAccount)
 router.get("/status-wise-summary",auth,bookingController.statusWiseSummary)
 
-router.post("/get-total",bookingController.getTotalByBranchAndDate)
+router.post("/get-total",auth,bookingController.getTotalByBranchAndDate)
 
 export default router
   

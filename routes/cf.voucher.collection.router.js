@@ -6,14 +6,14 @@ const router = express.Router();
 
 router.post("/voucher-collection-load",auth,cfVoucherCollectionController.getVoucherDetails) //load get
 
-router.post("/", cfVoucherCollectionController.createVoucher);
+router.post("/",auth, cfVoucherCollectionController.createVoucher);
 
-router.get("/", cfVoucherCollectionController.getAllVouchers);
+router.get("/",auth, cfVoucherCollectionController.getAllVouchers);
 
-router.get("/:id", cfVoucherCollectionController.getVoucherById);
+router.get("/:id",auth, cfVoucherCollectionController.getVoucherById);
 
-router.patch("/:id", cfVoucherCollectionController.updateVoucher);
+router.patch("/:id",auth, cfVoucherCollectionController.updateVoucher);
 
-router.delete("/:id", cfVoucherCollectionController.deleteVoucher);
+router.delete("/:id",auth, cfVoucherCollectionController.deleteVoucher);
 
 export default router;

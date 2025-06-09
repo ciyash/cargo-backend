@@ -18,32 +18,32 @@ router.delete("/cities/:id",auth, cityController.deleteCity);
 router.post("/cities/delete-cities",auth, cityController.deleteSelectedCities);
 
 // DispatchType Routes
-router.post("/dispatch-types", dispatchTypeController.createDispatchType);
-router.get("/dispatch-types", dispatchTypeController.getDispatchTypes);
-router.get("/dispatch-types/:id", dispatchTypeController.getDispatchTypeById);
-router.patch("/dispatch-types/:id", dispatchTypeController.updateDispatchType);
-router.delete("/dispatch-types/:id", dispatchTypeController.deleteDispatchType);
+router.post("/dispatch-types", auth, dispatchTypeController.createDispatchType);
+router.get("/dispatch-types", auth, dispatchTypeController.getDispatchTypes);
+router.get("/dispatch-types/:id", auth, dispatchTypeController.getDispatchTypeById);
+router.patch("/dispatch-types/:id", auth, dispatchTypeController.updateDispatchType);
+router.delete("/dispatch-types/:id", auth, dispatchTypeController.deleteDispatchType);
 
 // PackageType Routes
-router.post("/package-types", packageTypeController.createPackageType);
-router.get("/package-types", packageTypeController.getPackageTypes);
-router.get("/package-types/:id", packageTypeController.getPackageTypeById);
-router.patch("/package-types/:id", packageTypeController.updatePackageType);
-router.delete("/package-types/:id", packageTypeController.deletePackageType);
+router.post("/package-types", auth, packageTypeController.createPackageType);
+router.get("/package-types", auth, packageTypeController.getPackageTypes);
+router.get("/package-types/:id", auth, packageTypeController.getPackageTypeById);
+router.patch("/package-types/:id", auth, packageTypeController.updatePackageType);
+router.delete("/package-types/:id", auth, packageTypeController.deletePackageType);
 
 // Asset Routes
-router.post("/assets", assetController.createAsset);
-router.get("/assets", assetController.getAssets);
-router.get("/assets/assetType/:assetType",assetController.getByAssetTypes)
-router.patch("/assets/:id", assetController.updateAsset);
-router.delete("/assets/:id", assetController.deleteAsset);
+router.post("/assets", auth, assetController.createAsset);
+router.get("/assets", auth, assetController.getAssets);
+router.get("/assets/assetType/:assetType", auth, assetController.getByAssetTypes);
+router.patch("/assets/:id", auth, assetController.updateAsset);
+router.delete("/assets/:id", auth, assetController.deleteAsset);
 
 // Expenditure Routes
-router.post("/expenditures", expenditureController.createExpenditure);
-router.get("/expenditures", expenditureController.getExpenditures);
-router.get("/expenditures/expenditureType/:expenditureType", expenditureController.getExpenditureByType);
-router.post("/expenditures/get-date-range",expenditureController.getExpendituresByDateRange)
-router.patch("/expenditures/:id", expenditureController.updateExpenditure);
-router.delete("/expenditures/:id", expenditureController.deleteExpenditure);
+router.post("/expenditures", auth, expenditureController.createExpenditure);
+router.get("/expenditures", auth, expenditureController.getExpenditures);
+router.get("/expenditures/expenditureType/:expenditureType", auth, expenditureController.getExpenditureByType);
+router.post("/expenditures/get-date-range", auth, expenditureController.getExpendituresByDateRange);
+router.patch("/expenditures/:id", auth, expenditureController.updateExpenditure);
+router.delete("/expenditures/:id", auth, expenditureController.deleteExpenditure);
 
 export default router;

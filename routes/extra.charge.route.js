@@ -1,18 +1,19 @@
 import express from 'express'
 
 import extraChargeController from '../controllers/extra.charge.controller.js'
+import auth from '../config/auth.middleware.js'
 
 const router=express.Router()
 
-router.post("/",extraChargeController.createCharge)
+router.post("/",auth,extraChargeController.createCharge)
 
-router.get("/",extraChargeController.getAllExtraCharge)
+router.get("/",auth,extraChargeController.getAllExtraCharge)
 
-router.post("/filter-city-wise", extraChargeController.getChargeFromCityToCity);
+router.post("/filter-city-wise",auth, extraChargeController.getChargeFromCityToCity);
 
-router.delete("/:id",extraChargeController.deleteCharge)
+router.delete("/:id",auth,extraChargeController.deleteCharge)
 
-router.patch("/:id",extraChargeController.updateChargeById)
+router.patch("/:id",auth,extraChargeController.updateChargeById)
 
 
 export default router
