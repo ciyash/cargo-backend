@@ -250,22 +250,39 @@ const changeSubadminPassword = async (req, res) => {
  
 const getSubadminById = async (req, res) => {
   try {
-   
-    const id = req.user?.id; // Ensure it's extracted correctly
+    const id = req.user?.id;
     if (!id) {
       return res.status(400).json({ message: "Invalid or missing subadmin ID" });
     }
- 
-    const subadmin = await Subadmin.findById(id).populate("branchId",'name city branchUniqueId');
+
+    const subadmin = await Subadmin.findById(id)
+      .populate({
+        path: 'branchId',
+        select: 'name city branchUniqueId companyId',
+        populate: {
+          path: 'companyId',
+          model: 'Company',
+          select: 'name email phone subscription',
+        },
+      })
+      .populate({
+        path: 'companyId', // <-- populate the companyId directly from Subadmin schema
+        model: 'Company',
+        select: 'name email phone subscription',
+      });
+
     if (!subadmin) {
       return res.status(404).json({ message: "Subadmin not found" });
     }
- 
+
     res.status(200).json(subadmin);
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
+
+
  
  
 const getAllSubadmins = async (req, res) => {
