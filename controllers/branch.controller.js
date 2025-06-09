@@ -1,6 +1,6 @@
 import Branch from "../models/branch.model.js";
 
-// Function to generate uniqueId
+// Function to generate uniqueId id
 const generateUniqueId = (city, name) => {
   const cityCode = city.substring(0, 2).toUpperCase();
   const nameCode = name.substring(0, 2).toUpperCase();
