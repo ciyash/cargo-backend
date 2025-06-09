@@ -117,6 +117,8 @@ const signup = async (req, res) => {
     const subadminUniqueId = generateSubadminUniqueId(); // your existing function
     const hashedPassword = await bcrypt.hash(password, 10);
 
+     const finalBranchId = role === "admin" ? "" : branchId;
+
     const newSubadmin = new Subadmin({
       companyId,
       subadminUniqueId,
@@ -126,7 +128,7 @@ const signup = async (req, res) => {
       phone,
       email,
       password: hashedPassword,
-      branchId,
+      branchId: finalBranchId,
       location,
       documents,
       role,
