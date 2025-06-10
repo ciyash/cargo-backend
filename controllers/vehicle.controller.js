@@ -38,7 +38,7 @@ const getAllVehicles = async (req, res) => {
             return res.status(400).json({ message: "Company ID is required" });
         }
 
-        const vehicles = await Vehicle.find({ companyId });
+        const vehicles = await Vehicle.find({ companyId }).populate("branch", "name");
         res.status(200).json(vehicles);
     } catch (error) {
         res.status(500).json({ message: error.message });
