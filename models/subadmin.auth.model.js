@@ -13,7 +13,7 @@ const adminSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Branch",
       required: function () {
-        return this.role !== "admin"; // Only required if role is NOT admin
+        return this.role !== "admin"; 
       },
     },
 

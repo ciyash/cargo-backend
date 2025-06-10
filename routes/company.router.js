@@ -18,7 +18,7 @@ router.get("/subsidiaries/:parentCompanyId", companyController.getSubsidiaries);
 
 router.post("/toggle-project", companyController.toggleProjectAccess);
 
-router.delete("/delete/:id", companyAuth,companyController.deleteCompany);
+router.delete("/delete/:id",companyController.deleteCompany);
 
 router.post("/subscription", companyController.setSubscription);
 

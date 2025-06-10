@@ -483,9 +483,9 @@ const updateSubadmin = async (req, res) => {
     }
  
     // Prevent updating sensitive fields like password directly
-    if (updateData.password) {
-      return res.status(400).json({ message: "Use change password feature to update password" });
-    }
+    // if (updateData.password) {
+    //   return res.status(400).json({ message: "Use change password feature to update password" });
+    // }
  
     const updatedSubadmin = await Subadmin.findByIdAndUpdate(id, updateData, { new: true });
  
