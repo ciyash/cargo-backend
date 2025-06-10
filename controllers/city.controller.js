@@ -72,7 +72,8 @@ const updateCity = async (req, res) => {
 const deleteCity = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
+
 
     const deletedCity = await City.findOneAndDelete({ _id: id, companyId });
 
@@ -90,7 +91,8 @@ const deleteCity = async (req, res) => {
 const deleteSelectedCities = async (req, res) => {
   try {
     const { cityIds } = req.body;
-    const companyId = req.companyId;
+  const companyId = req.user?.companyId;
+
 
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized: Company ID missing" });
