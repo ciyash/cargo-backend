@@ -8,7 +8,7 @@ const generateVocherNoUnique = () => {
 
 const getBookingsBetweenDates = async (req, res) => {
   try {
-    const companyId = req.user.companyId;
+    const companyId = req.user?.companyId;
     const { startDate, endDate, fromCity, toCity, pickUpBranch } = req.body;
 
     if (!startDate || !endDate) {
@@ -307,7 +307,7 @@ const createBranchToBranch = async (req, res) => {
 
 const getAllParcels = async (req, res) => {
   try {
-    const companyId = req.user.companyId;
+    const companyId = req.user?.companyId;
     const parcels = await ParcelLoading.find({ companyId });
     if (parcels.length === 0) {
       return res.status(400).json({ message: "no parcels found !" });

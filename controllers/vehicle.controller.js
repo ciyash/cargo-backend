@@ -49,7 +49,7 @@ const getAllVehicles = async (req, res) => {
 const getVehicleById = async (req, res) => {
     try {
         const { id } = req.params;
-        const companyId = req.companyId;
+       const companyId = req.user?.companyId;
 
         const vehicle = await Vehicle.findOne({ _id: id, companyId }).populate("branch", "branchName");
 
@@ -65,7 +65,7 @@ const getVehicleById = async (req, res) => {
 const getVehicleNo = async (req, res) => {
     try {
         const { vehicleNo } = req.params;
-        const companyId = req.companyId;
+      const companyId = req.user?.companyId;
 
         const vehicle = await Vehicle.findOne({ vehicleNo, companyId });
         if (!vehicle) {
@@ -82,7 +82,7 @@ const getVehicleNo = async (req, res) => {
 const updateVehicle = async (req, res) => {
     try {
         const { id } = req.params;
-        const companyId = req.companyId;
+         const companyId = req.user?.companyId;
 
         const vehicle = await Vehicle.findOneAndUpdate(
             { _id: id, companyId },
@@ -102,8 +102,7 @@ const updateVehicle = async (req, res) => {
 const deleteVehicle = async (req, res) => {
     try {
         const { id } = req.params;
-        const companyId = req.companyId;
-
+       const companyId = req.user?.companyId;
         const deletedVehicle = await Vehicle.findOneAndDelete({ _id: id, companyId });
 
         if (!deletedVehicle) return res.status(404).json({ message: "Vehicle not found or not part of your company" });
@@ -118,7 +117,7 @@ const deleteVehicle = async (req, res) => {
 const getVehiclesByStatus = async (req, res) => {
     try {
         const { status } = req.params;
-        const companyId = req.companyId;
+        const companyId = req.user?.companyId;
 
         if (!["active", "inactive"].includes(status.toLowerCase())) {
             return res.status(400).json({
