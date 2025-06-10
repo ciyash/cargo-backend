@@ -15,7 +15,7 @@ const createBank = async (req, res) => {
       return res.status(409).json({ message: 'Bank with this account number already exists.' });
     }
 
-    const newBank = new Bank({
+    const newBank = new Bank({   
       accountType,
       accountName,
       accountCode,

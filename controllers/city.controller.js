@@ -1,5 +1,5 @@
 import { City } from '../models/multi.model.js';
-
+import mongoose from 'mongoose';
 // Create City
 const createCity = async (req, res) => {
   try {
@@ -47,27 +47,47 @@ const getCities = async (req, res) => {
 };
 
 // Update City by ID and Company
+
+
+
+
 const updateCity = async (req, res) => {
   try {
     const { id } = req.params;
     const companyId = req.user?.companyId;
 
 
-    const updatedCity = await City.findOneAndUpdate(
-      { _id: id, companyId },
-      req.body,
-      { new: true }
-    );
-
-    if (!updatedCity) {
-      return res.status(404).json({ success: false, message: "City not found" });
+    if (!companyId) {
+      return res.status(400).json({
+        success: false,
+        message: "Unauthorized: companyId missing in token"
+      });
     }
 
-    res.status(200).json({ message: "City updated", city: updatedCity });
+const updatedCity = await City.findOneAndUpdate(
+  { _id: id, companyId },
+  req.body,
+  { new: true, runValidators: true }
+);
+
+
+    if (!updatedCity) {
+      return res.status(404).json({
+        success: false,
+        message: "City not found. Please check the ID"
+      });
+    }
+
+    res.json({ success: true, data: updatedCity });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Error updating city:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+
+
 
 // Delete City by ID and Company
 const deleteCity = async (req, res) => {
