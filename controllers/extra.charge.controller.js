@@ -13,7 +13,8 @@ const createCharge = async (req, res) => {
       isActive
     } = req.body;
 
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
+
 
     if (
       !fromCity ||
