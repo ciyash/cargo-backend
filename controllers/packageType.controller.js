@@ -4,7 +4,7 @@ import { PackageType } from '../models/multi.model.js';
 const createPackageType = async (req, res) => {
     try {
         const { name } = req.body;
-        const companyId = req.companyId;
+        const companyId = req.user?.companyId;
 
         if (!name || !companyId) {
             return res.status(400).json({ success: false, message: "Name and company ID are required" });
@@ -21,7 +21,7 @@ const createPackageType = async (req, res) => {
 
 const getPackageTypes = async (req, res) => {
     try {
-        const companyId = req.companyId;
+        const companyId = req.user?.companyId;
         if (!companyId) {
             return res.status(400).json({ success: false, message: "Company ID is required" });
         }
@@ -41,7 +41,7 @@ const getPackageTypes = async (req, res) => {
 const getPackageTypeById = async (req, res) => {
     try {
         const { id } = req.params;
-        const companyId = req.companyId;
+        const companyId = req.user?.companyId;
 
         const packageType = await PackageType.findOne({ _id: id, companyId });
 
@@ -59,7 +59,7 @@ const updatePackageType = async (req, res) => {
     try {
         const { id } = req.params;
         const { name } = req.body;
-        const companyId = req.companyId;
+        const companyId = req.user?.companyId;
 
         if (!name) {
             return res.status(400).json({ success: false, message: "Name is required" });
@@ -84,7 +84,7 @@ const updatePackageType = async (req, res) => {
 const deletePackageType = async (req, res) => {
     try {
         const { id } = req.params;
-        const companyId = req.companyId;
+        const companyId = req.user?.companyId;
 
         const deletedPackageType = await PackageType.findOneAndDelete({ _id: id, companyId });
 

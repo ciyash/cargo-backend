@@ -12,7 +12,7 @@ const createExpenditure = async (req, res) => {
       remarks
     } = req.body;
 
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     if (!name || !expenditureType || !value || !date || !companyId) {
       return res.status(400).json({ success: false, message: "Required fields are missing" });
@@ -43,7 +43,7 @@ const createExpenditure = async (req, res) => {
 
 const getExpenditures = async (req, res) => {
   try {
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     const expenditures = await Expenditure.find({ companyId });
 
@@ -59,7 +59,7 @@ const getExpenditures = async (req, res) => {
 
 const getExpenditureByType = async (req, res) => {
   try {
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
     const { expenditureType } = req.params;
 
     const expenditure = await Expenditure.find({ companyId, expenditureType });
@@ -77,7 +77,7 @@ const getExpenditureByType = async (req, res) => {
 const getExpendituresByDateRange = async (req, res) => {
   try {
     const { startDate, endDate } = req.body;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     if (!startDate || !endDate) {
       return res.status(400).json({ success: false, message: "Start date and end date are required" });
@@ -105,7 +105,7 @@ const getExpendituresByDateRange = async (req, res) => {
 const updateExpenditure = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
     const {
       name,
       expenditureType,
@@ -143,7 +143,7 @@ const updateExpenditure = async (req, res) => {
 const deleteExpenditure = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     const deletedExpenditure = await Expenditure.findOneAndDelete({ _id: id, companyId });
 

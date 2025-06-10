@@ -4,7 +4,7 @@ import { DispatchType } from '../models/multi.model.js';
 const createDispatchType = async (req, res) => {
   try {
     const { name, isActive } = req.body;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized: Company ID missing" });
@@ -26,7 +26,7 @@ const createDispatchType = async (req, res) => {
 // Get All Dispatch Types for the Company
 const getDispatchTypes = async (req, res) => {
   try {
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized: Company ID missing" });
@@ -48,7 +48,7 @@ const getDispatchTypes = async (req, res) => {
 const getDispatchTypeById = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     const dispatchType = await DispatchType.findOne({ _id: id, companyId });
 
@@ -67,7 +67,7 @@ const updateDispatchType = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, isActive } = req.body;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     if (!name) {
       return res.status(400).json({ success: false, message: "Name is required" });
@@ -93,7 +93,7 @@ const updateDispatchType = async (req, res) => {
 const deleteDispatchType = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     const deletedDispatchType = await DispatchType.findOneAndDelete({ _id: id, companyId });
 
