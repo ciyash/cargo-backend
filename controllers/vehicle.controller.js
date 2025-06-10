@@ -33,7 +33,7 @@ const createVehicle = async (req, res) => {
 // Get all vehicles for a company
 const getAllVehicles = async (req, res) => {
     try {
-        const companyId = req.companyId;
+        const companyId = req.user?.companyId;
         if (!companyId) {
             return res.status(400).json({ message: "Company ID is required" });
         }
