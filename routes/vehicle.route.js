@@ -1,20 +1,22 @@
 import express from 'express'
 import vehicleController from '../controllers/vehicle.controller.js'
+import auth from '../config/auth.middleware.js'
+
 const router=express.Router()
 
-router.post("/",vehicleController.createVehicle)
+router.post("/",auth,vehicleController.createVehicle)
 
-router.get("/",vehicleController.getAllVehicles)
+router.get("/",auth,vehicleController.getAllVehicles)
 
-router.get("/:id",vehicleController.getVehicleById)
+router.get("/:id",auth,vehicleController.getVehicleById)
 
-router.get("/getVehicleNo/:vehicleNo",vehicleController.getVehicleNo)
+router.get("/getVehicleNo/:vehicleNo",auth,vehicleController.getVehicleNo)
 
-router.patch("/:id",vehicleController.updateVehicle)
+router.patch("/:id",auth,vehicleController.updateVehicle)
 
-router.delete("/:id",vehicleController.deleteVehicle)
+router.delete("/:id",auth,vehicleController.deleteVehicle)
 
-router.get("/status/:status", vehicleController.getVehiclesByStatus);
+router.get("/status/:status",auth, vehicleController.getVehiclesByStatus);
 
 
 export default router
