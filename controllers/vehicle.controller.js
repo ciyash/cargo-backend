@@ -4,7 +4,7 @@ import Vehicle from '../models/vehicle.model.js';
 const createVehicle = async (req, res) => {
     try {
         const { vehicleNo, vehicleType, registrationNo, date, RC, polutionExpDate, fuelType, branch, vehicleStatus } = req.body;
-        const companyId = req.companyId;
+        const companyId = req.user?.companyId;
 
         if (!companyId || !vehicleNo || !vehicleType || !registrationNo || !date || !RC || !polutionExpDate || !fuelType || !branch) {
             return res.status(400).json({ message: "All fields are required including companyId" });
