@@ -50,7 +50,8 @@ const getCities = async (req, res) => {
 const updateCity = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
+
 
     const updatedCity = await City.findOneAndUpdate(
       { _id: id, companyId },
