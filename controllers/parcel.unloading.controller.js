@@ -57,8 +57,7 @@ const getParcelsLoading = async (req, res) => {
     const bookings = await Booking.find(bookingFilter);
 
     return res.status(200).json({
-      success: true,
-      message: bookings.length ? "Filtered Parcel Unloading bookings fetched successfully." : "No bookings found for given GRNs.",
+
       data: bookings,
     });
   } catch (error) {
