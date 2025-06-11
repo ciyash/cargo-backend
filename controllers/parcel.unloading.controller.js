@@ -35,9 +35,9 @@ const getParcelsLoading = async (req, res) => {
 
     if (parcelData.length === 0) {
       return res.status(200).json({
-        success: true,
+      
         message: "No parcel unloading found for given date range.",
-        data: [],
+        data
       });
     }
 
