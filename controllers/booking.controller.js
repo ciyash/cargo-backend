@@ -760,6 +760,7 @@ const toDayBookings = async (req, res) => {
   try {
     const { companyId, branchId, role, branchCity } = req.user || {};
 
+
     if (!req.user) {
       return res.status(401).json({
         success: false,
