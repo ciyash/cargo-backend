@@ -27,7 +27,7 @@ const getParcelsLoading = async (req, res) => {
     const end = new Date(toDate);
     end.setHours(23, 59, 59, 999);
 
-    // Step 1: Get GRNs from ParcelLoading
+    // Step 1: Get GRNs from 
     const parcelData = await ParcelLoading.find({
       companyId,
       loadingDate: { $gte: start, $lte: end },
