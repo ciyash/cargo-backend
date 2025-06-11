@@ -42,7 +42,7 @@ const getParcelsLoading = async (req, res) => {
     }
 
     const grnNos = parcelData.map((p) => p.grnNo).flat();
-
+    console.log('grn',grnNos)
     const bookingFilter = {
       grnNo: { $in: grnNos },
       bookingStatus: 1,
