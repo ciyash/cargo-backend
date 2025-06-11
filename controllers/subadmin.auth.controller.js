@@ -497,9 +497,9 @@ const updateSubadmin = async (req, res) => {
     }
 
     // Optional: Prevent password updates here (recommended security practice)
-    if (updateData.password) {
-      return res.status(400).json({ message: "Use change password feature to update password" });
-    }
+    // if (updateData.password) {
+    //   return res.status(400).json({ message: "Use change password feature to update password" });
+    // }
 
     const updatedSubadmin = await Subadmin.findByIdAndUpdate(id, updateData, { new: true });
 
