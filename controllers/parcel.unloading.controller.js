@@ -15,7 +15,6 @@ const getParcelsLoading = async (req, res) => {
 
     const { fromDate, toDate, fromCity, toCity, bookingType, bookingStatus } = req.body;
 
-    // Validate required
     if (!fromDate || !toDate) {
       return res.status(400).json({
         success: false,
@@ -23,11 +22,15 @@ const getParcelsLoading = async (req, res) => {
       });
     }
 
-    // Step 1: Get GRNs from ParcelLoading in date range
+    const start = new Date(fromDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Step 1: Get GRNs from ParcelLoading
     const parcelData = await ParcelLoading.find({
       companyId,
-      loadingType: "offload",
-      loadingDate: { $gte: new Date(fromDate), $lte: new Date(toDate) },
+      loadingDate: { $gte: start, $lte: end },
     });
 
     if (parcelData.length === 0) {
@@ -38,12 +41,8 @@ const getParcelsLoading = async (req, res) => {
       });
     }
 
-    // Step 2: Extract grnNo
     const grnNos = parcelData.map((p) => p.grnNo).flat();
 
-    console.log("Extracted GRNs from ParcelLoading:", grnNos);
-
-    // Step 3: Build Booking filter
     const bookingFilter = {
       grnNo: { $in: grnNos },
       bookingStatus: 1,
@@ -55,32 +54,22 @@ const getParcelsLoading = async (req, res) => {
     if (bookingType) bookingFilter.bookingType = bookingType;
     if (bookingStatus !== undefined) bookingFilter.bookingStatus = bookingStatus;
 
-    console.log("Booking Filter Applied:", bookingFilter);
-
-    // Step 4: Get Bookings
     const bookings = await Booking.find(bookingFilter);
-
-    if (bookings.length === 0) {
-      return res.status(200).json({
-        success: true,
-        message: `No bookings found with bookingStatus: ${bookingFilter.bookingStatus} for these GRNs.`,
-        data: [],
-      });
-    }
 
     return res.status(200).json({
       success: true,
-      message: "Filtered Parcel Unloading bookings fetched successfully.",
+      message: bookings.length ? "Filtered Parcel Unloading bookings fetched successfully." : "No bookings found for given GRNs.",
       data: bookings,
     });
   } catch (error) {
-    console.error("Error in parcelFilterUnloading:", error);
+    console.error("Error in getParcelsLoading:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
     });
   }
 };
+
 
 
 const getParcelunLoadingByGrnNumber = async (req, res) => {
