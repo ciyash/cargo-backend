@@ -1333,10 +1333,8 @@ const parcelBookingReports = async (req, res) => {
 };
 
 
-
 const allParcelBookingReport = async (req, res) => {
   try {
-    // Ensure user and company
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -1344,7 +1342,7 @@ const allParcelBookingReport = async (req, res) => {
       });
     }
 
-    const companyId = req.user.companyId;
+    const companyId = req.user?.companyId;
     if (!companyId) {
       return res.status(401).json({
         success: false,
@@ -1360,8 +1358,7 @@ const allParcelBookingReport = async (req, res) => {
       pickUpBranch,
       dropBranch,
       bookingStatus,
-      vehicalNumber,
-      branch,
+      vehicalNumber, // keep spelling consistent with your DB
     } = req.body;
 
     if (!startDate || !endDate) {
@@ -1378,11 +1375,7 @@ const allParcelBookingReport = async (req, res) => {
       });
     }
 
-    const userRole = req.user.role;
-    const userBranchId = req.user.branchId;
-
-    // Base query
-    let query = {
+    const query = {
       companyId,
       bookingDate: {
         $gte: new Date(`${startDate}T00:00:00.000Z`),
@@ -1390,18 +1383,11 @@ const allParcelBookingReport = async (req, res) => {
       },
     };
 
-    // Branch-based filtering
-    if (userRole === "employee") {
-      query.pickUpBranch = userBranchId;
-    } else if (branch) {
-      query.pickUpBranch = branch;
-    }
-
     // Optional filters
     if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
-    if (pickUpBranch) query.pickUpBranchname = { $regex: new RegExp(pickUpBranch, "i") };
-    if (dropBranch) query.dropBranchname = { $regex: new RegExp(dropBranch, "i") };
+    if (pickUpBranch) query.pickUpBranch = { $regex: new RegExp(pickUpBranch, "i") };
+    if (dropBranch) query.dropBranch = { $regex: new RegExp(dropBranch, "i") };
     if (bookingStatus !== undefined) query.bookingStatus = Number(bookingStatus);
     if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") };
 
@@ -1416,7 +1402,7 @@ const allParcelBookingReport = async (req, res) => {
       });
     }
 
-    // Group by vehicle number
+    // Grouping bookings by vehicle number
     const vehicleGrouped = {};
 
     bookings.forEach((booking) => {
@@ -1454,6 +1440,8 @@ const allParcelBookingReport = async (req, res) => {
     });
   }
 };
+
+
 
 const parcelReportSerialNo = async (req, res) => {
   try {
