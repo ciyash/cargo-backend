@@ -48,10 +48,9 @@ const getBookingsBetweenDates = async (req, res) => {
     // Step 3: Query bookings
     const bookings = await Booking.find(filter);
 
-    if (!bookings.length) {
+    if (bookings.length === 0) {
       return res.status(404).json({
-        message: "No bookings found for the given filters!",
-        data: [],
+        message: "No parcels found for the given filters!",
       });
     }
 
