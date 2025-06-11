@@ -18,7 +18,7 @@ const getParcelsLoading = async (req, res) => {
     if (!fromDate || !toDate) {
       return res.status(400).json({
         success: false,
-        message: "fromDate and toDate are required",
+        message: "fromDate and toDate are required",  
       });
     }
 
@@ -33,7 +33,7 @@ const getParcelsLoading = async (req, res) => {
       loadingDate: { $gte: start, $lte: end },
     });
 
-    if (parcelData.length === 0) {
+    if (!parcelData) {
       return res.status(200).json({
         success: true,
         message: "No parcel unloading found for given date range.",
