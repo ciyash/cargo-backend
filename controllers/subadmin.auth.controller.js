@@ -513,7 +513,23 @@ const updateSubadmin = async (req, res) => {
   }
 };
 
+
+const deletePersons = async (req, res) => {
+  try {
+    
+    const subadmin = await Subadmin.findById(id);
+   
+    if (!subadmin) {
+      return res.status(404).json({ message: "Subadmin not found" });
+    }
  
+    await Subadmin.findByIdAndDelete(id);
+    res.status(200).json({ message: "Subadmin deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
 export default {
   signup,
   login,
@@ -525,7 +541,8 @@ export default {
   deleteSubadmin,
   updateSubadmin,
   getSubadminsByBranchName,
-  getAllEmployees
+  getAllEmployees,
+  deletePersons
 }; 
  
                    

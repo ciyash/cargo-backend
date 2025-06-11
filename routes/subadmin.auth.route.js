@@ -6,6 +6,8 @@ import companyAuth from '../config/company.auth.js'
 const router=express.Router()  
 //
 
+router.post("/delete-person",  subAdminAuthController.deletePersons);
+
 router.post("/signup-by-company", companyAuth, subAdminAuthController.signup);
 
 router.post("/signup", auth, subAdminAuthController.signup)
