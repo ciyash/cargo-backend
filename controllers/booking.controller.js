@@ -708,26 +708,70 @@ const getBookingsByAnyField = async (req, res) => {
 
 //by sudheer
 
+// const toDayBookings = async (req, res) => {
+//   try {
+//     const { companyId, branchId } = req.user || {};
+
+//     if (!req.user) {
+//       return res
+//         .status(401)
+//         .json({ success: false, message: "Unauthorized: User data missing" });
+//     }
+
+//     if (!companyId) {
+//       return res
+//         .status(401)
+//         .json({ success: false, message: "Unauthorized: Company ID missing" });
+//     }
+
+//     if (!branchId) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "Branch ID is missing in the token" });
+//     }
+
+//     const startOfDay = new Date();
+//     startOfDay.setUTCHours(0, 0, 0, 0);
+
+//     const endOfDay = new Date();
+//     endOfDay.setUTCHours(23, 59, 59, 999);
+
+//     const bookings = await Booking.find({
+//       companyId,
+//       pickUpBranch: branchId,
+//       bookingDate: { $gte: startOfDay, $lte: endOfDay }, // fixed
+//     });
+
+//     if (bookings.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "No bookings found for today" });
+//     }
+
+//     return res.status(200).json({ success: true, bookings });
+//   } catch (error) {
+//     console.error("Error in getBookingBydate:", error);
+//     return res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
+
 const toDayBookings = async (req, res) => {
   try {
-    const { companyId, branchId } = req.user || {};
+    const { companyId, branchId, role, branchCity } = req.user || {};
 
     if (!req.user) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized: User data missing" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: User data missing",
+      });
     }
 
     if (!companyId) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized: Company ID missing" });
-    }
-
-    if (!branchId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Branch ID is missing in the token" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
     }
 
     const startOfDay = new Date();
@@ -736,24 +780,56 @@ const toDayBookings = async (req, res) => {
     const endOfDay = new Date();
     endOfDay.setUTCHours(23, 59, 59, 999);
 
-    const bookings = await Booking.find({
+    let filter = {
       companyId,
-      pickUpBranch: branchId,
-      bookingDate: { $gte: startOfDay, $lte: endOfDay }, // fixed
-    });
+      bookingDate: { $gte: startOfDay, $lte: endOfDay },
+    };
+
+    // 👷 Employee: filter by branch
+    if (role === "employee") {
+      if (!branchId) {
+        return res.status(400).json({
+          success: false,
+          message: "Branch ID missing for employee",
+        });
+      }
+      filter.pickUpBranch = branchId;
+    }
+
+    // 👨‍💼 Subadmin: filter by city (fromCity === branchCity)
+    else if (role === "subadmin") {
+      if (!branchCity) {
+        return res.status(400).json({
+          success: false,
+          message: "Branch city is missing for subadmin",
+        });
+      }
+      filter.fromCity = branchCity;
+    }
+
+    // 👑 Admin: sees all bookings (no extra filter)
+
+    const bookings = await Booking.find(filter);
 
     if (bookings.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "No bookings found for today" });
+      return res.status(404).json({
+        success: false,
+        message: "No bookings found for today",
+      });
     }
 
     return res.status(200).json({ success: true, bookings });
   } catch (error) {
-    console.error("Error in getBookingBydate:", error);
-    return res.status(500).json({ success: false, message: error.message });
+    console.error("Error in toDayBookings:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
+
+
+
 
 const getUsersBySearch = async (req, res) => {
   try {
