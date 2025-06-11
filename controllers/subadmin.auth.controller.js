@@ -249,7 +249,7 @@ const login = async (req, res) => {
     });
 
     if (!subadmin) {
-      return res.status(404).json({ message: "Subadmin not found!" });
+      return res.status(404).json({ message: "Employee not found!" });
     }
 
     const isMatch = await bcrypt.compare(password, subadmin.password);
