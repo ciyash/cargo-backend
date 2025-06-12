@@ -5,6 +5,7 @@ import ParcelLoading from "../models/pracel.loading.model.js";
 import ParcelUnloading from "../models/parcel.unloading.model.js";
 import Branch from "../models/branch.model.js";
 import moment from "moment";
+import mongoose from "mongoose";
 
 const generateGrnNumber = async () => {
   const lastBooking = await Booking.findOne().sort({ createdAt: -1 });
@@ -1930,73 +1931,62 @@ const regularCustomerBooking = async (req, res) => {
   }
 };
 
-
 const branchWiseCollectionReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
     if (!companyId) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized: Company ID missing" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
     }
 
     const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
 
     if (!fromDate || !toDate) {
-      return res
-        .status(400)
-        .json({ success: false, message: "fromDate and toDate are required" });
+      return res.status(400).json({ error: "fromDate and toDate are required" });
     }
 
     const start = new Date(fromDate);
     const end = new Date(toDate);
     end.setHours(23, 59, 59, 999);
     if (isNaN(start) || isNaN(end)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid date format" });
+      return res.status(400).json({ error: "Invalid date format" });
     }
 
     const filter = {
-      companyId, // ✅ Very important
       bookingDate: { $gte: start, $lte: end },
+     companyId: new mongoose.Types.ObjectId(companyId)
     };
-
     if (fromCity) filter.fromCity = fromCity;
-    if (pickUpBranch) filter.pickUpBranchname = pickUpBranch; // consistent with DB
+    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
     if (bookedBy) filter.bookedBy = bookedBy;
 
     const reportData = await Booking.aggregate([
       { $match: filter },
-
-      // Split cancel and normal
       {
         $addFields: {
           isCancelled: { $eq: ["$bookingStatus", 5] },
           normalGrand: {
-            $cond: [{ $eq: ["$bookingStatus", 5] }, 0, "$grandTotal"],
+            $cond: [{ $eq: ["$bookingStatus", 5] }, 0, "$grandTotal"]
           },
           cancelGrand: {
-            $cond: [{ $eq: ["$bookingStatus", 5] }, "$grandTotal", 0],
-          },
-        },
+            $cond: [{ $eq: ["$bookingStatus", 5] }, "$grandTotal", 0]
+          }
+        }
       },
-
-      // Group by branch + bookingType
       {
         $group: {
           _id: {
             branchName: "$pickUpBranchname",
-            bookingType: "$bookingType",
+            bookingType: "$bookingType"
           },
           bookingCount: { $sum: 1 },
           normalGrand: { $sum: "$normalGrand" },
           cancelGrand: { $sum: "$cancelGrand" },
-          totalQty: { $sum: "$totalQuantity" },
-        },
+          totalQty: { $sum: "$totalQuantity" }
+        }
       },
-
-      // Regroup by branch only
       {
         $group: {
           _id: "$_id.branchName",
@@ -2006,15 +1996,14 @@ const branchWiseCollectionReport = async (req, res) => {
               bookingCount: "$bookingCount",
               grandTotal: "$normalGrand",
               cancelAmount: "$cancelGrand",
-              totalQuantity: "$totalQty",
-            },
-          },
-          branchGrandTotal: { $sum: "$normalGrand" },
+              totalQuantity: "$totalQty"
+            }  
+          },   
+          branchGrandTotal: { $sum: "$normalGrand" },  
           branchCancelAmount: { $sum: "$cancelGrand" },
-          branchTotalQty: { $sum: "$totalQty" },
-        },
+          branchTotalQty: { $sum: "$totalQty" }
+        }
       },
-
       {
         $project: {
           _id: 0,
@@ -2022,24 +2011,14 @@ const branchWiseCollectionReport = async (req, res) => {
           bookingTypes: "$byType",
           branchGrandTotal: 1,
           branchCancelAmount: 1,
-          branchTotalQty: 1,
-        },
+          branchTotalQty: 1
+        }
       },
-
-      { $sort: { branchName: 1 } },
+      { $sort: { branchName: 1 } }
     ]);
 
     if (!reportData.length) {
-      return res.status(200).json({
-        success: true,
-        message: "No bookings found.",
-        branches: [],
-        totals: {
-          finalGrandTotal: 0,
-          finalCancelAmount: 0,
-          finalTotalQty: 0,
-        },
-      });
+      return res.status(404).json({ message: "No bookings found." });
     }
 
     const totals = reportData.reduce(
@@ -2052,46 +2031,393 @@ const branchWiseCollectionReport = async (req, res) => {
       { finalGrandTotal: 0, finalCancelAmount: 0, finalTotalQty: 0 }
     );
 
-    return res.status(200).json({
-      success: true,
-      message: "Branch-wise collection report fetched successfully.",
+    res.status(200).json({
       branches: reportData,
-      totals,
+      totals
     });
+
   } catch (err) {
-    console.error("Error generating branchWiseCollectionReport:", err);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: err.message,
-    });
+    console.error("Error generating report:", err);
+    res.status(500).json({ error: err.message });
   }
 };
 
+
+// const branchWiseCollectionReport = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+
+//     if (!companyId) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: Company ID missing",
+//       });
+//     }
+
+//     const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
+
+//     if (!fromDate || !toDate) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "fromDate and toDate are required",
+//       });
+//     }
+
+//     const start = new Date(fromDate);
+//     const end = new Date(toDate);
+//     end.setHours(23, 59, 59, 999);
+
+//     if (isNaN(start) || isNaN(end)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid date format",
+//       });
+//     }
+
+//     const filter = {
+//       companyId,
+//       bookingDate: { $gte: start, $lte: end },
+//     };
+
+//     if (fromCity) filter.fromCity = fromCity;
+//     if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+//     if (bookedBy) filter.bookedBy = bookedBy;
+
+//     const reportData = await Booking.aggregate([
+//       { $match: filter },
+
+//       {
+//         $addFields: {
+//           isCancelled: { $eq: ["$bookingStatus", 5] },
+//           normalGrand: { $cond: [{ $eq: ["$bookingStatus", 5] }, 0, "$grandTotal"] },
+//           cancelGrand: { $cond: [{ $eq: ["$bookingStatus", 5] }, "$grandTotal", 0] },
+//           refundAmount: { $cond: [{ $eq: ["$bookingStatus", 5] }, "$refundAmount", 0] },
+//           refundCharge: { $cond: [{ $eq: ["$bookingStatus", 5] }, "$refundCharge", 0] },
+//         },
+//       },
+
+//       {
+//         $group: {
+//           _id: {
+//             pickUpBranch: "$pickUpBranch",
+//             bookingType: "$bookingType",
+//           },
+//           bookingCount: { $sum: 1 },
+//           normalGrand: { $sum: "$normalGrand" },
+//           cancelGrand: { $sum: "$cancelGrand" },
+//           totalQty: { $sum: "$totalQuantity" },
+//           totalRefundAmount: { $sum: "$refundAmount" },
+//           totalRefundCharge: { $sum: "$refundCharge" },
+//         },
+//       },
+
+//       {
+//         $group: {
+//           _id: "$_id.pickUpBranch",
+//           bookingTypes: {
+//             $push: {
+//               bookingType: "$_id.bookingType",
+//               bookingCount: "$bookingCount",
+//               grandTotal: "$normalGrand",
+//               cancelAmount: "$cancelGrand",
+//               totalQuantity: "$totalQty",
+//               refundAmount: "$totalRefundAmount",
+//               refundCharge: "$totalRefundCharge",
+//             },
+//           },
+//           branchGrandTotal: { $sum: "$normalGrand" },
+//           branchCancelAmount: { $sum: "$cancelGrand" },
+//           branchTotalQty: { $sum: "$totalQty" },
+//           totalRefundAmount: { $sum: "$totalRefundAmount" },
+//           totalRefundCharge: { $sum: "$totalRefundCharge" },
+//         },
+//       },
+
+//       {
+//         $lookup: {
+//           from: "branches", // Ensure the collection name matches your DB
+//           localField: "_id",
+//           foreignField: "branchUniqueId",
+//           as: "branchDetails",
+//         },
+//       },
+
+//       {
+//         $unwind: {
+//           path: "$branchDetails",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
+
+//       {
+//         $project: {
+//           _id: 0,
+//           branchId: "$_id",
+//           branchName: "$branchDetails.name",
+//           bookingTypes: 1,
+//           branchGrandTotal: 1,
+//           branchCancelAmount: 1,
+//           branchTotalQty: 1,
+//           totalRefundAmount: 1,
+//           totalRefundCharge: 1,
+//         },
+//       },
+
+//       { $sort: { branchName: 1 } },
+//     ]);
+
+//     if (!reportData.length) {
+//       return res.status(200).json({
+//         success: true,
+//         message: "No bookings found.",
+//         branches: [],
+//         totals: {
+//           finalGrandTotal: 0,
+//           finalCancelAmount: 0,
+//           finalTotalQty: 0,
+//           finalRefundAmount: 0,
+//           finalRefundCharge: 0,
+//         },
+//       });
+//     }
+
+//     const totals = reportData.reduce(
+//       (acc, b) => {
+//         acc.finalGrandTotal += b.branchGrandTotal || 0;
+//         acc.finalCancelAmount += b.branchCancelAmount || 0;
+//         acc.finalTotalQty += b.branchTotalQty || 0;
+//         acc.finalRefundAmount += b.totalRefundAmount || 0;
+//         acc.finalRefundCharge += b.totalRefundCharge || 0;
+//         return acc;
+//       },
+//       {
+//         finalGrandTotal: 0,
+//         finalCancelAmount: 0,
+//         finalTotalQty: 0,
+//         finalRefundAmount: 0,
+//         finalRefundCharge: 0,
+//       }
+//     );
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Branch-wise collection report fetched successfully.",
+//       branches: reportData,
+//       totals,
+//     });
+//   } catch (err) {
+//     console.error("Error generating branchWiseCollectionReport:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       error: err.message,
+//     });
+//   }
+// };
+
+
+
+
+
+
+
+// const parcelBranchConsolidatedReport = async (req, res) => {
+//   try {
+//     const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
+
+//     const matchStage = { bookingDate: { $ne: null } };
+
+//     if (fromDate && toDate) {
+//       matchStage.bookingDate = {
+//         $gte: new Date(fromDate),
+//         $lte: new Date(toDate)
+//       };
+//     }
+//     if (fromCity)       matchStage.fromCity         = fromCity;
+//     if (pickUpBranch)   matchStage.pickUpBranchname = pickUpBranch;
+//     if (bookedBy)       matchStage.bookedBy         = bookedBy;
+
+//     const bookingData = await Booking.aggregate([
+//       { $match: matchStage },
+//       {
+//         $lookup: {
+//           from: "cities",
+//           localField: "fromCity",
+//           foreignField: "cityName",
+//           as: "fromCityData"
+//         }
+//       },
+//       { $unwind: { path: "$fromCityData", preserveNullAndEmptyArrays: true } },
+//       {
+//         $lookup: {
+//           from: "cities",
+//           localField: "toCity",
+//           foreignField: "cityName",
+//           as: "toCityData"
+//         }
+//       },
+//       { $unwind: { path: "$toCityData", preserveNullAndEmptyArrays: true } },
+//       {
+//         $addFields: {
+//           sameState: {
+//             $eq: [
+//               { $toLower: "$fromCityData.state" },
+//               { $toLower: "$toCityData.state" }
+//             ]
+//           }
+//         }
+//       },
+//       {
+//         $addFields: {
+//           igstAmount: {
+//             $cond: [{ $eq: ["$sameState", false] }, "$parcelGstAmount", 0]
+//           },
+//           cgstAmount: {
+//             $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
+//           },
+//           sgstAmount: {
+//             $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
+//           }
+//         }
+//       },
+//       {
+//         $group: {
+//           _id: {
+//             branchName:    "$pickUpBranchname",
+//             bookingStatus: "$bookingStatus",
+//             bookingType:   "$bookingType"
+//           },
+//           count:           { $sum: 1 },
+//           grandTotal:      { $sum: "$grandTotal" },
+//           parcelGstAmount: { $sum: "$parcelGstAmount" },
+//           igstAmount:      { $sum: "$igstAmount" },
+//           cgstAmount:      { $sum: "$cgstAmount" },
+//           sgstAmount:      { $sum: "$sgstAmount" }
+//         }
+//       }
+//     ]);
+
+//     const branchMap = {};
+//     const totals = {
+//       finalPaid: 0, finalToPay: 0, finalCredit: 0,
+//       finalFOC: 0, finalCLR: 0,
+//       finalBookingTotal: 0,
+//       finalTotalDelivery: 0, finalTotalCancel: 0,
+//       finalParcelGstAmount: 0,
+//       totalIgst: 0, totalCgst: 0, totalSgst: 0
+//     };
+
+//     for (const record of bookingData) {
+//       const { branchName, bookingStatus, bookingType } = record._id;
+
+//       if (!branchMap[branchName]) {
+//         branchMap[branchName] = {
+//           branchName,
+//           paid: 0, toPay: 0, credit: 0, FOC: 0, CLR: 0,
+//           BookingTotal: 0, booking: 0,
+//           delivered: 0, cancelled: 0,
+//           grandTotal: 0, bookingTotalAmount: 0,
+//           deliveredTotalAmount: 0, cancelTotalAmount: 0,
+//           parcelGstAmount: 0, cancelAmount: 0,
+//           igstAmount: 0, cgstAmount: 0, sgstAmount: 0,
+//           deliveredAmountByType: {
+//             paid: 0, toPay: 0, credit: 0, FOC: 0, CLR: 0
+//           }
+//         };
+//       }
+
+//       const entry = branchMap[branchName];
+
+//       // Booking Type Sums
+//       if (bookingType === "paid")    { entry.paid   += record.grandTotal; totals.finalPaid  += record.grandTotal; }
+//       if (bookingType === "toPay")   { entry.toPay  += record.grandTotal; totals.finalToPay += record.grandTotal; }
+//       if (bookingType === "credit")  { entry.credit += record.grandTotal; totals.finalCredit+= record.grandTotal; }
+//       if (bookingType === "FOC")     { entry.FOC    += record.grandTotal; totals.finalFOC   += record.grandTotal; }
+//       if (bookingType === "CLR")     { entry.CLR    += record.grandTotal; totals.finalCLR   += record.grandTotal; }
+
+//       // Common Aggregations
+//       entry.grandTotal       += record.grandTotal;
+//       entry.parcelGstAmount  += record.parcelGstAmount;
+//       entry.igstAmount       += record.igstAmount;
+//       entry.cgstAmount       += record.cgstAmount;
+//       entry.sgstAmount       += record.sgstAmount;
+
+//       totals.finalParcelGstAmount += record.parcelGstAmount;
+//       totals.totalIgst            += record.igstAmount;
+//       totals.totalCgst            += record.cgstAmount;
+//       totals.totalSgst            += record.sgstAmount;
+
+//       entry.BookingTotal += record.count;
+//       entry.booking      += record.count;
+//       totals.finalBookingTotal += record.grandTotal;
+
+//       // Delivered Bookings (assuming status code 4 means Delivered)
+//       if (bookingStatus === 4) {
+//         entry.delivered               += record.count;
+//         entry.deliveredTotalAmount   += record.grandTotal;
+//         totals.finalTotalDelivery    += record.grandTotal;
+
+//         if (entry.deliveredAmountByType[bookingType] !== undefined) {
+//           entry.deliveredAmountByType[bookingType] += record.grandTotal;
+//         }
+//       }
+
+//       // Cancelled Bookings (assuming status code 5 means Cancelled)
+//       if (bookingStatus === 5) {
+//         entry.cancelled           += record.count;
+//         entry.cancelTotalAmount   += record.grandTotal;
+//         entry.cancelAmount        += record.grandTotal;
+//         totals.finalTotalCancel   += record.grandTotal;
+//       }
+
+//       entry.bookingTotalAmount = entry.grandTotal;
+//     }
+
+//     // Add afterCalculate field per branch
+//     Object.values(branchMap).forEach(entry => {
+//       entry.afterCalculate = entry.bookingTotalAmount - entry.cancelTotalAmount;
+//     });
+
+//     // Calculate net booking total (excluding cancelled)
+//     const finalNetBookingAmount = totals.finalBookingTotal - totals.finalTotalCancel;
+
+//     res.status(200).json({
+//       data: Object.values(branchMap),
+//       ...totals,
+//       finalNetBookingAmount
+//     });
+
+//   } catch (err) {
+//     console.error("Error in parcelBranchConsolidatedReport:", err);
+//     res.status(500).json({ message: "Server Error", error: err.message });
+//   }
+// };
+
+  
+
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
-    const companyId = req.user?.companyId;
-    if (!companyId) {
-      return res.status(401).json({ success: false, message: "Unauthorized: Company ID missing" });
-    }
-
     const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
 
-    // Always filter by companyId
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: companyId missing" });
+    }
+
     const matchStage = {
       bookingDate: { $ne: null },
-      companyId: companyId,  // <--- Important: companyId filter added here
+      companyId: new mongoose.Types.ObjectId(companyId)
     };
 
     if (fromDate && toDate) {
       matchStage.bookingDate = {
         $gte: new Date(fromDate),
-        $lte: new Date(toDate),
+        $lte: new Date(toDate)
       };
     }
-    if (fromCity) matchStage.fromCity = fromCity;
-    if (pickUpBranch) matchStage.pickUpBranchname = pickUpBranch;
-    if (bookedBy) matchStage.bookedBy = bookedBy;
+    if (fromCity)       matchStage.fromCity         = fromCity;
+    if (pickUpBranch)   matchStage.pickUpBranchname = pickUpBranch;
+    if (bookedBy)       matchStage.bookedBy         = bookedBy;
 
     const bookingData = await Booking.aggregate([
       { $match: matchStage },
@@ -2100,8 +2426,8 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           from: "cities",
           localField: "fromCity",
           foreignField: "cityName",
-          as: "fromCityData",
-        },
+          as: "fromCityData"
+        }
       },
       { $unwind: { path: "$fromCityData", preserveNullAndEmptyArrays: true } },
       {
@@ -2109,8 +2435,8 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           from: "cities",
           localField: "toCity",
           foreignField: "cityName",
-          as: "toCityData",
-        },
+          as: "toCityData"
+        }
       },
       { $unwind: { path: "$toCityData", preserveNullAndEmptyArrays: true } },
       {
@@ -2118,63 +2444,49 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           sameState: {
             $eq: [
               { $toLower: "$fromCityData.state" },
-              { $toLower: "$toCityData.state" },
-            ],
-          },
-        },
+              { $toLower: "$toCityData.state" }
+            ]
+          }
+        }
       },
       {
         $addFields: {
           igstAmount: {
-            $cond: [{ $eq: ["$sameState", false] }, "$parcelGstAmount", 0],
+            $cond: [{ $eq: ["$sameState", false] }, "$parcelGstAmount", 0]
           },
           cgstAmount: {
-            $cond: [
-              { $eq: ["$sameState", true] },
-              { $divide: ["$parcelGstAmount", 2] },
-              0,
-            ],
+            $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
           },
           sgstAmount: {
-            $cond: [
-              { $eq: ["$sameState", true] },
-              { $divide: ["$parcelGstAmount", 2] },
-              0,
-            ],
-          },
-        },
+            $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
+          }
+        }
       },
       {
         $group: {
           _id: {
-            branchName: "$pickUpBranchname",
+            branchName:    "$pickUpBranchname",
             bookingStatus: "$bookingStatus",
-            bookingType: "$bookingType",
+            bookingType:   "$bookingType"
           },
-          count: { $sum: 1 },
-          grandTotal: { $sum: "$grandTotal" },
+          count:           { $sum: 1 },
+          grandTotal:      { $sum: "$grandTotal" },
           parcelGstAmount: { $sum: "$parcelGstAmount" },
-          igstAmount: { $sum: "$igstAmount" },
-          cgstAmount: { $sum: "$cgstAmount" },
-          sgstAmount: { $sum: "$sgstAmount" },
-        },
-      },
+          igstAmount:      { $sum: "$igstAmount" },
+          cgstAmount:      { $sum: "$cgstAmount" },
+          sgstAmount:      { $sum: "$sgstAmount" }
+        }
+      }
     ]);
 
     const branchMap = {};
     const totals = {
-      finalPaid: 0,
-      finalToPay: 0,
-      finalCredit: 0,
-      finalFOC: 0,
-      finalCLR: 0,
+      finalPaid: 0, finalToPay: 0, finalCredit: 0,
+      finalFOC: 0, finalCLR: 0,
       finalBookingTotal: 0,
-      finalTotalDelivery: 0,
-      finalTotalCancel: 0,
+      finalTotalDelivery: 0, finalTotalCancel: 0,
       finalParcelGstAmount: 0,
-      totalIgst: 0,
-      totalCgst: 0,
-      totalSgst: 0,
+      totalIgst: 0, totalCgst: 0, totalSgst: 0
     };
 
     for (const record of bookingData) {
@@ -2183,116 +2495,306 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       if (!branchMap[branchName]) {
         branchMap[branchName] = {
           branchName,
-          paid: 0,
-          toPay: 0,
-          credit: 0,
-          FOC: 0,
-          CLR: 0,
-          BookingTotal: 0,
-          booking: 0,
-          delivered: 0,
-          cancelled: 0,
-          grandTotal: 0,
-          bookingTotalAmount: 0,
-          deliveredTotalAmount: 0,
-          cancelTotalAmount: 0,
-          parcelGstAmount: 0,
-          cancelAmount: 0,
-          igstAmount: 0,
-          cgstAmount: 0,
-          sgstAmount: 0,
+          paid: 0, toPay: 0, credit: 0, FOC: 0, CLR: 0,
+          BookingTotal: 0, booking: 0,
+          delivered: 0, cancelled: 0,
+          grandTotal: 0, bookingTotalAmount: 0,
+          deliveredTotalAmount: 0, cancelTotalAmount: 0,
+          parcelGstAmount: 0, cancelAmount: 0,
+          igstAmount: 0, cgstAmount: 0, sgstAmount: 0,
           deliveredAmountByType: {
-            paid: 0,
-            toPay: 0,
-            credit: 0,
-            FOC: 0,
-            CLR: 0,
-          },
+            paid: 0, toPay: 0, credit: 0, FOC: 0, CLR: 0
+          }
         };
       }
 
       const entry = branchMap[branchName];
 
-      // Booking Type Sums
-      switch (bookingType) {
-        case "paid":
-          entry.paid += record.grandTotal;
-          totals.finalPaid += record.grandTotal;
-          break;
-        case "toPay":
-          entry.toPay += record.grandTotal;
-          totals.finalToPay += record.grandTotal;
-          break;
-        case "credit":
-          entry.credit += record.grandTotal;
-          totals.finalCredit += record.grandTotal;
-          break;
-        case "FOC":
-          entry.FOC += record.grandTotal;
-          totals.finalFOC += record.grandTotal;
-          break;
-        case "CLR":
-          entry.CLR += record.grandTotal;
-          totals.finalCLR += record.grandTotal;
-          break;
-      }
+      if (bookingType === "paid")    { entry.paid   += record.grandTotal; totals.finalPaid  += record.grandTotal; }
+      if (bookingType === "toPay")   { entry.toPay  += record.grandTotal; totals.finalToPay += record.grandTotal; }
+      if (bookingType === "credit")  { entry.credit += record.grandTotal; totals.finalCredit+= record.grandTotal; }
+      if (bookingType === "FOC")     { entry.FOC    += record.grandTotal; totals.finalFOC   += record.grandTotal; }
+      if (bookingType === "CLR")     { entry.CLR    += record.grandTotal; totals.finalCLR   += record.grandTotal; }
 
-      // Common Aggregations
-      entry.grandTotal += record.grandTotal;
-      entry.parcelGstAmount += record.parcelGstAmount;
-      entry.igstAmount += record.igstAmount;
-      entry.cgstAmount += record.cgstAmount;
-      entry.sgstAmount += record.sgstAmount;
+      entry.grandTotal       += record.grandTotal;
+      entry.parcelGstAmount  += record.parcelGstAmount;
+      entry.igstAmount       += record.igstAmount;
+      entry.cgstAmount       += record.cgstAmount;
+      entry.sgstAmount       += record.sgstAmount;
 
       totals.finalParcelGstAmount += record.parcelGstAmount;
-      totals.totalIgst += record.igstAmount;
-      totals.totalCgst += record.cgstAmount;
-      totals.totalSgst += record.sgstAmount;
+      totals.totalIgst            += record.igstAmount;
+      totals.totalCgst            += record.cgstAmount;
+      totals.totalSgst            += record.sgstAmount;
 
       entry.BookingTotal += record.count;
-      entry.booking += record.count;
+      entry.booking      += record.count;
       totals.finalBookingTotal += record.grandTotal;
 
-      // Delivered Bookings (status code 4)
       if (bookingStatus === 4) {
-        entry.delivered += record.count;
-        entry.deliveredTotalAmount += record.grandTotal;
-        totals.finalTotalDelivery += record.grandTotal;
+        entry.delivered               += record.count;
+        entry.deliveredTotalAmount   += record.grandTotal;
+        totals.finalTotalDelivery    += record.grandTotal;
 
         if (entry.deliveredAmountByType[bookingType] !== undefined) {
           entry.deliveredAmountByType[bookingType] += record.grandTotal;
         }
       }
 
-      // Cancelled Bookings (status code 5)
       if (bookingStatus === 5) {
-        entry.cancelled += record.count;
-        entry.cancelTotalAmount += record.grandTotal;
-        entry.cancelAmount += record.grandTotal;
-        totals.finalTotalCancel += record.grandTotal;
+        entry.cancelled           += record.count;
+        entry.cancelTotalAmount   += record.grandTotal;
+        entry.cancelAmount        += record.grandTotal;
+        totals.finalTotalCancel   += record.grandTotal;
       }
 
       entry.bookingTotalAmount = entry.grandTotal;
     }
 
-    // Add afterCalculate field per branch
-    Object.values(branchMap).forEach((entry) => {
+    Object.values(branchMap).forEach(entry => {
       entry.afterCalculate = entry.bookingTotalAmount - entry.cancelTotalAmount;
     });
 
-    // Calculate net booking total (excluding cancelled)
     const finalNetBookingAmount = totals.finalBookingTotal - totals.finalTotalCancel;
 
     res.status(200).json({
       data: Object.values(branchMap),
       ...totals,
-      finalNetBookingAmount,
+      finalNetBookingAmount
     });
+
   } catch (err) {
     console.error("Error in parcelBranchConsolidatedReport:", err);
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+   
+
+// const parcelBranchConsolidatedReport = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res.status(401).json({ success: false, message: "Unauthorized: Company ID missing" });
+//     }
+
+//     const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
+
+//     // Always filter by companyId
+//     const matchStage = {
+//       bookingDate: { $ne: null },
+//       companyId: companyId,  // <--- Important: companyId filter added here
+//     };
+
+//     if (fromDate && toDate) {
+//       matchStage.bookingDate = {
+//         $gte: new Date(fromDate),
+//         $lte: new Date(toDate),
+//       };
+//     }
+//     if (fromCity) matchStage.fromCity = fromCity;
+//     if (pickUpBranch) matchStage.pickUpBranchname = pickUpBranch;
+//     if (bookedBy) matchStage.bookedBy = bookedBy;
+
+//     const bookingData = await Booking.aggregate([
+//       { $match: matchStage },
+//       {
+//         $lookup: {
+//           from: "cities",
+//           localField: "fromCity",
+//           foreignField: "cityName",
+//           as: "fromCityData",
+//         },
+//       },
+//       { $unwind: { path: "$fromCityData", preserveNullAndEmptyArrays: true } },
+//       {
+//         $lookup: {
+//           from: "cities",
+//           localField: "toCity",
+//           foreignField: "cityName",
+//           as: "toCityData",
+//         },
+//       },
+//       { $unwind: { path: "$toCityData", preserveNullAndEmptyArrays: true } },
+//       {
+//         $addFields: {
+//           sameState: {
+//             $eq: [
+//               { $toLower: "$fromCityData.state" },
+//               { $toLower: "$toCityData.state" },
+//             ],
+//           },
+//         },
+//       },
+//       {
+//         $addFields: {
+//           igstAmount: {
+//             $cond: [{ $eq: ["$sameState", false] }, "$parcelGstAmount", 0],
+//           },
+//           cgstAmount: {
+//             $cond: [
+//               { $eq: ["$sameState", true] },
+//               { $divide: ["$parcelGstAmount", 2] },
+//               0,
+//             ],
+//           },
+//           sgstAmount: {
+//             $cond: [
+//               { $eq: ["$sameState", true] },
+//               { $divide: ["$parcelGstAmount", 2] },
+//               0,
+//             ],
+//           },
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: {
+//             branchName: "$pickUpBranchname",
+//             bookingStatus: "$bookingStatus",
+//             bookingType: "$bookingType",
+//           },
+//           count: { $sum: 1 },
+//           grandTotal: { $sum: "$grandTotal" },
+//           parcelGstAmount: { $sum: "$parcelGstAmount" },
+//           igstAmount: { $sum: "$igstAmount" },
+//           cgstAmount: { $sum: "$cgstAmount" },
+//           sgstAmount: { $sum: "$sgstAmount" },
+//         },
+//       },
+//     ]);
+
+//     const branchMap = {};
+//     const totals = {
+//       finalPaid: 0,
+//       finalToPay: 0,
+//       finalCredit: 0,
+//       finalFOC: 0,
+//       finalCLR: 0,
+//       finalBookingTotal: 0,
+//       finalTotalDelivery: 0,
+//       finalTotalCancel: 0,
+//       finalParcelGstAmount: 0,
+//       totalIgst: 0,
+//       totalCgst: 0,
+//       totalSgst: 0,
+//     };
+
+//     for (const record of bookingData) {
+//       const { branchName, bookingStatus, bookingType } = record._id;
+
+//       if (!branchMap[branchName]) {
+//         branchMap[branchName] = {
+//           branchName,
+//           paid: 0,
+//           toPay: 0,
+//           credit: 0,
+//           FOC: 0,
+//           CLR: 0,
+//           BookingTotal: 0,
+//           booking: 0,
+//           delivered: 0,
+//           cancelled: 0,
+//           grandTotal: 0,
+//           bookingTotalAmount: 0,
+//           deliveredTotalAmount: 0,
+//           cancelTotalAmount: 0,
+//           parcelGstAmount: 0,
+//           cancelAmount: 0,
+//           igstAmount: 0,
+//           cgstAmount: 0,
+//           sgstAmount: 0,
+//           deliveredAmountByType: {
+//             paid: 0,
+//             toPay: 0,
+//             credit: 0,
+//             FOC: 0,
+//             CLR: 0,
+//           },
+//         };
+//       }
+
+//       const entry = branchMap[branchName];
+
+//       // Booking Type Sums
+//       switch (bookingType) {
+//         case "paid":
+//           entry.paid += record.grandTotal;
+//           totals.finalPaid += record.grandTotal;
+//           break;
+//         case "toPay":
+//           entry.toPay += record.grandTotal;
+//           totals.finalToPay += record.grandTotal;
+//           break;
+//         case "credit":
+//           entry.credit += record.grandTotal;
+//           totals.finalCredit += record.grandTotal;
+//           break;
+//         case "FOC":
+//           entry.FOC += record.grandTotal;
+//           totals.finalFOC += record.grandTotal;
+//           break;
+//         case "CLR":
+//           entry.CLR += record.grandTotal;
+//           totals.finalCLR += record.grandTotal;
+//           break;
+//       }
+
+//       // Common Aggregations
+//       entry.grandTotal += record.grandTotal;
+//       entry.parcelGstAmount += record.parcelGstAmount;
+//       entry.igstAmount += record.igstAmount;
+//       entry.cgstAmount += record.cgstAmount;
+//       entry.sgstAmount += record.sgstAmount;
+
+//       totals.finalParcelGstAmount += record.parcelGstAmount;
+//       totals.totalIgst += record.igstAmount;
+//       totals.totalCgst += record.cgstAmount;
+//       totals.totalSgst += record.sgstAmount;
+
+//       entry.BookingTotal += record.count;
+//       entry.booking += record.count;
+//       totals.finalBookingTotal += record.grandTotal;
+
+//       // Delivered Bookings (status code 4)
+//       if (bookingStatus === 4) {
+//         entry.delivered += record.count;
+//         entry.deliveredTotalAmount += record.grandTotal;
+//         totals.finalTotalDelivery += record.grandTotal;
+
+//         if (entry.deliveredAmountByType[bookingType] !== undefined) {
+//           entry.deliveredAmountByType[bookingType] += record.grandTotal;
+//         }
+//       }
+
+//       // Cancelled Bookings (status code 5)
+//       if (bookingStatus === 5) {
+//         entry.cancelled += record.count;
+//         entry.cancelTotalAmount += record.grandTotal;
+//         entry.cancelAmount += record.grandTotal;
+//         totals.finalTotalCancel += record.grandTotal;
+//       }
+
+//       entry.bookingTotalAmount = entry.grandTotal;
+//     }
+
+//     // Add afterCalculate field per branch
+//     Object.values(branchMap).forEach((entry) => {
+//       entry.afterCalculate = entry.bookingTotalAmount - entry.cancelTotalAmount;
+//     });
+
+//     // Calculate net booking total (excluding cancelled)
+//     const finalNetBookingAmount = totals.finalBookingTotal - totals.finalTotalCancel;
+
+//     res.status(200).json({
+//       data: Object.values(branchMap),
+//       ...totals,
+//       finalNetBookingAmount,
+//     });
+//   } catch (err) {
+//     console.error("Error in parcelBranchConsolidatedReport:", err);
+//     res.status(500).json({ message: "Server Error", error: err.message });
+//   }
+// };
 
 
 const parcelBranchWiseGSTReport = async (req, res) => {
@@ -3809,6 +4311,7 @@ const salesSummaryByBranchWise = async (req, res) => {
     });
   }
 };
+
 
 
 const collectionSummaryReport = async (req, res) => {
