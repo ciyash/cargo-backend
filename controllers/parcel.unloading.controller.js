@@ -68,6 +68,7 @@ const getParcelsLoading = async (req, res) => {
   }
 };
 
+
 const getParcelunLoadingByGrnNumber = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -75,76 +76,53 @@ const getParcelunLoadingByGrnNumber = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized: Company ID missing" });
     }
 
-    const grnNo = Number(req.params.grnNo);
-    if (isNaN(grnNo)) {
+    const grnNoParam = Number(req.params.grnNo);
+    if (isNaN(grnNoParam)) {
       return res.status(400).json({ message: "grnNo is required and must be a valid number" });
     }
 
-    const booking = await Booking.aggregate([
-      { 
-        $match: { 
-          grnNo, 
-          bookingStatus: 1, 
-          companyId // <-- ensure company filtering here
-        } 
-      },
-      {
-        $addFields: {
-          totalQuantity: { $sum: "$packages.quantity" },
-        },
-      },
-      {
-        $group: {
-          _id: "$bookingType",
-          totalQuantity: { $sum: "$totalQuantity" },
-          totalGrandTotal: { $sum: "$grandTotal" },
-          bookings: { $push: "$$ROOT" },
-        },
-      },
-      {
-        $project: {
-          bookingType: "$_id",
-          totalQuantity: 1,
-          totalGrandTotal: 1,
-          bookings: {
-            $map: {
-              input: "$bookings",
-              as: "booking",
-              in: {
-                grnNo: "$$booking.grnNo",
-                lrNumber: "$$booking.lrNumber",
-                fromCity: "$$booking.fromCity",
-                toCity: "$$booking.toCity",
-                pickUpBranch: "$$booking.pickUpBranch",
-                pickUpBranchname: "$$booking.pickUpBranchname",
-                dropBranch: "$$booking.dropBranch",
-                dropBranchname: "$$booking.dropBranchname",
-                senderName: "$$booking.senderName",
-                receiverName: "$$booking.receiverName",
-                bookingStatus: "$$booking.bookingStatus",
-                bookingDate: "$$booking.bookingDate",
-                totalQuantity: "$$booking.totalQuantity",
-                grandTotal: "$$booking.grandTotal",
-              },
-            },
-          },
-        },
-      },
-    ]);
+    // Step 1: Find parcelLoading entry with given grnNo and companyId
+    const parcelLoading = await ParcelLoading.findOne({
+      companyId,
+      grnNo: grnNoParam,
+    });
 
-    if (!booking || booking.length === 0) {
-      return res.status(404).json({ message: "Booking not found or doesn't match bookingStatus: 1" });
+    if (!parcelLoading) {
+      return res.status(404).json({
+        success: false,
+        message: "No ParcelLoading entry found for given grnNo",
+      });
+    }
+
+    // Step 2: Find booking with same grnNo and bookingStatus: 1
+    const booking = await Booking.findOne({
+      grnNo: grnNoParam,
+      bookingStatus: 1,
+      companyId,
+    }).populate('bookedBy', 'name'); // if you want bookedBy name
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "No booking found for the given GRN number with bookingStatus 1.",
+      });
     }
 
     return res.status(200).json({
-      success: true,
+     
       data: booking,
     });
+
   } catch (error) {
     console.error("Error in getParcelunLoadingByGrnNumber:", error);
-    res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
+
+
 
 const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);
 
