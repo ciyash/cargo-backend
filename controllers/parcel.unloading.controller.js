@@ -33,7 +33,7 @@ const getParcelsLoading = async (req, res) => {
       loadingDate: { $gte: start, $lte: end },
     });
 
-    if (parcelData.length === 0) {
+   if (!parcelData || parcelData.length === 0) {
       return res.status(200).json({
       
         message: "No parcel unloading found for given date range.",
@@ -57,7 +57,6 @@ const getParcelsLoading = async (req, res) => {
     const bookings = await Booking.find(bookingFilter);
 
     return res.status(200).json({
-
       data: bookings,
     });
   } catch (error) {
@@ -68,8 +67,6 @@ const getParcelsLoading = async (req, res) => {
     });
   }
 };
-
-
 
 const getParcelunLoadingByGrnNumber = async (req, res) => {
   try {
@@ -149,7 +146,6 @@ const getParcelunLoadingByGrnNumber = async (req, res) => {
   }
 };
 
-
 const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);
 
 const createParcelUnloading = async (req, res) => {
@@ -165,8 +161,16 @@ const createParcelUnloading = async (req, res) => {
     }
 
     // Basic validation
-    if (!vehicalNumber || !branch || !bookingType) {
-      return res.status(400).json({ message: "vehicalNumber, branch, and bookingType are required" });
+    if (!vehicalNumber ) {
+      return res.status(400).json({ message: "vehicalNumber,  bookingType are required" });
+    }
+
+      if (!branch) {
+      return res.status(400).json({ message: " branch is required" });
+    }
+
+      if (!bookingType) {
+      return res.status(400).json({ message: "bookingType is required" });
     }
 
     if (!grnNo || !Array.isArray(grnNo) || grnNo.length === 0) {
