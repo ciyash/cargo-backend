@@ -108,10 +108,7 @@ const getParcelunLoadingByGrnNumber = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
-       success: true,
-      data: booking,
-    });
+    return res.status(200).json(booking);
 
   } catch (error) {
     console.error("Error in getParcelunLoadingByGrnNumber:", error);
