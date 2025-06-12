@@ -60,7 +60,7 @@ router.post("/parcel-booking-summary-report",auth,bookingController.parcelBookin
 router.post("/parcel-booking-mobileNumber",auth,bookingController.parcelBookingMobileNumber)
 router.post("/regular-customer-booking",auth,bookingController.regularCustomerBooking)
 
-router.post("/branch-Wise-collection-report",bookingController.branchWiseCollectionReport)
+router.post("/branch-Wise-collection-report",auth,bookingController.branchWiseCollectionReport)
 router.post("/parcel-branch-consolidated-report",auth,bookingController.parcelBranchConsolidatedReport)
 router.post("/parcel-branch-wise-gst-report",auth,bookingController.parcelBranchWiseGSTReport)
 router.post("/sender-receiver-gst-report",auth,bookingController.senderReceiverGSTReport)
