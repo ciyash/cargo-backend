@@ -413,47 +413,84 @@ const getUnloadingReport = async (req, res) => {
 };
 
 
- const parcelBranchToBranchUnloading = async (req, res) => {
+const parcelBranchToBranchUnloading = async (req, res) => {
   try {
     const { fromLoadingDate, toLoadingDate, fromBranch, toBranch } = req.body;
     const companyId = req.user?.companyId;
 
-    // Validate companyId presence (authorization)
     if (!companyId) {
       return res.status(403).json({ success: false, message: "Unauthorized: Company ID missing" });
     }
 
-    // Validate required fields
-    if (!fromLoadingDate || !toLoadingDate || !fromBranch || !toBranch) {
+    if (!fromLoadingDate || !toLoadingDate) {
       return res.status(400).json({
         success: false,
         message: "fromLoadingDate, toLoadingDate, fromBranch, and toBranch are required",
       });
     }
 
-    // Convert to ISO date with time bounds
+    // Convert to date range
     const fromDate = new Date(fromLoadingDate + "T00:00:00.000Z");
     const toDate = new Date(toLoadingDate + "T23:59:59.999Z");
 
-    // Query bookings with company filter included
-    const bookings = await Booking.find({
+    // Step 1: Get ParcelLoading records filtered by loading date only
+    const parcels = await ParcelLoading.find({
       companyId,
+      loadingType: "branchLoad",
       loadingDate: { $gte: fromDate, $lte: toDate },
-      pickUpBranch: fromBranch,
-      dropBranch: toBranch,
-    }).lean();
+    });
 
-    if (!bookings.length) {
-      return res.status(404).json({ success: false, message: "No bookings found" });
+    if (!parcels.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No parcel loadings found for given date range.",
+        data: [],
+      });
     }
 
-    return res.status(200).json({ success: true, data: bookings });
+    // Step 2: Collect all GRN numbers
+    const grnNos = parcels.flatMap(p => Array.isArray(p.grnNo) ? p.grnNo : []);
+
+    if (!grnNos.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No GRNs found in matched parcel loadings.",
+        data: [],
+      });
+    }
+
+    // Step 3: Query bookings with GRNs and branch info
+    const bookings = await Booking.find({
+      companyId,
+      grnNo: { $in: grnNos },
+      pickUpBranch: fromBranch,
+      dropBranch: toBranch,
+    });
+
+    if (!bookings.length) {
+      return res.status(200).json({
+        success: true,
+        message: "No bookings found for the provided GRNs and branches.",
+        data: [],
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: bookings,
+    });
 
   } catch (error) {
-    console.error("Error fetching bookings:", error);
-    return res.status(500).json({ success: false, error: error.message });
+    console.error("Error in parcelBranchToBranchUnloading:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
+
+
 
 
  const parcelBranchToBranchUnloadingPost = async (req, res) => {

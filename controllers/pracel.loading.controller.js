@@ -819,6 +819,7 @@ const getBookingsByDateAndBranch = async (req, res) => {
       companyId,
       bookingDate: { $gte: from, $lte: to },
       pickUpBranch: fromBranch,
+       bookingStatus: 0, 
     }).sort({ bookingDate: -1 });
 
     if (!bookings.length) {
@@ -830,7 +831,7 @@ const getBookingsByDateAndBranch = async (req, res) => {
     console.error("Error fetching bookings:", error);
     return res
       .status(500)
-      .json({ success: false, message: "Internal Server Error" });
+      .json({ success: false, message: "Internal Server Error" });  
   }
 };
 
