@@ -3975,15 +3975,13 @@ const pendingDispatchStockReport = async (req, res) => {
     );
 
     return res.status(200).json({
-      success: true,
-      message: "Pending dispatch stock report generated successfully",
-      data: {
+    
         bookings,
         summary: bookingSummary,
         allTotalPackages,
         allTotalWeight,
         totalGrandTotalAmount,
-      },
+    
     });
   } catch (error) {
     console.error("Error in pendingDispatchStockReport:", error);
