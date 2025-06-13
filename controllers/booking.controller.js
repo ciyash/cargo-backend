@@ -1748,7 +1748,7 @@ const parcelBookingSummaryReport = async (req, res) => {
       query.dropBranch = { $regex: new RegExp(`^${dropBranch}$`, "i") };
 
     const bookings = await Booking.find(query).select(
-      "bookingDate grnNo fromCity toCity pickUpBranch dropBranch totalPackages totalQuantity grandTotal"
+      "bookingDate grnNo fromCity toCity pickUpBranch pickUpBranchname dropBranch totalPackages totalQuantity grandTotal"
     );
 
     if (bookings.length === 0) {

@@ -239,20 +239,31 @@ const getBranchBySubadminUniqueId = async (req, res) => {
   }
 };
 
+
+
 const getBranchCity = async (req, res) => {
   try {
     const { city } = req.params;
-    const { companyId } = req.query;
+    const companyId = req.user?.companyId || req.query.companyId;
 
-    const query = { city: { $regex: new RegExp(`^${city}$`, "i") } };
-    if (companyId) {
-      query.companyId = companyId;
+    if (!city) {
+      return res.status(400).json({ message: "City is required in params." });
     }
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company ID is required." });
+    }
+
+    // Build query with case-insensitive city match
+    const query = {
+      city: { $regex: new RegExp(`^${city}$`, "i") },
+      companyId,
+    };
 
     const branches = await Branch.find(query);
 
-    if (branches.length === 0) {
-      return res.status(404).json({ message: "City not found!" });
+    if (!branches.length) {
+      return res.status(404).json({ message: "City not found for this company." });
     }
 
     const responseData = branches.map(branch => ({
@@ -262,9 +273,10 @@ const getBranchCity = async (req, res) => {
       branchUniqueId: branch.branchUniqueId,
     }));
 
-    res.status(200).json(responseData);
+    return res.status(200).json(responseData);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error in getBranchCity:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 
