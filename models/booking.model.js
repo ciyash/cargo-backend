@@ -124,6 +124,11 @@ const bookingSchema = new mongoose.Schema(
 bookingSchema.index({ grnNo: 1, adminUniqueId: 1, bookingStatus: 1 });
 
 const userSchema = new mongoose.Schema({
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Company",
+    required: true,
+  },
   name: { type: String, required: true },
   phone: { type: String, required: true },
   address: { type: String },

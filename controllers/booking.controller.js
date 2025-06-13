@@ -279,33 +279,58 @@ const createBooking = async (req, res) => {
 
     const savedBooking = await booking.save();
 
-    if (savedBooking) {
-      await Promise.all([
-        (async () => {
-          const senderExists = await User.findOne({ phone: senderMobile });
-          if (!senderExists) {
-            await User.create({
-              name: senderName,
-              phone: senderMobile,
-              address: senderAddress,
-              gst: senderGst,
-            });
-          }
-        })(),
-        (async () => {
-          const receiverExists = await User.findOne({ phone: receiverMobile });
-          if (!receiverExists) {
-            await User.create({
-              name: receiverName,
-              phone: receiverMobile,
-              address: receiverAddress,
-              gst: receiverGst,
-            });
-          }
-        })(),
-      ]);
-    }
+   
+if (savedBooking) {
+  await Promise.all([
+    (async () => {
+      try {
+        console.log("Checking sender...");
+        const senderExists = await User.findOne({
+          phone: senderMobile,
+          companyId: req.user.companyId, // 🔹 Check with companyId
+        });
 
+        if (!senderExists) {
+          console.log("Creating sender...");
+          await User.create({
+            name: senderName,
+            phone: senderMobile,
+            address: senderAddress,
+            gst: senderGst,
+            companyId: req.user.companyId, // 🔹 Include companyId in creation
+          });
+        }
+      } catch (err) {
+        console.error("Sender save error:", err.message);
+      }
+    })(),
+    (async () => {
+      try {
+        console.log("Checking receiver...");
+        const receiverExists = await User.findOne({
+          phone: receiverMobile,
+          companyId: req.user.companyId, // 🔹 Check with companyId
+        });
+
+        if (!receiverExists) {
+          console.log("Creating receiver...");
+          await User.create({
+            name: receiverName,
+            phone: receiverMobile,
+            address: receiverAddress,
+            gst: receiverGst,
+            companyId: req.user.companyId, // 🔹 Include companyId in creation
+          });
+        }
+      } catch (err) {
+        console.error("Receiver save error:", err.message);
+      }
+    })(),
+  ]);
+}
+
+
+    
     return res.status(201).json({
       success: true,
       message: "Booking created successfully",
@@ -853,15 +878,18 @@ const getUsersBySearch = async (req, res) => {
 
     const searchRegex = new RegExp(query, "i");
 
-    // Search in User collection
-    const users = await User.find({
-      $or: [
-        { name: searchRegex },
-        { phone: searchRegex },
-        { address: searchRegex },
-        { gst: searchRegex },
-      ],
-    });
+    // Step 1: Search Users belonging to the same company
+    const users = await User.find(
+      {
+        companyId, // Ensure company restriction
+        $or: [
+          { name: searchRegex },
+          { phone: searchRegex },
+          { address: searchRegex },
+          { gst: searchRegex },
+        ],
+      }
+    ).limit(20); // Optional limit
 
     if (users.length > 0) {
       const responseData = users.map((user) => ({
@@ -871,6 +899,7 @@ const getUsersBySearch = async (req, res) => {
         address: user.address,
         gst: user.gst,
       }));
+
       return res.status(200).json({
         success: true,
         source: "User",
@@ -879,15 +908,16 @@ const getUsersBySearch = async (req, res) => {
       });
     }
 
-    // Search in CFMaster if no user found
+    // Step 2: If no users found, search in CFMaster (also filter by companyId if applicable)
     const companies = await CFMaster.find({
+      companyId, // Remove this line if CFMaster is global and not company-specific
       $or: [
         { name: searchRegex },
         { phone: searchRegex },
         { address: searchRegex },
         { gst: searchRegex },
       ],
-    });
+    }).limit(20);
 
     if (companies.length > 0) {
       const responseData = companies.map((company) => ({
@@ -897,6 +927,7 @@ const getUsersBySearch = async (req, res) => {
         address: company.address,
         gst: company.gst,
       }));
+
       return res.status(200).json({
         success: true,
         source: "CFMaster",
@@ -910,9 +941,10 @@ const getUsersBySearch = async (req, res) => {
       message: "No matching users or companies found!",
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Search error:", error);
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Something went wrong: " + error.message,
     });
   }
 };
