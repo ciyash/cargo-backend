@@ -237,11 +237,12 @@ const createParcel = async (req, res) => {
   }
 };
 
-
 const createBranchToBranch = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
     const loadingBy = req.user?.id;
+    const loadingBranchname = req.user?.branchName || "";
+    const loadingByemp = req.user?.name || req.user?.username || "";
 
     if (!companyId || !loadingBy) {
       return res.status(401).json({ message: "Unauthorized: Company ID or User ID missing" });
@@ -257,26 +258,26 @@ const createBranchToBranch = async (req, res) => {
       remarks,
     } = req.body;
 
-    // Validation for required fields
+    // Validate required fields
     if (
       !fromCity ||
       !toCity ||
       !fromBranch ||
       !vehicalNumber ||
       !Array.isArray(grnNo) ||
-      grnNo.length === 0 ||  
+      grnNo.length === 0 ||
       !Array.isArray(lrNumber) ||
       lrNumber.length === 0
     ) {
       return res.status(400).json({ message: "Required fields are missing or invalid" });
     }
 
-    const uniqueToCity = [
-      ...new Set(toCity.map((city) => city.trim().toLowerCase())),
-    ];
-
+    const grnNumbers = grnNo.map(Number);
+    const loadingDate = new Date();
+    const uniqueToCity = [...new Set(toCity.map((city) => city.trim().toLowerCase()))];
     const vocherNoUnique = generateVocherNoUnique();
 
+    // 1️⃣ Create new ParcelLoading
     const parcel = new ParcelLoading({
       loadingType: "branchLoad",
       companyId,
@@ -286,14 +287,29 @@ const createBranchToBranch = async (req, res) => {
       fromBranch,
       loadingBy,
       lrNumber,
-      grnNo,
+      grnNo: grnNumbers,
       vehicalNumber,
       remarks,
-      loadingDate: new Date(), // optional: add timestamp
+      loadingDate,
     });
 
     await parcel.save();
 
+    // 2️⃣ Update related Booking entries
+    await Booking.updateMany(
+      { grnNo: { $in: grnNumbers }, companyId },
+      {
+        $set: {
+          bookingStatus: 1,
+          loadingDate,
+          vehicalNumber,
+          loadingBranchname,
+          loadingByemp,
+        },
+      }
+    );
+
+    // ✅ Success response
     return res.status(201).json({
       message: "Parcel loading (branch to branch) created successfully",
       parcel,
@@ -303,7 +319,8 @@ const createBranchToBranch = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
- 
+
+
 const getAllParcels = async (req, res) => {
   try {
     const companyId = req.user?.companyId;

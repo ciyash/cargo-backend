@@ -4270,7 +4270,7 @@ const salesSummaryByBranchWise = async (req, res) => {
     const bookings = await Booking.aggregate([
       {
         $match: {
-          companyId, // filter by companyId
+          companyId: new mongoose.Types.ObjectId(companyId),
           bookingDate: { $gte: start, $lte: end },
         },
       },
@@ -4363,10 +4363,7 @@ const salesSummaryByBranchWise = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: bookings,
-    });
+    return res.status(200).json(bookings);
   } catch (err) {
     console.error("Error fetching branch-wise bookings:", err);
     return res.status(500).json({
@@ -4406,7 +4403,7 @@ const collectionSummaryReport = async (req, res) => {
     const summary = await Booking.aggregate([
       {
         $match: {
-          companyId,  // filter by companyId
+          companyId: new mongoose.Types.ObjectId(companyId),
           bookingDate: { $gte: startDate, $lte: endDate },
           bookingType: { $in: ["paid", "toPay"] }, // Only 'paid' and 'toPay'
         },
@@ -4439,7 +4436,6 @@ const collectionSummaryReport = async (req, res) => {
     );
 
     res.status(200).json({
-      success: true,
       summary,
       totalBookingsForDay,
     });
@@ -4453,36 +4449,46 @@ const collectionSummaryReport = async (req, res) => {
 const branchAccount = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
+
+    // Check for valid company ID
     if (!companyId) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthorized: Company ID missing" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
     }
 
     const { date } = req.body;
 
-    const matchStage = { companyId }; // Add companyId filter here
+    // Base match object with company filter
+    const matchStage = { companyId: new mongoose.Types.ObjectId(companyId) };
 
+    // If date is provided, apply bookingDate filter
     if (date) {
       const [day, month, year] = date.split("-");
+
+      // Validate date format
       if (!day || !month || !year) {
         return res.status(400).json({
           success: false,
           message: "Invalid date format, expected DD-MM-YYYY",
         });
       }
+
       const start = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
       const end = new Date(`${year}-${month}-${day}T23:59:59.999Z`);
+
       matchStage.bookingDate = { $gte: start, $lte: end };
     }
 
+    // Aggregate branch-wise booking totals
     const result = await Booking.aggregate([
       { $match: matchStage },
-      {
+     {
         $group: {
           _id: {
             pickUpBranch: "$pickUpBranch",
-            pickUpBranchName: "$pickUpBranchName", // check field name casing
+            pickUpBranchname: "$pickUpBranchname",
           },
           grandTotal: { $sum: "$grandTotal" },
         },
@@ -4491,24 +4497,29 @@ const branchAccount = async (req, res) => {
         $project: {
           _id: 0,
           pickUpBranch: "$_id.pickUpBranch",
-          pickUpBranchName: "$_id.pickUpBranchName",
+          pickUpBranchname: "$_id.pickUpBranchname",
           grandTotal: 1,
         },
       },
     ]);
 
+    // Calculate overall total
     const totalAmount = result.reduce((sum, item) => sum + item.grandTotal, 0);
 
     res.status(200).json({
-      success: true,
       branchwise: result,
       totalAmount,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Error fetching branch totals" });
+    console.error("Error fetching branch totals:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching branch totals",
+      error: error.message,
+    });
   }
 };
+
 
 const acPartyAccount = async (req, res) => {
   try {
@@ -4544,7 +4555,7 @@ const acPartyAccount = async (req, res) => {
     const bookings = await Booking.aggregate([
       {
         $match: {
-          companyId,
+          companyId: new mongoose.Types.ObjectId(companyId),
           bookingDate: { $gte: start, $lte: end },
         },
       },
@@ -4596,8 +4607,7 @@ const acPartyAccount = async (req, res) => {
     );
 
     return res.status(200).json({
-      success: true,
-      parties: filtered,
+     parties: filtered,
       totalAmount,
     });
   } catch (error) {
@@ -4621,7 +4631,7 @@ const statusWiseSummary = async (req, res) => {
 
     const result = await Booking.aggregate([
       {
-        $match: { companyId },
+        $match: { companyId: new mongoose.Types.ObjectId(companyId) },
       },
       {
         $group: {
@@ -4671,7 +4681,6 @@ const statusWiseSummary = async (req, res) => {
     }
 
     return res.status(200).json({
-      success: true,
       branchwiseStatus: result,
     });
   } catch (error) {
