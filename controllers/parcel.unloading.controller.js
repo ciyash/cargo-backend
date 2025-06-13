@@ -188,6 +188,17 @@ const createParcelUnloading = async (req, res) => {
       { $set: { bookingStatus: 2, unloadingDate: currentDate } }
     );
 
+    // Update parcelStatus to 1 in ParcelLoading
+await ParcelLoading.updateMany(
+  {
+    grnNo: { $in: grnNumbers },
+    companyId,
+  },
+  {
+    $set: { parcelStatus: 1 }
+  }
+);
+
     // Create a new Parcel Unloading document with companyId
     const newParcel = new ParcelUnloading({
       unLoadingVoucher: generateUnloadingVoucher(),

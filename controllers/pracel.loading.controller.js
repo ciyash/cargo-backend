@@ -235,8 +235,6 @@ const createParcel = async (req, res) => {
   }
 };
 
-
-
 const createBranchToBranch = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -263,7 +261,7 @@ const createBranchToBranch = async (req, res) => {
       !fromBranch ||
       !vehicalNumber ||
       !Array.isArray(grnNo) ||
-      grnNo.length === 0 ||
+      grnNo.length === 0 ||  
       !Array.isArray(lrNumber) ||
       lrNumber.length === 0
     ) {
@@ -303,7 +301,6 @@ const createBranchToBranch = async (req, res) => {
   }
 };
  
-
 const getAllParcels = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -316,7 +313,6 @@ const getAllParcels = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };   
-
 
 const getParcelVocherNoUnique = async (req, res) => {
   try {
