@@ -3546,6 +3546,7 @@ const pendingDeliveryLuggageReport = async (req, res) => {
 };
 
 
+
 const parcelReceivedStockReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -3585,7 +3586,11 @@ const parcelReceivedStockReport = async (req, res) => {
       .select("grnNo -_id")
       .lean();
 
-    const grnNos = unloadingGrns.map((item) => item.grnNo);
+    // FIX: grnNo is an array, so we flatten it
+    const grnNos = unloadingGrns
+      .flatMap(item => item.grnNo)
+      .map(grn => Number(grn))
+      .filter(grn => !isNaN(grn));
 
     if (!grnNos.length) {
       return res.status(404).json({
@@ -3699,6 +3704,7 @@ const parcelReceivedStockReport = async (req, res) => {
     });
   }
 };
+
 
 
 const deliveredStockReport = async (req, res) => {
