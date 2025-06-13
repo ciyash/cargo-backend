@@ -3683,17 +3683,15 @@ const parcelReceivedStockReport = async (req, res) => {
       if (type === "paid") finalTotalPaid += grandTotal;
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Parcel received stock report generated successfully",
-      data: {
-        deliveries: updatedDeliveries,
+    return res.status(200).json({      
+      
+        data: updatedDeliveries,
         totalGrandTotal,
         grandTotalPackages,
         bookingTypeSummary,
         finalTotalToPay,
         finalTotalPaid,
-      },
+      
     });
   } catch (error) {
     console.error("Error in parcelReceivedStockReport:", error);
