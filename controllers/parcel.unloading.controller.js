@@ -419,64 +419,67 @@ const parcelBranchToBranchUnloading = async (req, res) => {
     const companyId = req.user?.companyId;
 
     if (!companyId) {
-      return res.status(403).json({ success: false, message: "Unauthorized: Company ID missing" });
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
     }
 
     if (!fromLoadingDate || !toLoadingDate) {
       return res.status(400).json({
         success: false,
-        message: "fromLoadingDate, toLoadingDate, fromBranch, and toBranch are required",
+        message: "fromLoadingDate and toLoadingDate are required",
       });
     }
 
-    // Convert to date range
     const fromDate = new Date(fromLoadingDate + "T00:00:00.000Z");
     const toDate = new Date(toLoadingDate + "T23:59:59.999Z");
 
-    // Step 1: Get ParcelLoading records filtered by loading date only
-    const parcels = await ParcelLoading.find({
+    // Build ParcelLoading filter
+    const parcelFilter = {
       companyId,
       loadingType: "branchLoad",
       loadingDate: { $gte: fromDate, $lte: toDate },
-    });
+    };
+
+    if (fromBranch) parcelFilter.fromBranch = fromBranch;
+    if (toBranch) parcelFilter.toCity = { $in: [toBranch] };
+
+    const parcels = await ParcelLoading.find(parcelFilter);
 
     if (!parcels.length) {
       return res.status(200).json({
         success: true,
-        message: "No parcel loadings found for given date range.",
-        data: [],
+        message: "No parcel loadings found for given date range and conditions.",
+      
       });
     }
 
-    // Step 2: Collect all GRN numbers
     const grnNos = parcels.flatMap(p => Array.isArray(p.grnNo) ? p.grnNo : []);
 
     if (!grnNos.length) {
       return res.status(200).json({
         success: true,
         message: "No GRNs found in matched parcel loadings.",
-        data: [],
+      
       });
     }
 
-    // Step 3: Query bookings with GRNs and branch info
-    const bookings = await Booking.find({
+    // Build Booking filter
+    const bookingFilter = {
       companyId,
       grnNo: { $in: grnNos },
-      pickUpBranch: fromBranch,
-      dropBranch: toBranch,
-    });
+      bookingStatus: 2,
+    };
 
-    if (!bookings.length) {
-      return res.status(200).json({
-        success: true,
-        message: "No bookings found for the provided GRNs and branches.",
-        data: [],
-      });
-    }
+    if (fromBranch) bookingFilter.pickUpBranch = fromBranch;
+    if (toBranch) bookingFilter.dropBranch = toBranch;
+
+    const bookings = await Booking.find(bookingFilter);
 
     return res.status(200).json({
       success: true,
+      message: bookings.length ? "Bookings fetched successfully" : "No bookings found",
       data: bookings,
     });
 
@@ -489,6 +492,8 @@ const parcelBranchToBranchUnloading = async (req, res) => {
     });
   }
 };
+
+
 
 
 
