@@ -1414,7 +1414,7 @@ const allParcelBookingReport = async (req, res) => {
           vehicalNumber: vNo,
           bookings: [],
           totalQuantity: 0,
-          totalGrandTotal: 0,
+          totalGrandTotal: 0,  
           totalHamaliCharge: 0,
         };
       }
@@ -1546,65 +1546,171 @@ const parcelReportSerialNo = async (req, res) => {
   }
 };
 
+// const parcelCancelReport = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: Company ID missing",
+//       });
+//     }
+
+//     const { fromDate, toDate, fromCity, toCity, bookingType } = req.body;
+
+//     const userRole = req.user.role;
+//     const userBranchId = req.user.branchId;
+
+//     // Base query for cancelled bookings
+//     let query = {
+//       companyId,
+//       bookingStatus: 5, // Cancelled
+//     };
+
+//     if (userRole === "employee") {
+//       query.pickUpBranch = userBranchId;
+//     }
+
+//     if (fromDate && toDate) {
+//       const start = new Date(fromDate);
+//       const end = new Date(toDate);
+//       if (isNaN(start) || isNaN(end)) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid date format provided.",
+//         });
+//       }
+//       start.setHours(0, 0, 0, 0);
+//       end.setHours(23, 59, 59, 999);
+//       query.cancelDate = { $gte: start, $lte: end };
+//     }
+
+//     if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
+//     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
+//     if (bookingType) query.bookingType = { $regex: new RegExp(bookingType, "i") };
+
+//     const bookings = await Booking.find(query)
+//       .select(
+//         "bookingDate cancelDate fromCity toCity grnNo senderName receiverName totalQuantity grandTotal refundCharge refundAmount cancelByUser"
+//       )
+//       .sort({ bookingDate: 1 });
+
+//     if (bookings.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "No cancelled bookings found for the given criteria.",
+//       });
+//     }
+
+//     let allTotalQuantity = 0;
+//     let allGrandTotal = 0;
+
+//     const formattedData = bookings.map((booking) => {
+//       allTotalQuantity += booking.totalQuantity || 0;
+//       allGrandTotal += booking.grandTotal || 0;
+
+//       return {
+//         bookingDate: booking.bookingDate,
+//         cancelDate: booking.cancelDate,
+//         fromCity: booking.fromCity,
+//         toCity: booking.toCity,
+//         grnNo: booking.grnNo,
+//         senderName: booking.senderName,
+//         receiverName: booking.receiverName,
+//         totalQuantity: booking.totalQuantity || 0,
+//         grandTotal: booking.grandTotal || 0,
+//         cancelCharge: booking.refundCharge || 0,
+//         refundAmount: booking.refundAmount || 0,
+//         cancelBy: booking.cancelByUser || "",
+//       };
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Cancelled bookings fetched successfully.",
+//       data: formattedData,
+//       count: bookings.length,
+//       allTotalQuantity,
+//       allGrandTotal,
+//     });
+//   } catch (error) {
+//     console.error("Error in parcelCancelReport:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error while fetching cancelled bookings.",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 const parcelCancelReport = async (req, res) => {
   try {
-    const companyId = req.user?.companyId;
-    if (!companyId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Company ID missing",
-      });
-    }
-
     const { fromDate, toDate, fromCity, toCity, bookingType } = req.body;
+
+    // if (!req.user) {
+    //   return res.status(401).json({
+    //     success: false,
+    //     message: "Unauthorized: User data missing",
+    //   });
+    // }
 
     const userRole = req.user.role;
     const userBranchId = req.user.branchId;
 
     // Base query for cancelled bookings
     let query = {
-      companyId,
       bookingStatus: 5, // Cancelled
     };
 
-    if (userRole === "employee") {
-      query.pickUpBranch = userBranchId;
+    // // Limit employee access to their branch
+    // if (userRole === "employee") {
+    //   query.pickUpBranch = userBranchId;
+    // }
+
+    // Validate and apply date range
+
+    // Validate and apply date range to cancelDate instead of bookingDate
+if (fromDate && toDate) {
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
+  if (isNaN(start) || isNaN(end)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid date format provided.",
+    });
+  }
+  start.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
+  query.cancelDate = { $gte: start, $lte: end }; // 👈 changed this line
+}
+
+
+    // Optional filters
+    if (fromCity) {
+      query.fromCity = { $regex: new RegExp(fromCity, "i") };
     }
 
-    if (fromDate && toDate) {
-      const start = new Date(fromDate);
-      const end = new Date(toDate);
-      if (isNaN(start) || isNaN(end)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid date format provided.",
-        });
-      }
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      query.cancelDate = { $gte: start, $lte: end };
+    if (toCity) {
+      query.toCity = { $regex: new RegExp(toCity, "i") };
     }
 
-    if (fromCity) query.fromCity = { $regex: new RegExp(fromCity, "i") };
-    if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
-    if (bookingType) query.bookingType = { $regex: new RegExp(bookingType, "i") };
+    if (bookingType) {
+      query.bookingType = { $regex: new RegExp(bookingType, "i") };
+    }
 
+    // Fetch cancelled bookings
     const bookings = await Booking.find(query)
       .select(
         "bookingDate cancelDate fromCity toCity grnNo senderName receiverName totalQuantity grandTotal refundCharge refundAmount cancelByUser"
       )
       .sort({ bookingDate: 1 });
 
-    if (bookings.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No cancelled bookings found for the given criteria.",
-      });
-    }
-
+    // Totals
     let allTotalQuantity = 0;
     let allGrandTotal = 0;
 
+    // Format data
     const formattedData = bookings.map((booking) => {
       allTotalQuantity += booking.totalQuantity || 0;
       allGrandTotal += booking.grandTotal || 0;
@@ -1625,16 +1731,20 @@ const parcelCancelReport = async (req, res) => {
       };
     });
 
+    // Response
     return res.status(200).json({
       success: true,
-      message: "Cancelled bookings fetched successfully.",
       data: formattedData,
       count: bookings.length,
       allTotalQuantity,
       allGrandTotal,
+      message:
+        bookings.length > 0
+          ? "Cancelled bookings fetched successfully."
+          : "No cancelled bookings found.",
     });
   } catch (error) {
-    console.error("Error in parcelCancelReport:", error);
+    console.error("Error in parcelCancelReport:", error);    console.error("Error in parcelCancelReport:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error while fetching cancelled bookings.",
@@ -3119,7 +3229,7 @@ const pendingDeliveryStockReport = async (req, res) => {
     const isDropBranchAll = !dropBranch || dropBranch.toLowerCase() === "all";
 
     const query = {
-      companyId,
+      companyId: new mongoose.Types.ObjectId(companyId),
       bookingStatus: 2, // pending delivery
       bookingDate: { $gte: startDate, $lte: endDate },
     };
@@ -3267,6 +3377,8 @@ const pendingDeliveryStockReport = async (req, res) => {
     });
   }
 };
+
+
 
 
 const pendingDeliveryLuggageReport = async (req, res) => {
