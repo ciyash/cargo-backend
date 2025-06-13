@@ -1780,7 +1780,7 @@ const parcelBookingSummaryReport = async (req, res) => {
         totalQuantity,
         totalAmount,
       },
-      data: bookings,
+       bookings,
     });
   } catch (error) {
     console.error("Error fetching parcel booking summary report:", error);
