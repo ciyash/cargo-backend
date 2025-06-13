@@ -316,7 +316,7 @@ if (savedBooking) {
           console.log("Creating receiver...");
           await User.create({
             name: receiverName,
-            phone: receiverMobile,
+            phone: receiverMobile,   
             address: receiverAddress,
             gst: receiverGst,
             companyId: req.user.companyId, // 🔹 Include companyId in creation

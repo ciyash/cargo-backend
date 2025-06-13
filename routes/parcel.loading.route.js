@@ -44,7 +44,7 @@ router.post("/branch-to-branch-post",auth,parcelController.createBranchToBranch)
 
 // reports
 
-router.post("/dispatched-stock-report",parcelController.dispatchedStockReport)
+router.post("/dispatched-stock-report",auth,parcelController.dispatchedStockReport)
 
 
 
