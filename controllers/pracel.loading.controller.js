@@ -188,7 +188,7 @@ const createParcel = async (req, res) => {
       fromCity,
       toCity: uniqueToCity,
       fromBranch,
-      bookingStatus: 1, // assuming this means 'loaded' or 'active'
+      bookingStatus: 1,
       parcelStatus,
       loadingBy,
       senderName,
@@ -201,7 +201,7 @@ const createParcel = async (req, res) => {
       lrNumber,
     }).save({ session });
 
-    // Update Booking documents for these GRNs to bookingStatus 1 and update other fields
+    // Update Booking documents with additional loading fields
     await Booking.updateMany(
       { grnNo: { $in: grnNo }, companyId },
       {
@@ -210,6 +210,8 @@ const createParcel = async (req, res) => {
           loadingDate,
           vehicalNumber,
           ltDate: new Date(),
+          loadingBranchname: req.user?.branchName || '', // assuming fromBranch is name string
+          loadingByemp: req.user?.name || req.user?.username || '', // use actual user info
         },
       },
       { session }
@@ -234,6 +236,7 @@ const createParcel = async (req, res) => {
     session.endSession();
   }
 };
+
 
 const createBranchToBranch = async (req, res) => {
   try {

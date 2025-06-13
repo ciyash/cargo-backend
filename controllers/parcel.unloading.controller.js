@@ -6,6 +6,7 @@ import {Booking} from '../models/booking.model.js'
 const getParcelsLoading = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
+    console.log(req.user.name)
     if (!companyId) {
       return res.status(401).json({
         success: false,
@@ -180,24 +181,22 @@ const createParcelUnloading = async (req, res) => {
     }
 
     // Update booking status and unloading date within company scope
-    await Booking.updateMany(
-      {
-        grnNo: { $in: grnNumbers },
-        companyId, // <-- ensure update is scoped to company
-      },
-      { $set: { bookingStatus: 2, unloadingDate: currentDate } }
-    );
-
-    // Update parcelStatus to 1 in ParcelLoading
-await ParcelLoading.updateMany(
+  await Booking.updateMany(
   {
     grnNo: { $in: grnNumbers },
     companyId,
   },
   {
-    $set: { parcelStatus: 1 }
+    $set: {
+      bookingStatus: 2,
+      unloadingDate: currentDate,
+      unloadingBranchname: req.user?.branchName || '',      // ← assuming `branch` is branch name
+      unloadingByemp: req.user?.name || req.user?.username || '', // ← add proper fallback
+    },
   }
 );
+
+
 
     // Create a new Parcel Unloading document with companyId
     const newParcel = new ParcelUnloading({

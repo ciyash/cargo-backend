@@ -65,12 +65,6 @@ const bookingSchema = new mongoose.Schema(
       type: Number,
     },
 
-    receiverName1: { type: String, default: null },
-    receiverMobile1: {
-      type: Number,
-      default: null,
-    },
-
     receiverAddress: { type: String },
     receiverGst: { type: String, default: null },
 
