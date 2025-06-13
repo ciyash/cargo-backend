@@ -3174,14 +3174,15 @@ const parcelStatusDateDifferenceReport = async (req, res) => {
 
     if (fromCity) query.fromCity = { $regex: new RegExp(`^${fromCity}$`, "i") };
     if (toCity) query.toCity = { $regex: new RegExp(`^${toCity}$`, "i") };
-    if (bookingStatus !== undefined) query.bookingStatus = bookingStatus;
+    if (bookingStatus !== "all") query.bookingStatus = bookingStatus;
+
 
     // Select required fields
     const bookings = await Booking.find(query).select(
       "grnNo lrNumber bookingDate loadingDate unloadingDate deliveryDate deliveryEmployee fromCity toCity bookingStatus parcelGstAmount"
     );
 
-    if (!bookings.length) {
+    if (bookings.length === 0) {
       return res.status(404).json({
         success: true,
         data: [],
