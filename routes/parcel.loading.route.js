@@ -10,11 +10,11 @@ router.post("/",auth,parcelController.createParcel)
  
 router.get("/",auth,parcelController.getAllParcels)
 
-router.get("/:id",parcelController.getParcelById)   
+router.get("/:id",auth,parcelController.getParcelById)   
 
-router.get("/vocherNoUnique/:vocherNoUnique",parcelController.getParcelVocherNoUnique)
+router.get("/vocherNoUnique/:vocherNoUnique",auth,parcelController.getParcelVocherNoUnique)
 
-router.get("/voucher-details-print/:vocherNoUnique",parcelController.offlineParcelVoucherDetailsPrint)
+router.get("/voucher-details-print/:vocherNoUnique",auth,parcelController.offlineParcelVoucherDetailsPrint)
 
 router.patch("/:id",auth,parcelController.updateParcel)
 
