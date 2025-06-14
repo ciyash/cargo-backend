@@ -1619,9 +1619,17 @@ const allParcelBookingReport = async (req, res) => {
     if (toCity) query.toCity = { $regex: new RegExp(toCity, "i") };
     if (pickUpBranch) query.pickUpBranch = { $regex: new RegExp(pickUpBranch, "i") };
     if (dropBranch) query.dropBranch = { $regex: new RegExp(dropBranch, "i") };
-    if (bookingStatus !== undefined) query.bookingStatus = Number(bookingStatus);
-    if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") };
+      if (vehicalNumber) query.vehicalNumber = { $regex: new RegExp(vehicalNumber, "i") };
 
+   if (
+  bookingStatus !== undefined &&
+  bookingStatus !== null &&
+  bookingStatus !== ''
+) {
+  query.bookingStatus = Number(bookingStatus);
+}
+
+  
     const bookings = await Booking.find(query).select(
       "grnNo bookingDate bookingStatus fromCity toCity bookingType pickUpBranchname dropBranchname senderName receiverName totalQuantity grandTotal hamaliCharges vehicalNumber"
     );
