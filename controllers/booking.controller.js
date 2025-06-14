@@ -1402,6 +1402,176 @@ const cancelBooking = async (req, res) => {
 //   }
 // };
 
+// const parcelBookingReports = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res.status(401).json({ success: false, message: "Unauthorized: Company ID missing" });
+//     }
+
+//     let { fromDate, toDate, fromCity, toCity, bookingStatus, bookingType } = req.body;
+
+//     if (!fromDate || !toDate) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Both fromDate and toDate are required.",
+//       });
+//     }
+
+//     const userRole = req.user.role;
+//     const userBranchId = req.user.branchId;
+//     const fromDateTime = new Date(`${fromDate}T00:00:00.000Z`);
+//     const toDateTime = new Date(`${toDate}T23:59:59.999Z`);
+
+//     const bookingTypes = bookingType
+//       ? Array.isArray(bookingType) ? bookingType : [bookingType]
+//       : ["paid", "credit", "toPay", "FOC", "CLR"];
+
+//     let result = {};
+
+//     const commonFilter = { companyId };
+
+//     if (userRole === "employee") {
+//       commonFilter.pickUpBranch = userBranchId;
+//     } else if (req.body.branch) {
+//       commonFilter.pickUpBranch = req.body.branch;
+//     }
+
+//     if (fromCity) commonFilter.fromCity = fromCity;
+//     if (toCity) commonFilter.toCity = toCity;
+
+//     const handleBookingQuery = async (extraFilter = {}) => {
+//       const bookings = await Booking.find({
+//         ...commonFilter,
+//         bookingDate: { $gte: fromDateTime, $lte: toDateTime },
+//         ...extraFilter,
+//         bookingType: { $in: bookingTypes },
+//       })
+//         .sort({ bookingDate: -1 })
+//         .select(
+//           "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo bookingType"
+//         )
+//         .populate({
+//           path: "bookedBy",
+//           select: "name",
+//         });
+
+//       return bookings;
+//     };
+
+//     const handleOtherModelQuery = async (Model, dateField) => {
+//       return await Model.find({
+//         ...commonFilter,
+//         [dateField]: { $gte: fromDateTime, $lte: toDateTime },
+//       }).lean();
+//     };
+
+//     let bookings = [];
+
+//     switch (Number(bookingStatus)) {
+//       case 0: // Booked
+//         bookings = await handleBookingQuery({ bookingStatus: 0 });
+//         break;
+
+//       case 1: // Loading
+//         bookings = await handleOtherModelQuery(ParcelLoading, "loadingDate");
+//         break;
+
+//       case 2: // Unloading
+//         bookings = await handleOtherModelQuery(ParcelUnloading, "unloadingDate");
+//         break;
+
+//       case 3: // Missing
+//         bookings = await handleBookingQuery({ missingDate: { $ne: null } });
+//         break;
+
+//       case 4: { // Delivered (via Delivery model)
+//         const deliveries = await Delivery.find({
+//           companyId,
+//           deliveryDate: { $gte: fromDateTime, $lte: toDateTime }
+//         });
+
+//         const grnNos = deliveries.map(delivery => delivery.grnNo);
+
+//         bookings = await Booking.find({
+//           ...commonFilter,
+//           grnNo: { $in: grnNos },
+//           bookingType: { $in: bookingTypes },
+//         })
+//           .sort({ bookingDate: -1 })
+//           .select(
+//             "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo bookingType"
+//           )
+//           .populate({
+//             path: "bookedBy",
+//             select: "name",
+//           });
+
+//         break;
+//       }
+
+//       case 5: // Cancelled
+//       bookings = await handleBookingQuery({ cancelDate: { $ne: null } });
+
+//         break;
+
+//       default:
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid bookingStatus provided",
+//         });
+//     }
+
+//     if (!bookings || bookings.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "No bookings found for the given criteria.",
+//       });
+//     }
+
+//     // Group by bookingType if it's from Booking model
+//     if ([0, 3, 4, 5].includes(Number(bookingStatus))) {
+//       const grouped = {};
+//       bookingTypes.forEach((type) => {
+//         grouped[type] = {
+//           bookings: [],
+//           allGrandTotal: 0,
+//           allTotalQuantity: 0,
+//         };
+//       });
+
+//       bookings.forEach((b) => {
+//         const type = b.bookingType;
+//         if (!grouped[type]) return;
+//         grouped[type].bookings.push(b);
+//         grouped[type].allGrandTotal += b.grandTotal || 0;
+//         grouped[type].allTotalQuantity += b.totalQuantity || 0;
+//       });
+
+//       result = grouped;
+//     } else {
+//       // Loading/Unloading: return as flat list
+//       result = {
+//         bookings,
+//         total: bookings.length,
+//       };
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       data: result,
+//     });
+
+//   } catch (error) {
+//     console.error("Error in parcelBookingReports:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Error fetching bookings",
+//       error: error.message,
+//     });
+//   }
+// };
+
 
 const parcelBookingReports = async (req, res) => {
   try {
@@ -1429,7 +1599,6 @@ const parcelBookingReports = async (req, res) => {
       : ["paid", "credit", "toPay", "FOC", "CLR"];
 
     let result = {};
-
     const commonFilter = { companyId };
 
     if (userRole === "employee") {
@@ -1453,16 +1622,24 @@ const parcelBookingReports = async (req, res) => {
           "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo bookingType"
         )
         .populate({
-          path: "bookedBy",  
+          path: "bookedBy",
           select: "name",
         });
     };
 
-    const handleOtherModelQuery = async (Model, dateField) => {
-      return await Model.find({
+    const getBookingFromModel = async (Model, dateField) => {
+      const modelDocs = await Model.find({
         ...commonFilter,
         [dateField]: { $gte: fromDateTime, $lte: toDateTime },
       }).lean();
+
+      // Ensure grnNos are cast to Number
+      const grnNos = modelDocs
+        .map(doc => Number(doc.grnNo))
+        .filter(n => !isNaN(n));
+
+      if (!grnNos.length) return [];
+      return await handleBookingQuery({ grnNo: { $in: grnNos } });
     };
 
     let bookings = [];
@@ -1473,11 +1650,11 @@ const parcelBookingReports = async (req, res) => {
         break;
 
       case 1: // Loading
-        bookings = await handleOtherModelQuery(ParcelLoading, "loadingDate");
+        bookings = await getBookingFromModel(ParcelLoading, "loadingDate");
         break;
 
       case 2: // Unloading
-        bookings = await handleOtherModelQuery(ParcelUnloading, "unloadingDate");
+        bookings = await getBookingFromModel(ParcelUnloading, "unloadingDate");
         break;
 
       case 3: // Missing
@@ -1487,29 +1664,20 @@ const parcelBookingReports = async (req, res) => {
       case 4: { // Delivered
         const deliveries = await Delivery.find({
           companyId,
-          deliveryDate: { $gte: fromDateTime, $lte: toDateTime }
-        });
+          deliveryDate: { $gte: fromDateTime, $lte: toDateTime },
+        }).lean();
 
-        const grnNos = deliveries.map(delivery => delivery.grnNo);
+        const grnNos = deliveries
+          .map(d => Number(d.grnNo))
+          .filter(n => !isNaN(n));
 
-        bookings = await Booking.find({
-          ...commonFilter,
-          grnNo: { $in: grnNos },
-          bookingType: { $in: bookingTypes },
-        })
-          .sort({ bookingDate: -1 })
-          .select(
-            "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo bookingType"
-          )
-          .populate({
-            path: "bookedBy",
-            select: "name",
-          });
-
+        bookings = grnNos.length
+          ? await handleBookingQuery({ grnNo: { $in: grnNos } })
+          : [];
         break;
       }
 
-      case 5: // Cancelled (filter by cancelDate)
+      case 5: // Cancelled
         bookings = await handleBookingQuery({ cancelDate: { $ne: null } }, "cancelDate");
         break;
 
@@ -1527,33 +1695,25 @@ const parcelBookingReports = async (req, res) => {
       });
     }
 
-    // Group by bookingType for Booking-based statuses
-    if ([0, 3, 4, 5].includes(Number(bookingStatus))) {
-      const grouped = {};
-      bookingTypes.forEach((type) => {
-        grouped[type] = {
-          bookings: [],
-          allGrandTotal: 0,
-          allTotalQuantity: 0,
-        };
-      });
-
-      bookings.forEach((b) => {
-        const type = b.bookingType;
-        if (!grouped[type]) return;
-        grouped[type].bookings.push(b);
-        grouped[type].allGrandTotal += b.grandTotal || 0;
-        grouped[type].allTotalQuantity += b.totalQuantity || 0;
-      });
-
-      result = grouped;
-    } else {
-      // Loading/Unloading: return flat list
-      result = {
-        bookings,
-        total: bookings.length,
+    // Group by bookingType
+    const grouped = {};
+    bookingTypes.forEach((type) => {
+      grouped[type] = {
+        bookings: [],
+        allGrandTotal: 0,
+        allTotalQuantity: 0,
       };
-    }
+    });
+
+    bookings.forEach((b) => {
+      const type = b.bookingType;
+      if (!grouped[type]) return;
+      grouped[type].bookings.push(b);
+      grouped[type].allGrandTotal += b.grandTotal || 0;
+      grouped[type].allTotalQuantity += b.totalQuantity || 0;
+    });
+
+    result = grouped;
 
     return res.status(200).json({
       success: true,
@@ -1569,7 +1729,6 @@ const parcelBookingReports = async (req, res) => {
     });
   }
 };
-
 
 
 
