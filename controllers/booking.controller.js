@@ -1343,7 +1343,7 @@ const parcelBookingReports = async (req, res) => {
     if (fromCity) query.fromCity = fromCity;
     if (toCity) query.toCity = toCity;
 
-    if (bookingStatus !== undefined && bookingStatus !== null) {
+    if (bookingStatus !== undefined && bookingStatus !== null && bookingStatus !== '') {
       query.bookingStatus = Number(bookingStatus);
     }
 
