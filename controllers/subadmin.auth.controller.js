@@ -127,6 +127,11 @@ const signup = async (req, res) => {
     }
 
     // Check if email or phone already exists
+
+     const existingUser = await Subadmin.findOne({ username });
+    if (existingUser) return res.status(400).json({ message: "Username already registered" });
+
+
     const existingEmail = await Subadmin.findOne({ email });
     if (existingEmail) return res.status(400).json({ message: "Email already registered" });
 
