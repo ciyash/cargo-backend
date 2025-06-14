@@ -521,10 +521,18 @@ const parcelBranchToBranchUnloading = async (req, res) => {
       });
     }
 
-    if (!fromDate || !toDate || !branch || !lrNumber) {
+     if (!fromDate || !toDate) {
       return res.status(400).json({
         success: false,
-        message: "All required fields must be provided",
+        message: "fromDate and toDate are required fields must be provided",
+      });
+    }
+    
+
+    if (!branch || !lrNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "branch and lrNumber are required fields must be provided",
       });
     }
 
