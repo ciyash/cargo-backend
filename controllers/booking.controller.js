@@ -1998,6 +1998,112 @@ const parcelBookingSummaryReport = async (req, res) => {
   }
 };
 
+// const parcelBookingMobileNumber = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res
+//         .status(401)
+//         .json({ success: false, message: "Unauthorized: Company ID missing" });
+//     }
+
+//     const {
+//       fromDate,
+//       toDate,
+//       mobile,
+//       bookingType,
+//       bookingStatus,
+//       reportType,
+//     } = req.body;
+
+//     if (!req.user) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: User data missing",
+//       });
+//     }
+
+//     const query = [{ companyId }];
+
+//     // Restrict employee to their branch
+//     if (req.user.role === "employee") {
+//       query.push({ pickUpBranch: req.user.branchId });
+//     }
+
+//     // Date range
+//     if (fromDate && toDate) {
+//       query.push({
+//         bookingDate: {
+//           $gte: new Date(`${fromDate}T00:00:00.000Z`),
+//           $lte: new Date(`${toDate}T23:59:59.999Z`),
+//         },
+//       });
+//     }
+
+//     // Normalize and filter by mobile based on reportType
+//     const normalizedType = reportType?.trim().toLowerCase();
+//     if (mobile && normalizedType) {
+//       if (normalizedType === "sender") {
+//         query.push({ senderMobile: mobile });
+//       } else if (normalizedType === "receiver") {
+//         query.push({ receiverMobile: mobile });
+//       } else if (normalizedType === "all") {
+//         query.push({
+//           $or: [{ senderMobile: mobile }, { receiverMobile: mobile }],
+//         });
+//       }
+//     }
+
+//     // Optional filters
+//     if (bookingType) query.push({ bookingType });
+//     if (bookingStatus !== undefined) query.push({ bookingStatus });
+
+//     const finalQuery = query.length ? { $and: query } : {};
+
+//     const bookings = await Booking.find(finalQuery)
+//       .sort({ bookingDate: 1 })
+//       .select(
+//         "grnNo lrNumber bookingDate pickUpBranchname fromCity toCity senderName senderMobile receiverName receiverMobile deliveryDate bookingType totalQuantity grandTotal"
+//       );
+
+//     if (!bookings.length) {
+//       return res.status(200).json({
+//         success: true,
+//         message: "No customer bookings found.",
+//         data: [],
+//         count: 0,
+//         allGrandTotal: 0,
+//         allTotalQuantity: 0,
+//       });
+//     }
+
+//     const allGrandTotal = bookings.reduce(
+//       (sum, b) => sum + (b.grandTotal || 0),
+//       0
+//     );
+//     const allTotalQuantity = bookings.reduce(
+//       (sum, b) => sum + (b.totalQuantity || 0),
+//       0
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Bookings filtered by mobile fetched successfully.",
+//       data: bookings,
+//       count: bookings.length,
+//       allGrandTotal,
+//       allTotalQuantity,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching parcel booking by mobile:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
 const parcelBookingMobileNumber = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -2014,6 +2120,8 @@ const parcelBookingMobileNumber = async (req, res) => {
       bookingType,
       bookingStatus,
       reportType,
+      fromCity,
+      pickUpBranch,
     } = req.body;
 
     if (!req.user) {
@@ -2025,11 +2133,6 @@ const parcelBookingMobileNumber = async (req, res) => {
 
     const query = [{ companyId }];
 
-    // Restrict employee to their branch
-    if (req.user.role === "employee") {
-      query.push({ pickUpBranch: req.user.branchId });
-    }
-
     // Date range
     if (fromDate && toDate) {
       query.push({
@@ -2040,7 +2143,28 @@ const parcelBookingMobileNumber = async (req, res) => {
       });
     }
 
-    // Normalize and filter by mobile based on reportType
+    // Optional filters
+    if (fromCity) {
+      query.push({ fromCity: { $regex: new RegExp(fromCity, "i") } });
+    }
+
+    if (pickUpBranch) {
+      query.push({ pickUpBranch: { $regex: new RegExp(pickUpBranch, "i") } });
+    }
+
+    if (bookingType) {
+      query.push({ bookingType });
+    }
+
+    if (
+      bookingStatus !== undefined &&
+      bookingStatus !== null &&
+      bookingStatus !== ""
+    ) {
+      query.push({ bookingStatus: Number(bookingStatus) });
+    }
+
+    // Mobile filtering based on reportType
     const normalizedType = reportType?.trim().toLowerCase();
     if (mobile && normalizedType) {
       if (normalizedType === "sender") {
@@ -2053,10 +2177,6 @@ const parcelBookingMobileNumber = async (req, res) => {
         });
       }
     }
-
-    // Optional filters
-    if (bookingType) query.push({ bookingType });
-    if (bookingStatus !== undefined) query.push({ bookingStatus });
 
     const finalQuery = query.length ? { $and: query } : {};
 
@@ -2103,6 +2223,7 @@ const parcelBookingMobileNumber = async (req, res) => {
     });
   }
 };
+
 
 
 const regularCustomerBooking = async (req, res) => {
@@ -2182,7 +2303,7 @@ const regularCustomerBooking = async (req, res) => {
       data: bookings,
       count: bookings.length,
       allGrandTotal,
-      allTotalQuantity,
+      allTotalQuantity
     });
   } catch (error) {
     console.error("Error in regularCustomerBooking:", error);
