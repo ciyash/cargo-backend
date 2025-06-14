@@ -1269,24 +1269,119 @@ const cancelBooking = async (req, res) => {
 };
 
 
+// const parcelBookingReports = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: Company ID missing",
+//       });
+//     }
+
+//     let { fromDate, toDate, fromCity, toCity, bookingStatus, bookingType } = req.body;
+
+//     if (!req.user) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: User data missing",
+//       });
+//     }
+
+//     if (!fromDate || !toDate) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Both fromDate and toDate are required.",
+//       });
+//     }
+
+//     const userRole = req.user.role;
+//     const userBranchId = req.user.branchId;
+
+//     const fromDateTime = new Date(`${fromDate}T00:00:00.000Z`);
+//     const toDateTime = new Date(`${toDate}T23:59:59.999Z`);
+
+//     let query = {
+//       bookingDate: { $gte: fromDateTime, $lte: toDateTime },
+//       companyId,
+//     };
+
+//     if (userRole === "employee") {
+//       query.pickUpBranch = userBranchId;
+//     } else if (req.body.branch) {
+//       query.pickUpBranch = req.body.branch;
+//     }
+
+//     if (fromCity) query.fromCity = fromCity;
+//     if (toCity) query.toCity = toCity;
+
+//     if (bookingStatus !== undefined && bookingStatus !== null) {
+//       query.bookingStatus = Number(bookingStatus);
+//     }
+
+//     const bookingTypes = bookingType
+//       ? Array.isArray(bookingType) ? bookingType : [bookingType]
+//       : ["paid", "credit", "toPay", "FOC", "CLR"];
+
+//     const result = {};
+//     let totalBookingsCount = 0; // <-- for checking if any data was found
+
+//     await Promise.all(
+//       bookingTypes.map(async (type) => {
+//         const typeQuery = { ...query, bookingType: type };
+
+//         const bookings = await Booking.find(typeQuery)
+//           .sort({ bookingDate: -1 })
+//           .select(
+//             "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo"
+//           )
+//           .populate({
+//             path: "bookedBy",
+//             select: "name",
+//           });
+
+//         const allGrandTotal = bookings.reduce((sum, b) => sum + (b.grandTotal || 0), 0);
+//         const allTotalQuantity = bookings.reduce((sum, b) => sum + (b.totalQuantity || 0), 0);
+
+//         result[type] = {
+//           bookings,
+//           allGrandTotal,
+//           allTotalQuantity,
+//         };
+
+//         totalBookingsCount += bookings.length;
+//       })
+//     );
+
+//     if (totalBookingsCount === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "No bookings found for the given criteria.",
+//       });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       data: result,
+//     });
+//   } catch (error) {
+//     console.error("Error in parcelBookingReports:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Error fetching bookings",
+//       error: error.message,
+//     });
+//   }
+// };
+
 const parcelBookingReports = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
     if (!companyId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Company ID missing",
-      });
+      return res.status(401).json({ success: false, message: "Unauthorized: Company ID missing" });
     }
 
     let { fromDate, toDate, fromCity, toCity, bookingStatus, bookingType } = req.body;
-
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: User data missing",
-      });
-    }
 
     if (!fromDate || !toDate) {
       return res.status(400).json({
@@ -1297,67 +1392,115 @@ const parcelBookingReports = async (req, res) => {
 
     const userRole = req.user.role;
     const userBranchId = req.user.branchId;
-
     const fromDateTime = new Date(`${fromDate}T00:00:00.000Z`);
     const toDateTime = new Date(`${toDate}T23:59:59.999Z`);
-
-    let query = {
-      bookingDate: { $gte: fromDateTime, $lte: toDateTime },
-      companyId,
-    };
-
-    if (userRole === "employee") {
-      query.pickUpBranch = userBranchId;
-    } else if (req.body.branch) {
-      query.pickUpBranch = req.body.branch;
-    }
-
-    if (fromCity) query.fromCity = fromCity;
-    if (toCity) query.toCity = toCity;
-
-    if (bookingStatus !== undefined && bookingStatus !== null) {
-      query.bookingStatus = Number(bookingStatus);
-    }
 
     const bookingTypes = bookingType
       ? Array.isArray(bookingType) ? bookingType : [bookingType]
       : ["paid", "credit", "toPay", "FOC", "CLR"];
 
-    const result = {};
-    let totalBookingsCount = 0; // <-- for checking if any data was found
+    let result = {};
 
-    await Promise.all(
-      bookingTypes.map(async (type) => {
-        const typeQuery = { ...query, bookingType: type };
+    const commonFilter = {
+      companyId,
+    };
 
-        const bookings = await Booking.find(typeQuery)
-          .sort({ bookingDate: -1 })
-          .select(
-            "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo"
-          )
-          .populate({
-            path: "bookedBy",
-            select: "name",
-          });
+    if (userRole === "employee") {
+      commonFilter.pickUpBranch = userBranchId;
+    } else if (req.body.branch) {
+      commonFilter.pickUpBranch = req.body.branch;
+    }
 
-        const allGrandTotal = bookings.reduce((sum, b) => sum + (b.grandTotal || 0), 0);
-        const allTotalQuantity = bookings.reduce((sum, b) => sum + (b.totalQuantity || 0), 0);
+    if (fromCity) commonFilter.fromCity = fromCity;
+    if (toCity) commonFilter.toCity = toCity;
 
-        result[type] = {
-          bookings,
-          allGrandTotal,
-          allTotalQuantity,
-        };
-
-        totalBookingsCount += bookings.length;
+    const handleBookingQuery = async (extraFilter = {}) => {
+      const bookings = await Booking.find({
+        ...commonFilter,
+        bookingDate: { $gte: fromDateTime, $lte: toDateTime },
+        ...extraFilter,
+        bookingType: { $in: bookingTypes },
       })
-    );
+        .sort({ bookingDate: -1 })
+        .select(
+          "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo"
+        )
+        .populate({
+          path: "bookedBy",
+          select: "name",
+        });
 
-    if (totalBookingsCount === 0) {
+      return bookings;
+    };
+
+    const handleOtherModelQuery = async (Model, dateField) => {
+      return await Model.find({
+        ...commonFilter,
+        [dateField]: { $gte: fromDateTime, $lte: toDateTime },
+      }).lean();
+    };
+
+    let bookings = [];
+
+    switch (Number(bookingStatus)) {
+      case 0: // Booked
+        bookings = await handleBookingQuery({ bookingStatus: 0 });
+        break;
+      case 1: // Loading
+        bookings = await handleOtherModelQuery(ParcelLoading, "loadingDate");
+        break;
+      case 2: // Unloading
+        bookings = await handleOtherModelQuery(Unloading, "unloadingDate");
+        break;
+      case 3: // Missing
+        bookings = await handleBookingQuery({ missingDate: { $ne: null } });
+        break;
+      case 4: // Delivered
+        bookings = await handleBookingQuery({ deliveryDate: { $ne: null } });
+        break;
+      case 5: // Cancelled
+        bookings = await handleBookingQuery({ cancelDate: { $ne: null } });
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: "Invalid bookingStatus provided",
+        });
+    }
+
+    if (!bookings || bookings.length === 0) {
       return res.status(404).json({
         success: false,
         message: "No bookings found for the given criteria.",
       });
+    }
+
+    // Group by bookingType if it's from Booking model
+    if (bookingStatus === 0 || bookingStatus === 3 || bookingStatus === 4 || bookingStatus === 5) {
+      const grouped = {};
+      bookingTypes.forEach((type) => {
+        grouped[type] = {
+          bookings: [],
+          allGrandTotal: 0,
+          allTotalQuantity: 0,
+        };
+      });
+
+      bookings.forEach((b) => {
+        const type = b.bookingType;
+        if (!grouped[type]) return;
+        grouped[type].bookings.push(b);
+        grouped[type].allGrandTotal += b.grandTotal || 0;
+        grouped[type].allTotalQuantity += b.totalQuantity || 0;
+      });
+
+      result = grouped;
+    } else {
+      // Loading/Unloading: return as flat list
+      result = {
+        bookings,
+        total: bookings.length,
+      };
     }
 
     return res.status(200).json({
@@ -2738,6 +2881,55 @@ const senderReceiverGSTReport = async (req, res) => {
     });
   } catch (error) {
     console.error("Error in senderReceiverGSTReport:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+const markParcelAsMissing = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    const { grnNo } = req.params;
+    const { missingReason, missingDate, missingByUser } = req.body;
+
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
+    }
+
+    const booking = await Booking.findOne({ grnNo, companyId });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    // Already cancelled or delivered check
+    if (booking.bookingStatus === 4) {
+      return res.status(400).json({ success: false, message: "Parcel already delivered" });
+    }
+    if (booking.bookingStatus === 5) {
+      return res.status(400).json({ success: false, message: "Parcel already cancelled" });
+    }
+
+    // Update booking status to missing
+    booking.bookingStatus = 3;
+    booking.missingReason = missingReason || "Unknown";
+    booking.missingDate = missingDate ? new Date(missingDate) : new Date();
+    booking.missingByUser = missingByUser || req.user.name || "System";
+
+    await booking.save({ validateBeforeSave: false });
+
+    return res.status(200).json({
+      success: true,
+      message: "Parcel marked as missing successfully",
+      data: booking,
+    });
+  } catch (error) {
+    console.error("Error in markParcelAsMissing:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -4417,7 +4609,7 @@ export default {
   getBookingsfromCityTotoCity,
   getAllBookingsPages,
   getBookingsByAnyField,
-
+  markParcelAsMissing,
   getUserByMobile,
   getAllUsers,
   getUsersBySearch,

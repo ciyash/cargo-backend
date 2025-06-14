@@ -110,7 +110,13 @@ const bookingSchema = new mongoose.Schema(
     cancelBranch: { type: String, default: null },
     refundCharge: { type: Number, default: 0 },
     refundAmount: { type: Number, default: 0 },
+//  missing  data
+    missingDate: { type: Date, default: null },
+    missingByUser: { type: String, default: null },
+    missingReason: { type: String, default: null },
+
   },
+
 
   { timestamps: true }
 );
