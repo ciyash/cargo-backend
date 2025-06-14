@@ -1453,7 +1453,7 @@ const parcelBookingReports = async (req, res) => {
           "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo bookingType"
         )
         .populate({
-          path: "bookedBy",
+          path: "bookedBy",  
           select: "name",
         });
     };
