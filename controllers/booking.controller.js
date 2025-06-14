@@ -1,4 +1,4 @@
-import { User, Booking } from "../models/booking.model.js";
+import { User, Booking ,Delivery} from "../models/booking.model.js";
 import CFMaster from "../models/cf.master.model.js";
 import Company from "../models/company.model.js";
 import ParcelLoading from "../models/pracel.loading.model.js";
@@ -1132,52 +1132,80 @@ const receivedBooking = async (req, res) => {
     const deliveryEmployee = req.user?.name;
     const deliveryBranchName = req.user?.branchName || null;
 
-    // Validate required fields
     if (!grnNo) {
       return res.status(400).json({ message: "grnNo is required!" });
     }
     if (!deliveryEmployee) {
-      return res
-        .status(400)
-        .json({ message: "Delivery employee name is required!" });
+      return res.status(400).json({ message: "Delivery employee name is required!" });
     }
     if (!receiverName || !receiverMobile) {
-      return res
-        .status(400)
-        .json({ message: "Receiver name and mobile number are required!" });
+      return res.status(400).json({ message: "Receiver name and mobile number are required!" });
     }
 
-    // Find the booking by grnNo and companyId for safety
     const booking = await Booking.findOne({ grnNo, companyId });
     if (!booking) {
       return res.status(404).json({ message: "Booking not found!" });
     }
 
-    // Check booking status conditions
     if (booking.bookingStatus === 4) {
       return res.status(400).json({ message: "Parcel already received!" });
     }
     if (booking.bookingStatus !== 2) {
       return res.status(400).json({
-        message:
-          "Your parcel is not eligible for receiving (unloading not completed).",
+        message: "Your parcel is not eligible for receiving (unloading not completed).",
       });
     }
 
-    // Update booking details
+    const deliveryDate = new Date();
+
+    // ✅ Save in Delivery model
+    const newDelivery = new Delivery({
+      companyId,
+      grnNo,
+      receiverName,
+      receiverMobile,
+      deliveryDate,
+      deliveryEmployee,
+      deliveryBranchName,
+    });
+    await newDelivery.save();
+
+    // ✅ Update Booking model
     booking.bookingStatus = 4;
-    booking.deliveryDate = new Date();
+    booking.deliveryDate = deliveryDate;
     booking.deliveryEmployee = deliveryEmployee;
+    booking.deliveryBranchName = deliveryBranchName;
     booking.receiverName = receiverName;
     booking.receiverMobile = receiverMobile;
-    booking.deliveryBranchName = deliveryBranchName;
 
     await booking.save({ validateModifiedOnly: true });
 
+    // ✅ Response kept same as you requested
     return res.status(200).json({
       success: true,
       message: "Booking received successfully",
       booking,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const getAllDeliveries = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
+    }
+
+    const deliveries = await Delivery.find({ companyId });
+    return res.status(200).json({
+      success: true,
+      count: deliveries.length,
+      data: deliveries,
     });
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
@@ -1374,6 +1402,7 @@ const cancelBooking = async (req, res) => {
 //   }
 // };
 
+
 const parcelBookingReports = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -1401,9 +1430,7 @@ const parcelBookingReports = async (req, res) => {
 
     let result = {};
 
-    const commonFilter = {
-      companyId,
-    };
+    const commonFilter = { companyId };
 
     if (userRole === "employee") {
       commonFilter.pickUpBranch = userBranchId;
@@ -1414,23 +1441,21 @@ const parcelBookingReports = async (req, res) => {
     if (fromCity) commonFilter.fromCity = fromCity;
     if (toCity) commonFilter.toCity = toCity;
 
-    const handleBookingQuery = async (extraFilter = {}) => {
-      const bookings = await Booking.find({
+    const handleBookingQuery = async (extraFilter = {}, dateField = "bookingDate") => {
+      return await Booking.find({
         ...commonFilter,
-        bookingDate: { $gte: fromDateTime, $lte: toDateTime },
+        [dateField]: { $gte: fromDateTime, $lte: toDateTime },
         ...extraFilter,
         bookingType: { $in: bookingTypes },
       })
-        .sort({ bookingDate: -1 })
+        .sort({ [dateField]: -1 })
         .select(
-          "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo"
+          "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo bookingType"
         )
         .populate({
           path: "bookedBy",
           select: "name",
         });
-
-      return bookings;
     };
 
     const handleOtherModelQuery = async (Model, dateField) => {
@@ -1446,21 +1471,48 @@ const parcelBookingReports = async (req, res) => {
       case 0: // Booked
         bookings = await handleBookingQuery({ bookingStatus: 0 });
         break;
+
       case 1: // Loading
         bookings = await handleOtherModelQuery(ParcelLoading, "loadingDate");
         break;
+
       case 2: // Unloading
-        bookings = await handleOtherModelQuery(Unloading, "unloadingDate");
+        bookings = await handleOtherModelQuery(ParcelUnloading, "unloadingDate");
         break;
+
       case 3: // Missing
         bookings = await handleBookingQuery({ missingDate: { $ne: null } });
         break;
-      case 4: // Delivered
-        bookings = await handleBookingQuery({ deliveryDate: { $ne: null } });
+
+      case 4: { // Delivered
+        const deliveries = await Delivery.find({
+          companyId,
+          deliveryDate: { $gte: fromDateTime, $lte: toDateTime }
+        });
+
+        const grnNos = deliveries.map(delivery => delivery.grnNo);
+
+        bookings = await Booking.find({
+          ...commonFilter,
+          grnNo: { $in: grnNos },
+          bookingType: { $in: bookingTypes },
+        })
+          .sort({ bookingDate: -1 })
+          .select(
+            "grnNo bookingStatus bookedBy bookingDate pickUpBranchname dropBranchname senderName receiverName packages.weight packages.actulWeight totalQuantity grandTotal hamaliCharge valueOfGoods eWayBillNo bookingType"
+          )
+          .populate({
+            path: "bookedBy",
+            select: "name",
+          });
+
         break;
-      case 5: // Cancelled
-        bookings = await handleBookingQuery({ cancelDate: { $ne: null } });
+      }
+
+      case 5: // Cancelled (filter by cancelDate)
+        bookings = await handleBookingQuery({ cancelDate: { $ne: null } }, "cancelDate");
         break;
+
       default:
         return res.status(400).json({
           success: false,
@@ -1475,8 +1527,8 @@ const parcelBookingReports = async (req, res) => {
       });
     }
 
-    // Group by bookingType if it's from Booking model
-    if (bookingStatus === 0 || bookingStatus === 3 || bookingStatus === 4 || bookingStatus === 5) {
+    // Group by bookingType for Booking-based statuses
+    if ([0, 3, 4, 5].includes(Number(bookingStatus))) {
       const grouped = {};
       bookingTypes.forEach((type) => {
         grouped[type] = {
@@ -1496,7 +1548,7 @@ const parcelBookingReports = async (req, res) => {
 
       result = grouped;
     } else {
-      // Loading/Unloading: return as flat list
+      // Loading/Unloading: return flat list
       result = {
         bookings,
         total: bookings.length,
@@ -1507,6 +1559,7 @@ const parcelBookingReports = async (req, res) => {
       success: true,
       data: result,
     });
+
   } catch (error) {
     console.error("Error in parcelBookingReports:", error);
     return res.status(500).json({
@@ -1516,6 +1569,8 @@ const parcelBookingReports = async (req, res) => {
     });
   }
 };
+
+
 
 
 const allParcelBookingReport = async (req, res) => {
@@ -4616,7 +4671,9 @@ export default {
   getCreditBookings,
   toDayBookings,
   unReceivedBookings,
+
   receivedBooking,
+  getAllDeliveries,
   cancelBooking,
 
   // Reports

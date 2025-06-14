@@ -135,6 +135,21 @@ const userSchema = new mongoose.Schema({
   gst: { type: String, required: null },
 });
 
+const deliverySchema = new mongoose.Schema({
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Company",
+    required: true,
+  },
+   grnNo: { type: Number, required: true }, // auto generate
+   receiverName: { type: String, required: true },
+  receiverMobile: { type: String, required: true },
+  deliveryDate: { type: Date, required: true },
+  deliveryEmployee: { type: String, default: null },
+  deliveryBranchName: { type: String, default: null },
+});
+
 const User = mongoose.model("User", userSchema);
 const Booking = mongoose.model("Booking", bookingSchema);
-export { User, Booking };
+const Delivery = mongoose.model("Delivery", deliverySchema);
+export { User, Booking, Delivery };
