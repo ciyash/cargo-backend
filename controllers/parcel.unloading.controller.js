@@ -496,23 +496,23 @@ const parcelBranchToBranchUnloading = async (req, res) => {
 
 
 
-
-
- const parcelBranchToBranchUnloadingPost = async (req, res) => {
+const parcelBranchToBranchUnloadingPost = async (req, res) => {
   try {
-    const { fromDate, toDate, branch, lrNumber, grnNo, unloadBranch, remarks } = req.body;
+    const { fromBranch, lrNumber, grnNo, unloadBranch, remarks } = req.body;
 
-    if (!req.user || !req.user.branchCity || !req.user.id || !req.user.companyId) {
+    if (!req.user || !req.user.id || !req.user.companyId) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized: User details are missing",
       });
     }
 
-    const fromCity = req.user.branchCity;
-    const toCity = req.user.branchCity;
-    const unLoadingBy = req.user.id;
-    const companyId = req.user.companyId;
+    if (!fromBranch || !lrNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "fromBranch and lrNumber are required fields",
+      });
+    }
 
     if (!grnNo || !Array.isArray(grnNo) || grnNo.length === 0) {
       return res.status(400).json({
@@ -521,36 +521,13 @@ const parcelBranchToBranchUnloading = async (req, res) => {
       });
     }
 
-     if (!fromDate || !toDate) {
-      return res.status(400).json({
-        success: false,
-        message: "fromDate and toDate are required fields must be provided",
-      });
-    }
-    
+    const unLoadingBy = req.user.id;
+    const companyId = req.user.companyId;
 
-    if (!branch || !lrNumber) {
-      return res.status(400).json({
-        success: false,
-        message: "branch and lrNumber are required fields must be provided",
-      });
-    }
-
-    const fromBookingDate = new Date(fromDate);
-    const toBookingDate = new Date(toDate);
-
-    if (isNaN(fromBookingDate) || isNaN(toBookingDate)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid date format. Use YYYY-MM-DD.",
-      });
-    }
-
-    // Check if bookings exist for the given GRN numbers and company
     const bookings = await Booking.find({
       companyId,
       grnNo: { $in: grnNo },
-    });
+    }).lean();
 
     if (!bookings.length) {
       return res.status(404).json({
@@ -561,12 +538,8 @@ const parcelBranchToBranchUnloading = async (req, res) => {
 
     const parcel = new ParcelUnloading({
       unLoadingVoucher: generateUnloadingVoucher(),
-      fromBookingDate,
-      toBookingDate,
       unLoadingBy,
-      fromCity,
-      toCity,
-      branch,
+      fromBranch,
       lrNumber,
       grnNo,
       unloadBranch,
@@ -587,6 +560,7 @@ const parcelBranchToBranchUnloading = async (req, res) => {
     return res.status(500).json({ success: false, error: error.message });
   }
 };
+
 
   
 
