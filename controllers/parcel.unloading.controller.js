@@ -507,10 +507,10 @@ const parcelBranchToBranchUnloadingPost = async (req, res) => {
       });
     }
 
-    if (!fromBranch || !lrNumber) {
+    if (!fromBranch || !lrNumber || !unloadBranch) {
       return res.status(400).json({
         success: false,
-        message: "fromBranch and lrNumber are required fields",
+        message: "fromBranch, lrNumber, and unloadBranch are required fields",
       });
     }
 
