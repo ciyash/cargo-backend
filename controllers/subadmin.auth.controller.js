@@ -358,11 +358,11 @@ const getSubadminById = async (req, res) => {
           select: 'name email phone subscription',
         },
       })
-      // .populate({
-      //   path: 'companyId', // <-- populate the companyId directly from Subadmin schema
-      //   model: 'Company',
-      //   select: 'name email phone subscription',
-      // });
+      .populate({
+        path: 'companyId', // <-- populate the companyId directly from Subadmin schema
+        model: 'Company',
+        select: 'name email phone subscription',
+      });
 
     if (!subadmin) {
       return res.status(404).json({ message: "Subadmin not found" });
