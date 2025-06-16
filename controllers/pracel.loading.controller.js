@@ -136,7 +136,6 @@ const createParcel = async (req, res) => {
     // Validate required fields
     if (
       !fromCity ||
-      !Array.isArray(toCity) || toCity.length === 0 ||
       !fromBranch ||
       !vehicalNumber ||
       !driverName ||
@@ -147,6 +146,10 @@ const createParcel = async (req, res) => {
       lrNumber.length === 0
     ) {
       return res.status(400).json({ message: "All required fields must be provided" });
+    }
+
+    if(!Array.isArray(toCity) || toCity.length === 0){
+      return res.status(400).json({ message: "toCity must be a non-empty array" });
     }
 
     if (!req.user || !req.user.id) {
