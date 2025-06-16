@@ -480,19 +480,19 @@ const updateSubadmin = async (req, res) => {
     }
 
     // Avoid updating email/phone to ones already in use by another subadmin
-    if (updateData.email) {
-      const existingEmail = await Subadmin.findOne({ email: updateData.email, _id: { $ne: id } });
-      if (existingEmail) {
-        return res.status(400).json({ message: "Email already registered" });
-      }
-    }
+    // if (updateData.email) {
+    //   const existingEmail = await Subadmin.findOne({ email: updateData.email, _id: { $ne: id } });
+    //   if (existingEmail) {
+    //     return res.status(400).json({ message: "Email already registered" });
+    //   }
+    // }
 
-    if (updateData.phone) {
-      const existingPhone = await Subadmin.findOne({ phone: updateData.phone, _id: { $ne: id } });
-      if (existingPhone) {
-        return res.status(400).json({ message: "Phone already registered" });
-      }
-    }
+    // if (updateData.phone) {
+    //   const existingPhone = await Subadmin.findOne({ phone: updateData.phone, _id: { $ne: id } });
+    //   if (existingPhone) {
+    //     return res.status(400).json({ message: "Phone already registered" });
+    //   }
+    // }
 
     const subadmin = await Subadmin.findById(id);
     if (!subadmin) {
