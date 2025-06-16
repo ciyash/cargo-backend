@@ -136,7 +136,7 @@ const createParcel = async (req, res) => {
     // Validate required fields
     if (
       !fromCity ||
-      !toCity ||
+      !Array.isArray(toCity) || toCity.length === 0 ||
       !fromBranch ||
       !vehicalNumber ||
       !driverName ||
