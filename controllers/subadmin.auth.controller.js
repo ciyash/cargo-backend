@@ -168,7 +168,6 @@ const signup = async (req, res) => {
 };
 
 
-
 // const signup = async (req, res) => {
 //   try {
 //     const {
@@ -233,8 +232,6 @@ const signup = async (req, res) => {
 //     res.status(500).json({ message: "Server error", error: err.message });
 //   }
 // };
-
-
 
 
 const login = async (req, res) => {
@@ -361,11 +358,11 @@ const getSubadminById = async (req, res) => {
           select: 'name email phone subscription',
         },
       })
-      .populate({
-        path: 'companyId', // <-- populate the companyId directly from Subadmin schema
-        model: 'Company',
-        select: 'name email phone subscription',
-      });
+      // .populate({
+      //   path: 'companyId', // <-- populate the companyId directly from Subadmin schema
+      //   model: 'Company',
+      //   select: 'name email phone subscription',
+      // });
 
     if (!subadmin) {
       return res.status(404).json({ message: "Subadmin not found" });
@@ -519,7 +516,7 @@ const updateSubadmin = async (req, res) => {
   }
 };
 
-
+ 
 const deletePersons = async (req, res) => {
   try {
     
