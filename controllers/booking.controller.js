@@ -4128,7 +4128,7 @@ const parcelIncomingLuggagesReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryEmployee senderName senderMobile vehicalNumber loadingDate bookingDate bookingType receiverName receiverMobile packages.packageType packages.quantity grandTotal"
+        "grnNo lrNumber fromCity toCity pickUpBranchname dropBranchname  deliveryEmployee senderName senderMobile vehicalNumber loadingDate bookingDate bookingType receiverName receiverMobile packages.packageType packages.quantity grandTotal"
       )
       .lean();
 
