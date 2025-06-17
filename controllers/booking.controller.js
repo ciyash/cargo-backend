@@ -2771,7 +2771,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
-   
+   //
 
 // const parcelBranchConsolidatedReport = async (req, res) => {
 //   try {
