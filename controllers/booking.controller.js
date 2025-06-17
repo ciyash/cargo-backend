@@ -1981,6 +1981,7 @@ const parcelCancelReport = async (req, res) => {
   }
 };
 
+
 const parcelBookingSummaryReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -2000,9 +2001,6 @@ const parcelBookingSummaryReport = async (req, res) => {
       dropBranch,
     } = req.body;
 
-    const userRole = req.user?.role;
-    const userBranchId = req.user?.branchId;
-
     let query = { companyId };
 
     // Date range filter
@@ -2017,13 +2015,9 @@ const parcelBookingSummaryReport = async (req, res) => {
     if (fromCity) query.fromCity = { $regex: new RegExp(`^${fromCity}$`, "i") };
     if (toCity) query.toCity = { $regex: new RegExp(`^${toCity}$`, "i") };
 
-    // Branch filters
-    // if (userRole === "employee") {
-    //   query.pickUpBranch = userBranchId;
-    // } else {
-    //   if (pickUpBranch)
-    //     query.pickUpBranch = { $regex: new RegExp(`^${pickUpBranch}$`, "i") };
-    // }
+    // Optional branch filters
+    if (pickUpBranch)
+      query.pickUpBranch = { $regex: new RegExp(`^${pickUpBranch}$`, "i") };
 
     if (dropBranch)
       query.dropBranch = { $regex: new RegExp(`^${dropBranch}$`, "i") };
@@ -2075,6 +2069,7 @@ const parcelBookingSummaryReport = async (req, res) => {
     });
   }
 };
+
 
 
 
