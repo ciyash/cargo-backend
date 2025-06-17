@@ -153,9 +153,9 @@ const createParcelUnloading = async (req, res) => {
       return res.status(400).json({ message: "GRN numbers are required and should be a non-empty array" });
     }
 
-    if (!lrNumber || !Array.isArray(lrNumber) || lrNumber.length === 0) {
-      return res.status(400).json({ message: "LR numbers are required and should be a non-empty array" });
-    }
+    // if (!lrNumber || !Array.isArray(lrNumber) || lrNumber.length === 0) {
+    //   return res.status(400).json({ message: "LR numbers are required and should be a non-empty array" });
+    // }
 
     // Convert GRN numbers to numbers
     const grnNumbers = grnNo.map(num => Number(num));
