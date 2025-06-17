@@ -2431,8 +2431,8 @@ const regularCustomerBooking = async (req, res) => {
     // City and branch filters
     if (fromCity) query.fromCity = fromCity;
     if (toCity) query.toCity = toCity;
-    if (pickUpBranch) query.pickUpBranchname = pickUpBranch;
-    if (dropBranch) query.dropBranchname = dropBranch;
+    if (pickUpBranch) query.pickUpBranch = pickUpBranch;
+    if (dropBranch) query.dropBranch = dropBranch;
 
     // Name filter
     if (name) {
