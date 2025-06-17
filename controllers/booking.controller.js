@@ -2601,7 +2601,7 @@ const branchWiseCollectionReport = async (req, res) => {
 
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
-    const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
+    const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
 
     const companyId = req.user?.companyId;
     if (!companyId) {
@@ -2620,8 +2620,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       };
     }
     if (fromCity)       matchStage.fromCity         = fromCity;
-    if (pickUpBranch)   matchStage.pickUpBranchname = pickUpBranch;
-    if (bookedBy)       matchStage.bookedBy         = bookedBy;
+    if (pickUpBranch)   matchStage.pickUpBranch     = pickUpBranch;
 
     const bookingData = await Booking.aggregate([
       { $match: matchStage },
