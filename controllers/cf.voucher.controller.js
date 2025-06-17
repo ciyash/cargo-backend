@@ -256,13 +256,77 @@ const voucherDetails = async (req, res) => {
 };
 
 // Print detailed voucher info by sender
+// const voucherDetailsPrint = async (req, res) => {
+//   try {
+//     const { senderName } = req.body;
+//     const companyId = req.user?.companyId;
+//     if (!senderName || !companyId) return res.status(400).json({ message: "Missing required fields" });
+
+//     const bookings = await Booking.find({ senderName, companyId }).select(
+//       "grnNo bookingDate agent senderName senderAddress fromCity toCity packages parcelGstAmount grandTotal"
+//     );
+
+//     let allGrandTotal = 0;
+//     const data = bookings.map(b => {
+//       const totalWeight = b.packages.reduce((sum, pkg) => sum + (pkg.weight || 0), 0);
+//       const totalPackages = b.packages.length;
+//       allGrandTotal += b.grandTotal || 0;
+
+//       return {
+//         grnNo: b.grnNo,
+//         bookingDate: b.bookingDate,
+//         fromCity: b.fromCity,
+//         senderName: b.senderName,
+//         agent: b.agent,
+//         senderAddress: b.senderAddress,
+//         toCity: b.toCity,
+//         packageDetails: b.packages,
+//         totalPackages,
+//         parcelGstAmount: b.parcelGstAmount || 0,
+//         totalWeight,
+//         grandTotal: b.grandTotal || 0
+//       };
+//     });
+
+//     const senderAddress = bookings.length > 0 ? bookings[0].senderAddress : "";
+
+//     res.status(200).json({
+//       success: true,
+//       senderName,
+//       senderAddress,
+//       totalRecords: bookings.length,
+//       data,
+//       allGrandTotal
+//     });
+
+//   } catch (error) {
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
+
 const voucherDetailsPrint = async (req, res) => {
   try {
     const { senderName } = req.body;
     const companyId = req.user?.companyId;
-    if (!senderName || !companyId) return res.status(400).json({ message: "Missing required fields" });
+    const role = req.user?.role;
 
-    const bookings = await Booking.find({ senderName, companyId }).select(
+    if (!senderName || !companyId) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    const query = {
+      senderName,
+      companyId
+    };
+
+    if (role === "employee") {
+      query.pickUpBranch = req.user.branchId;
+    } else if (role === "subadmin") {
+      query.fromCity = req.user.branchCity;
+    }
+    // admin → no additional filters
+
+    const bookings = await Booking.find(query).select(
       "grnNo bookingDate agent senderName senderAddress fromCity toCity packages parcelGstAmount grandTotal"
     );
 
@@ -300,6 +364,7 @@ const voucherDetailsPrint = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("Error in voucherDetailsPrint:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
