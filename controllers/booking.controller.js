@@ -1981,10 +1981,6 @@ const parcelCancelReport = async (req, res) => {
   }
 };
 
-
-
-
-
 const parcelBookingSummaryReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -2007,9 +2003,9 @@ const parcelBookingSummaryReport = async (req, res) => {
     const userRole = req.user?.role;
     const userBranchId = req.user?.branchId;
 
-    let query = { companyId }; // Include company filter
+    let query = { companyId };
 
-    // Date range
+    // Date range filter
     if (fromDate && toDate) {
       query.bookingDate = {
         $gte: new Date(fromDate + "T00:00:00.000Z"),
@@ -2017,23 +2013,23 @@ const parcelBookingSummaryReport = async (req, res) => {
       };
     }
 
-    // City filters (exact match, case-insensitive)
+    // City filters
     if (fromCity) query.fromCity = { $regex: new RegExp(`^${fromCity}$`, "i") };
     if (toCity) query.toCity = { $regex: new RegExp(`^${toCity}$`, "i") };
 
     // Branch filters
-    if (userRole === "employee") {
-      query.pickUpBranch = userBranchId;
-    } else {
-      if (pickUpBranch)
-        query.pickUpBranch = { $regex: new RegExp(`^${pickUpBranch}$`, "i") };
-    }
+    // if (userRole === "employee") {
+    //   query.pickUpBranch = userBranchId;
+    // } else {
+    //   if (pickUpBranch)
+    //     query.pickUpBranch = { $regex: new RegExp(`^${pickUpBranch}$`, "i") };
+    // }
 
     if (dropBranch)
       query.dropBranch = { $regex: new RegExp(`^${dropBranch}$`, "i") };
 
     const bookings = await Booking.find(query).select(
-      "bookingDate grnNo fromCity toCity pickUpBranch pickUpBranchname dropBranch totalPackages totalQuantity grandTotal"
+      "bookingDate grnNo fromCity toCity hamaliCharges totalBookings pickUpBranch pickUpBranchname dropBranch totalPackages totalQuantity grandTotal"
     );
 
     if (bookings.length === 0) {
@@ -2045,15 +2041,17 @@ const parcelBookingSummaryReport = async (req, res) => {
     }
 
     // Summarize
-    let totalBookings = bookings.length;
+    const totalBookings = bookings.length;
     let totalPackages = 0;
     let totalQuantity = 0;
     let totalAmount = 0;
+    let totalHamaliCharges = 0;
 
     bookings.forEach((b) => {
       totalPackages += b.totalPackages || 0;
       totalQuantity += b.totalQuantity || 0;
       totalAmount += b.grandTotal || 0;
+      totalHamaliCharges += b.hamaliCharges || 0;
     });
 
     res.status(200).json({
@@ -2064,6 +2062,7 @@ const parcelBookingSummaryReport = async (req, res) => {
         totalPackages,
         totalQuantity,
         totalAmount,
+        totalHamaliCharges,
       },
       data: bookings,
     });
@@ -2076,6 +2075,101 @@ const parcelBookingSummaryReport = async (req, res) => {
     });
   }
 };
+
+
+
+
+// const parcelBookingSummaryReport = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: Company ID missing",
+//       });
+//     }
+
+//     const {
+//       fromDate,
+//       toDate,
+//       fromCity,
+//       toCity,
+//       pickUpBranch,
+//       dropBranch,
+//     } = req.body;
+
+//     const userRole = req.user?.role;
+//     const userBranchId = req.user?.branchId;
+
+//     let query = { companyId }; // Include company filter
+
+//     // Date range
+//     if (fromDate && toDate) {
+//       query.bookingDate = {
+//         $gte: new Date(fromDate + "T00:00:00.000Z"),
+//         $lte: new Date(toDate + "T23:59:59.999Z"),
+//       };
+//     }
+
+//     // City filters (exact match, case-insensitive)
+//     if (fromCity) query.fromCity = { $regex: new RegExp(`^${fromCity}$`, "i") };
+//     if (toCity) query.toCity = { $regex: new RegExp(`^${toCity}$`, "i") };
+
+//     // Branch filters
+//     // if (userRole === "employee") {
+//     //   query.pickUpBranch = userBranchId;
+//     // } else {
+//     //   if (pickUpBranch)
+//     //     query.pickUpBranch = { $regex: new RegExp(`^${pickUpBranch}$`, "i") };
+//     // }
+
+//     if (dropBranch)
+//       query.dropBranch = { $regex: new RegExp(`^${dropBranch}$`, "i") };
+
+//     const bookings = await Booking.find(query).select(
+//       "bookingDate grnNo fromCity toCity hamaliCharges totalBookings pickUpBranch pickUpBranchname dropBranch totalPackages totalQuantity grandTotal"
+//     );
+
+//     if (bookings.length === 0) {
+//       return res.status(200).json({
+//         success: true,
+//         message: "No customer bookings found.",
+//         data: [],
+//       });
+//     }
+
+//     // Summarize
+//     let totalBookings = bookings.length;
+//     let totalPackages = 0;
+//     let totalQuantity = 0;
+//     let totalAmount = 0;
+
+//     bookings.forEach((b) => {
+//       totalPackages += b.totalPackages || 0;
+//       totalQuantity += b.totalQuantity || 0;
+//       totalAmount += b.grandTotal || 0;
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Parcel booking summary report generated.",
+//       summary: {
+//         totalBookings,
+//         totalPackages,
+//         totalQuantity,
+//         totalAmount,
+//       },
+//       data: bookings,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching parcel booking summary report:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // const parcelBookingMobileNumber = async (req, res) => {
 //   try {
@@ -2182,6 +2276,9 @@ const parcelBookingSummaryReport = async (req, res) => {
 //     });
 //   }
 // };
+
+
+
 
 const parcelBookingMobileNumber = async (req, res) => {
   try {
