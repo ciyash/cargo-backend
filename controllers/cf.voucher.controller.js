@@ -8,13 +8,53 @@ const generateVoucher = async () => {
 };
 
 // Fetch bookings eligible for voucher generation
+// const creditForVoucherGenerate = async (req, res) => {
+//   try {
+//     const { fromDate, toDate, senderName } = req.body;
+//       console.log(req.user,'hjgfdj')
+//     const companyId = req.user?.companyId;
+//     if (!companyId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+//     if (!fromDate || !toDate) return res.status(400).json({ message: "Missing date filters" });
+
+//     const from = new Date(fromDate);
+//     const to = new Date(toDate);
+//     to.setHours(23, 59, 59, 999);
+
+//     const query = {
+//       companyId,
+//       bookingDate: { $gte: from, $lte: to },
+//       agent: { $exists: true, $type: "string", $ne: "" },
+//       bookingStatus: 0
+//     };
+
+//     if (senderName) query.senderName = { $regex: `^${senderName}$`, $options: "i" };
+
+//     const bookings = await Booking.find(query)
+//       .sort({ bookingDate: -1 })
+//       .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingDate agent");
+
+//     if (!bookings.length) return res.status(404).json({ message: "No bookings found" });
+
+//     res.status(200).json(bookings);
+//   } catch (error) {
+//     res.status(500).json({ success: false, message: "Server error", error: error.message });
+//   }
+// };
+
 const creditForVoucherGenerate = async (req, res) => {
   try {
     const { fromDate, toDate, senderName } = req.body;
     const companyId = req.user?.companyId;
-    if (!companyId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    const role = req.user?.role;
 
-    if (!fromDate || !toDate) return res.status(400).json({ message: "Missing date filters" });
+    if (!companyId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ message: "Missing date filters" });
+    }
 
     const from = new Date(fromDate);
     const to = new Date(toDate);
@@ -27,23 +67,38 @@ const creditForVoucherGenerate = async (req, res) => {
       bookingStatus: 0
     };
 
-    if (senderName) query.senderName = { $regex: `^${senderName}$`, $options: "i" };
+    // 🔐 Role-based filtering
+    if (role === "employee") {
+      query.pickUpBranch = req.user.branchId;
+    } else if (role === "subadmin") {
+      query.fromCity = req.user.branchCity;
+    }
+    // Admin = no additional branch/city filters
+
+    if (senderName) {
+      query.senderName = { $regex: `^${senderName}$`, $options: "i" };
+    }
 
     const bookings = await Booking.find(query)
       .sort({ bookingDate: -1 })
       .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingDate agent");
 
-    if (!bookings.length) return res.status(404).json({ message: "No bookings found" });
+    if (!bookings.length) {
+      return res.status(404).json({ message: "No bookings found" });
+    }
 
     res.status(200).json(bookings);
   } catch (error) {
+    console.error("Error in creditForVoucherGenerate:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
+
 // Create new voucher and update booking statuses
 const createCFVoucher = async (req, res) => {
   try {
+  
     const companyId = req.user?.companyId;
     if (!companyId) return res.status(401).json({ message: "Unauthorized" });
 
