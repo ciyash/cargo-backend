@@ -326,12 +326,12 @@ const login = async (req, res) => {
     })
     .populate({
       path: "companyId",
-      select: "name" // populate only required fields
+      select: "name code" // populate only required fields
     });
 
     if (!subadmin) {
       return res.status(404).json({ message: "Employee not found!" });
-    }
+    } 
 
     const isMatch = await bcrypt.compare(password, subadmin.password);
     if (!isMatch) {
@@ -365,6 +365,7 @@ const login = async (req, res) => {
       // ✅ Full company details in token
       companyId: company._id?.toString() || null,
       companyName: company.name || null,
+      companyCode: company.code || null,
       companyShortCode: company.name?.substring(0, 2).toUpperCase() || null
     };
 
@@ -386,6 +387,7 @@ const login = async (req, res) => {
     });
   }
 };
+
 
 const changeSubadminPassword = async (req, res) => {
   try {

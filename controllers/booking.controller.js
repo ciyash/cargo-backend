@@ -7,49 +7,48 @@ import Branch from "../models/branch.model.js";
 import moment from "moment";
 import mongoose from "mongoose";
 
-const generateGrnNumber = async () => {
-  const lastBooking = await Booking.findOne().sort({ createdAt: -1 });
-  return lastBooking ? lastBooking.grnNo + 1 : 1000;
+const generateGrnNumber = async (companyId) => {
+  const query = companyId ? { companyId } : {}; // Company-wise GRN
+  const lastBooking = await Booking.findOne(query)
+    .sort({ grnNo: -1 }) // Sort by grnNo for reliability
+    .select("grnNo");
+
+  const lastGrn = lastBooking?.grnNo;
+  return typeof lastGrn === "number" ? lastGrn + 1 : 1000;
 };
 
-const generateLrNumber = async (fromCity, location) => {
+const generateLrNumber = async (fromCity, location, companyId, companyShortCode) => {
   try {
-    const city = fromCity.substring(0, 1).toUpperCase(); // "H" for Hyderabad
-    const locat = location.substring(0, 2).toUpperCase(); // "SR" for SR Nagar
-    console.log(req.user.companyId)
-    const companyName = req.user.companyShortCode
+    if (!companyId || !companyShortCode) {
+      throw new Error("Missing companyId or companyShortCode in generateLrNumber");
+    }
 
-    const grnNumber = await generateGrnNumber(); // Global increment
+    const city = fromCity.substring(0, 1).toUpperCase();       // "H" for Hyderabad
+    const locat = location.substring(0, 2).toUpperCase();      // "SR" for SR Nagar
+    const companyName = companyShortCode.toUpperCase();        // e.g., "SK"
 
-    // Get current month & year in MMYY format
-    const currentMonthYear = moment().format("MMYY"); // "0225" for Feb 2025
+    const grnNumber = await generateGrnNumber(companyId);      // Get GRN for that company
 
-    // Find last LR number for the current month
     const lastBooking = await Booking.findOne({
-      lrNumber: new RegExp(`^${companyName}${city}${locat}/\\d{4}/\\d{4}$`),
+      companyId,
+      lrNumber: new RegExp(`^${companyName}${city}${locat}/\\d{4}/\\d{4}$`)
     }).sort({ createdAt: -1 });
 
-    let sequenceNumber = 1; // Default start for new month
-
+    let sequenceNumber = 1;
     if (lastBooking) {
-      const lastLrNumber = lastBooking.lrNumber;
-      const lastSequence = parseInt(lastLrNumber.split("/")[1], 10); // Extract 0001
+      const lastSequence = parseInt(lastBooking.lrNumber.split("/")[1], 10);
       sequenceNumber = lastSequence + 1;
     }
 
-    // Format sequence (0001, 0002, 0003...)
     const formattedSequence = String(sequenceNumber).padStart(4, "0");
-
-    // Format GRN number (always increasing globally)
     const formattedGrn = String(grnNumber).padStart(4, "0");
 
-    // Final LR format: "SKHSR/0001/1009"
-    return `${companyName}${city}${locat}/${formattedSequence}/${formattedGrn}`;
+    return `${companyName}${city}${locat}/$ {formattedSequence}/${formattedGrn}`;
   } catch (error) {
+    console.error("LR Generation Error:", error.message);
     throw new Error("Failed to generate LR number");
   }
 };
-
 
 
 const generateEWayBillNo = async () => {
@@ -112,6 +111,7 @@ const checkMembership = async (user) => {
   return new Date(startDate) <= now && now <= new Date(validTill);
 };
 
+
 const createBooking = async (req, res) => {
   try {
     if (!req.user) {
@@ -121,7 +121,7 @@ const createBooking = async (req, res) => {
       });
     }
 
-    // --- Membership check added here ---
+    // --- Membership check ---
     const hasActiveMembership = await checkMembership(req.user);
     if (!hasActiveMembership) {
       return res.status(403).json({
@@ -129,7 +129,6 @@ const createBooking = async (req, res) => {
         message: "Company membership expired or inactive. Booking not allowed.",
       });
     }
-    // --- End membership check ---
 
     const {
       fromCity,
@@ -207,19 +206,19 @@ const createBooking = async (req, res) => {
     const dropBranchname = dropBranchdata.name;
     const pickUpBranchId = pickUpBranchdata._id;
 
+    const companyId = req.user.companyId; // ✅ FIXED: Define companyId
+    const companyShortCode = req.user.companyShortCode; // ✅ FIXED: Define short code
     const location = req.user.location;
     const bookedBy = req.user.id;
     const bookingStatus = 0;
     const adminUniqueId = req.user.subadminUniqueId;
 
-    const [grnNo, lrNumber, eWayBillNo, generatedReceiptNo] = await Promise.all(
-      [
-        generateGrnNumber(),
-        generateLrNumber(fromCity, location),
-        generateEWayBillNo(),
-        generateReceiptNumber(),
-      ]
-    );
+    const [grnNo, lrNumber, eWayBillNo, generatedReceiptNo] = await Promise.all([
+      generateGrnNumber(companyId),
+      generateLrNumber(fromCity, location, companyId, companyShortCode),
+      generateEWayBillNo(),
+      generateReceiptNumber(),
+    ]);
 
     const totalQuantity = packages.reduce(
       (sum, pkg) => sum + Number(pkg.quantity || 0),
@@ -236,7 +235,7 @@ const createBooking = async (req, res) => {
     const booking = new Booking({
       grnNo,
       lrNumber,
-      companyId: req.user.companyId,
+      companyId,
       totalCharge,
       location,
       adminUniqueId,
@@ -282,73 +281,65 @@ const createBooking = async (req, res) => {
 
     const savedBooking = await booking.save();
 
-   
-if (savedBooking) {
-  await Promise.all([
-    (async () => {
-      try {
-        console.log("Checking sender...");
-        const senderExists = await User.findOne({
-          phone: senderMobile,
-          companyId: req.user.companyId, // 🔹 Check with companyId
-        });
+    if (savedBooking) {
+      await Promise.all([
+        (async () => {
+          try {
+            const senderExists = await User.findOne({
+              phone: senderMobile,
+              companyId,
+            });
 
-        if (!senderExists) {
-          console.log("Creating sender...");
-          await User.create({
-            name: senderName,
-            phone: senderMobile,
-            address: senderAddress,
-            gst: senderGst,
-            companyId: req.user.companyId, // 🔹 Include companyId in creation
-          });
-        }
-      } catch (err) {
-        console.error("Sender save error:", err.message);
-      }
-    })(),
-    (async () => {
-      try {
-        console.log("Checking receiver...");
-        const receiverExists = await User.findOne({
-          phone: receiverMobile,
-          companyId: req.user.companyId, // 🔹 Check with companyId
-        });
+            if (!senderExists) {
+              await User.create({
+                name: senderName,
+                phone: senderMobile,
+                address: senderAddress,
+                gst: senderGst,
+                companyId,
+              });
+            }
+          } catch (err) {
+            console.error("Sender save error:", err.message);
+          }
+        })(),
+        (async () => {
+          try {
+            const receiverExists = await User.findOne({
+              phone: receiverMobile,
+              companyId,
+            });
 
-        if (!receiverExists) {
-          console.log("Creating receiver...");
-          await User.create({
-            name: receiverName,
-            phone: receiverMobile,   
-            address: receiverAddress,
-            gst: receiverGst,
-            companyId: req.user.companyId, // 🔹 Include companyId in creation
-          });
-        }
-      } catch (err) {
-        console.error("Receiver save error:", err.message);
-      }
-    })(),
-  ]);
-}
+            if (!receiverExists) {
+              await User.create({
+                name: receiverName,
+                phone: receiverMobile,
+                address: receiverAddress,
+                gst: receiverGst,
+                companyId,
+              });
+            }
+          } catch (err) {
+            console.error("Receiver save error:", err.message);
+          }
+        })(),
+      ]);
+    }
 
-
-    
     return res.status(201).json({
       success: true,
       message: "Booking created successfully",
       data: booking,
     });
   } catch (error) {
-    console.log(error.message);
+    console.log("Booking Error:", error.message);
     return res.status(500).json({ error: error.message });
   }
 };
 
+
 const getAllBookings = async (req, res) => {
   try {
-    console.log(req.user.companyShortCode, 'company');  
-
     const companyId = req.user.companyId;
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized company access" });
