@@ -60,13 +60,13 @@ const getAllExtraCharge = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-};
+};  
 
 // Get charges from city to city for the compa
 const getChargeFromCityToCity = async (req, res) => {
   try {
     const { fromCity, toCity } = req.body;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     if (!fromCity || !toCity) {
       return res
@@ -98,7 +98,7 @@ const getChargeFromCityToCity = async (req, res) => {
 const deleteCharge = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
 
     const deletedCharge = await Charge.findOneAndDelete({ _id: id, companyId });
 
@@ -116,7 +116,7 @@ const deleteCharge = async (req, res) => {
 const updateChargeById = async (req, res) => {
   try {
     const { id } = req.params;
-    const companyId = req.companyId;
+    const companyId = req.user?.companyId;
     const updateData = req.body;
 
     const updatedCharge = await Charge.findOneAndUpdate(

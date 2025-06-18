@@ -16,6 +16,7 @@ const generateLrNumber = async (fromCity, location) => {
   try {
     const city = fromCity.substring(0, 1).toUpperCase(); // "H" for Hyderabad
     const locat = location.substring(0, 2).toUpperCase(); // "SR" for SR Nagar
+    console.log(req.user.companyId)
     const companyName = "SK";
 
     const grnNumber = await generateGrnNumber(); // Global increment
