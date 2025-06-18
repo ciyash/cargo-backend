@@ -48,8 +48,8 @@ const createCharge = async (req, res) => {
 // Get all extra charges for the company
 const getAllExtraCharge = async (req, res) => {
   try {
-    const companyId = req.companyId;
-
+    const companyId = req.user?.companyId;
+    
     const charges = await Charge.find({ companyId });
     if (charges.length === 0) {
       return res
