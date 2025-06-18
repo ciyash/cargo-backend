@@ -43,7 +43,7 @@ const generateLrNumber = async (fromCity, location, companyId, companyShortCode)
     const formattedSequence = String(sequenceNumber).padStart(4, "0");
     const formattedGrn = String(grnNumber).padStart(4, "0");
 
-    return `${companyName}${city}${locat}/$ {formattedSequence}/${formattedGrn}`;
+    return `${companyName}${city}${locat}/${formattedSequence}/${formattedGrn}`;
   } catch (error) {
     console.error("LR Generation Error:", error.message);
     throw new Error("Failed to generate LR number");
