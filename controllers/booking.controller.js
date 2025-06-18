@@ -17,7 +17,7 @@ const generateLrNumber = async (fromCity, location) => {
     const city = fromCity.substring(0, 1).toUpperCase(); // "H" for Hyderabad
     const locat = location.substring(0, 2).toUpperCase(); // "SR" for SR Nagar
     console.log(req.user.companyId)
-    const companyName = "SK";
+    const companyName = req.user.companyShortCode
 
     const grnNumber = await generateGrnNumber(); // Global increment
 
@@ -49,6 +49,8 @@ const generateLrNumber = async (fromCity, location) => {
     throw new Error("Failed to generate LR number");
   }
 };
+
+
 
 const generateEWayBillNo = async () => {
   try {
@@ -345,6 +347,8 @@ if (savedBooking) {
 
 const getAllBookings = async (req, res) => {
   try {
+    console.log(req.user.companyShortCode, 'company');  
+
     const companyId = req.user.companyId;
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized company access" });
