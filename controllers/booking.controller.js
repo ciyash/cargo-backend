@@ -17,38 +17,65 @@ const generateGrnNumber = async (companyId) => {
   return typeof lastGrn === "number" ? lastGrn + 1 : 1000;
 };
 
-const generateLrNumber = async (fromCity, location, companyId, companyShortCode) => {
+
+const generateLrNumber = async (fromCity, location, companyId, companyName) => {
   try {
-    if (!companyId || !companyShortCode) {
-      throw new Error("Missing companyId or companyShortCode in generateLrNumber");
+    if (!companyId || !companyName) {
+      throw new Error("Missing companyId or companyName in generateLrNumber");
     }
 
-    const city = fromCity.substring(0, 1).toUpperCase();       // "H" for Hyderabad
-    const locat = location.substring(0, 2).toUpperCase();      // "SR" for SR Nagar
-    const companyName = companyShortCode.toUpperCase();        // e.g., "SK"
+    const cityCode = fromCity?.substring(0, 2).toUpperCase() || "XX";
+    const locationCode = location?.substring(0, 2).toUpperCase() || "XX";
 
-    const grnNumber = await generateGrnNumber(companyId);      // Get GRN for that company
+    // Extract proper company short code
+    let companyCode = "XX";
 
+    const trimmedName = companyName.trim();
+    const words = trimmedName.split(/\s+/);
+
+    if (words.length >= 2) {
+      companyCode = (words[0][0] + words[1][0]).toUpperCase(); // "Sree Kaleswari" → "SK"
+    } else {
+      // Handle CamelCase like "SreeKaleswari"
+      const capitalLetters = trimmedName.match(/[A-Z]/g);
+      if (capitalLetters?.length >= 2) {
+        companyCode = (capitalLetters[0] + capitalLetters[1]).toUpperCase(); // "SreeKaleswari" → "SK"
+      } else {
+        companyCode = trimmedName.substring(0, 2).toUpperCase(); // fallback
+      }
+    }
+
+    console.log("Company Code:", companyCode); // 🔍 log to verify
+
+    const grnNumber = await generateGrnNumber(companyId);
+
+    const lrPattern = new RegExp(`^${companyCode}${cityCode}${locationCode}/\\d{4}/\\d{4}$`);
+    console.log('location code',locationCode)
     const lastBooking = await Booking.findOne({
       companyId,
-      lrNumber: new RegExp(`^${companyName}${city}${locat}/\\d{4}/\\d{4}$`)
+      lrNumber: lrPattern
     }).sort({ createdAt: -1 });
 
     let sequenceNumber = 1;
     if (lastBooking) {
       const lastSequence = parseInt(lastBooking.lrNumber.split("/")[1], 10);
-      sequenceNumber = lastSequence + 1;
+      if (!isNaN(lastSequence)) {
+        sequenceNumber = lastSequence + 1;
+      }
     }
 
     const formattedSequence = String(sequenceNumber).padStart(4, "0");
     const formattedGrn = String(grnNumber).padStart(4, "0");
 
-    return `${companyName}${city}${locat}/${formattedSequence}/${formattedGrn}`;
+    return `${companyCode}${cityCode}${locationCode}/${formattedSequence}/${formattedGrn}`;
   } catch (error) {
     console.error("LR Generation Error:", error.message);
     throw new Error("Failed to generate LR number");
   }
 };
+
+
+
 
 
 const generateEWayBillNo = async () => {
@@ -208,7 +235,7 @@ const createBooking = async (req, res) => {
 
     const companyId = req.user.companyId; // ✅ FIXED: Define companyId
     const companyShortCode = req.user.companyShortCode; // ✅ FIXED: Define short code
-    const location = req.user.location;
+    const location = req.user.branchName 
     const bookedBy = req.user.id;
     const bookingStatus = 0;
     const adminUniqueId = req.user.subadminUniqueId;
@@ -341,6 +368,7 @@ const createBooking = async (req, res) => {
 const getAllBookings = async (req, res) => {
   try {
     const companyId = req.user.companyId;
+    console.log(req.user.companyShortCode,'khkhkjhk')
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized company access" });
     }

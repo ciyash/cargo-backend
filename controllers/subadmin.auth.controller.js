@@ -328,6 +328,7 @@ const login = async (req, res) => {
       path: "companyId",
       select: "name code" // populate only required fields
     });
+console.log("Company Info:", subadmin.companyId);
 
     if (!subadmin) {
       return res.status(404).json({ message: "Employee not found!" });
