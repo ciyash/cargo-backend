@@ -62,7 +62,7 @@ const getAllExtraCharge = async (req, res) => {
   }
 };
 
-// Get charges from city to city for the company
+// Get charges from city to city for the compa
 const getChargeFromCityToCity = async (req, res) => {
   try {
     const { fromCity, toCity } = req.body;
