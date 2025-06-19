@@ -18,44 +18,70 @@ const generateGrnNumber = async (companyId) => {
 };
 
 
+
+// Helper to extract 2-letter initials (smart fallback)
+const extractInitials = (name) => {
+  if (!name) return "XX";
+
+  const trimmedName = name.trim();
+  const words = trimmedName.split(/\s+/);
+
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+
+  const capitalLetters = trimmedName.match(/[A-Z]/g);
+  if (capitalLetters?.length >= 2) {
+    return (capitalLetters[0] + capitalLetters[1]).toUpperCase();
+  }
+
+  return trimmedName.substring(0, 2).toUpperCase();
+};
+
+// Helper to get current financial year range (Apr 1 – Mar 31)
+const getFinancialYearRange = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0 = Jan, 3 = Apr
+
+  const startYear = month >= 3 ? year : year - 1;
+  const endYear = startYear + 1;
+
+  return {
+    start: new Date(`${startYear}-04-01T00:00:00.000Z`),
+    end: new Date(`${endYear}-03-31T23:59:59.999Z`)
+  };
+};
+
+// Main LR generator
 const generateLrNumber = async (fromCity, location, companyId, companyName) => {
   try {
     if (!companyId || !companyName) {
       throw new Error("Missing companyId or companyName in generateLrNumber");
     }
 
-    const cityCode = fromCity?.substring(0, 2).toUpperCase() || "XX";
-    const locationCode = location?.substring(0, 2).toUpperCase() || "XX";
+    // Extract smart initials
+    const cityCode = extractInitials(fromCity);     // e.g., Hyderabad → HY
+    const locationCode = extractInitials(location); // e.g., Ameerpet → AM
+    const companyCode = extractInitials(companyName); // e.g., Sree Kaleswari → SK
 
-    // Extract proper company short code
-    let companyCode = "XX";
+    // console.log("Company Code:", companyCode);
+    // console.log("City Code:", cityCode);
+    // console.log("Location Code:", locationCode);
 
-    const trimmedName = companyName.trim();
-    const words = trimmedName.split(/\s+/);
+    const lrPrefix = `${companyCode}${cityCode}${locationCode}`;
 
-    if (words.length >= 2) {
-      companyCode = (words[0][0] + words[1][0]).toUpperCase(); // "Sree Kaleswari" → "SK"
-    } else {
-      // Handle CamelCase like "SreeKaleswari"
-      const capitalLetters = trimmedName.match(/[A-Z]/g);
-      if (capitalLetters?.length >= 2) {
-        companyCode = (capitalLetters[0] + capitalLetters[1]).toUpperCase(); // "SreeKaleswari" → "SK"
-      } else {
-        companyCode = trimmedName.substring(0, 2).toUpperCase(); // fallback
-      }
-    }
+    // Get current financial year range
+    const { start, end } = getFinancialYearRange();
 
-    console.log("Company Code:", companyCode); // 🔍 log to verify
-
-    const grnNumber = await generateGrnNumber(companyId);
-
-    const lrPattern = new RegExp(`^${companyCode}${cityCode}${locationCode}/\\d{4}/\\d{4}$`);
-    console.log('location code',locationCode)
+    // Find last LR in this pattern and FY
     const lastBooking = await Booking.findOne({
       companyId,
-      lrNumber: lrPattern
+      lrNumber: { $regex: `^${lrPrefix}/\\d{4}/\\d{4}$` },
+      createdAt: { $gte: start, $lte: end }
     }).sort({ createdAt: -1 });
 
+    // Sequence logic
     let sequenceNumber = 1;
     if (lastBooking) {
       const lastSequence = parseInt(lastBooking.lrNumber.split("/")[1], 10);
@@ -65,16 +91,20 @@ const generateLrNumber = async (fromCity, location, companyId, companyName) => {
     }
 
     const formattedSequence = String(sequenceNumber).padStart(4, "0");
+
+    // GRN number fetch (you must already have this function defined)
+    const grnNumber = await generateGrnNumber(companyId);
     const formattedGrn = String(grnNumber).padStart(4, "0");
 
-    return `${companyCode}${cityCode}${locationCode}/${formattedSequence}/${formattedGrn}`;
+    // Final LR Number
+    const lrNumber = `${lrPrefix}/${formattedSequence}/${formattedGrn}`;
+    return lrNumber;
+
   } catch (error) {
     console.error("LR Generation Error:", error.message);
     throw new Error("Failed to generate LR number");
   }
 };
-
-
 
 
 
@@ -137,6 +167,7 @@ const checkMembership = async (user) => {
   const now = new Date();
   return new Date(startDate) <= now && now <= new Date(validTill);
 };
+
 
 
 const createBooking = async (req, res) => {
@@ -233,16 +264,16 @@ const createBooking = async (req, res) => {
     const dropBranchname = dropBranchdata.name;
     const pickUpBranchId = pickUpBranchdata._id;
 
-    const companyId = req.user.companyId; // ✅ FIXED: Define companyId
-    const companyShortCode = req.user.companyShortCode; // ✅ FIXED: Define short code
-    const location = req.user.branchName 
+    const companyId = req.user.companyId;
+    const companyName = req.user.companyName; // ✅ use name instead of shortCode
+    const location = req.user.branchName;
     const bookedBy = req.user.id;
     const bookingStatus = 0;
     const adminUniqueId = req.user.subadminUniqueId;
 
     const [grnNo, lrNumber, eWayBillNo, generatedReceiptNo] = await Promise.all([
       generateGrnNumber(companyId),
-      generateLrNumber(fromCity, location, companyId, companyShortCode),
+      generateLrNumber(fromCity, location, companyId, companyName), // ✅ FIXED here
       generateEWayBillNo(),
       generateReceiptNumber(),
     ]);
@@ -308,6 +339,10 @@ const createBooking = async (req, res) => {
 
     const savedBooking = await booking.save();
 
+    // 🧪 For testing purpose only:
+
+    // const savedBooking = true;
+
     if (savedBooking) {
       await Promise.all([
         (async () => {
@@ -363,6 +398,7 @@ const createBooking = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
 
 
 const getAllBookings = async (req, res) => {
@@ -620,6 +656,7 @@ const deleteBookings = async (req, res) => {
   }
 };
 
+
 const updateBookings = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -628,21 +665,28 @@ const updateBookings = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Unauthorized: Company ID missing" });
     }
+
     const { id } = req.params;
-    const update = req.body;
+    const update = { ...req.body };
+
+    // ❌ Don't allow updating these fields
+    delete update.grnNo;
+    delete update.lrNumber;
 
     const booking = await Booking.findOneAndUpdate(
-      { _id: id, companyId }, // ensure the booking belongs to the company
+      { _id: id, companyId },
       update,
       {
-        new: true, // return the updated document
-        runValidators: true, // enforce schema validation
+        new: true,
+        runValidators: true,
       }
     );
+
     if (!booking) {
-      return res.status(404).json({ message: "booking not found !" });
+      return res.status(404).json({ message: "booking not found!" });
     }
-    res.status(200).json({ message: "successfully update booking", booking });
+
+    res.status(200).json({ message: "Successfully updated booking", booking });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
