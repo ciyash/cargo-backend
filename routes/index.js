@@ -24,6 +24,8 @@ import allRouter from './all.route.js'
 
 const app=express.Router()
 
+
+
 app.use("/company",companyRouter)
 app.use("/subadmin-auth",subAdminAuthRouter)
 app.use("/branch",branchRouter)

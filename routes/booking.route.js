@@ -1,14 +1,21 @@
 import express from 'express'
+
 import auth from '../config/auth.middleware.js'
+
+import checkCompanyAccess from '../config/company.access.js'
+
+
 import bookingController from '../controllers/booking.controller.js'
 
  
 const router=express.Router()  
 
-   
-//users 
- 
-router.get("/users",auth,bookingController.getAllUsers)  
+//users
+
+
+// router.get("/users",auth,bookingController.getAllUsers)  
+
+router.get("/users", auth, checkCompanyAccess, bookingController.getAllUsers);
 
 router.get("/users/search",auth,bookingController.getUsersBySearch)
 

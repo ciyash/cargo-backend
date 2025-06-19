@@ -36,6 +36,12 @@ const companySchema = new mongoose.Schema({
     required: true,
   },
 
+  companyAccess: {
+  type: Boolean,
+  default: false,
+},
+
+
   phone: {
     type: String,
   },

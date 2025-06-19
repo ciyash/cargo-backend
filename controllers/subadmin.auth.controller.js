@@ -168,138 +168,6 @@ const signup = async (req, res) => {
 };
 
 
-// const signup = async (req, res) => {
-//   try {
-//     const {
-//       name,
-//       username,
-//       address,
-//       phone,
-//       email,
-//       password,
-//       branchId,
-//       location,
-//       documents,
-//       role
-//     } = req.body;
-
-//     const companyId = req.user.companyId;
-
-//     if (!companyId) {
-//       return res.status(400).json({ message: "companyId is required in token" });
-//     }
-
-//     // Check for existing email
-//     const existingEmail = await Subadmin.findOne({ email });
-//     if (existingEmail) {
-//       return res.status(400).json({ message: "Subadmin already exists with this email" });
-//     }
-
-//     // Check for existing phone
-//     const existingPhone = await Subadmin.findOne({ phone });
-//     if (existingPhone) {
-//       return res.status(400).json({ message: "Subadmin already exists with this phone" });
-//     }
-
-//     // Generate unique ID and hash password
-//     const subadminUniqueId = generateSubadminUniqueId();
-//     const hashedPassword = await bcrypt.hash(password, 10);
-
-    
-//     const finalBranchId = role === "admin" ? null : branchId;
-
-
-//     const newSubadmin = new Subadmin({
-//       companyId,
-//       subadminUniqueId,
-//       name,
-//       username,
-//       address,
-//       phone,
-//       email,
-//       password: hashedPassword,
-//       branchId: finalBranchId,
-//       location,
-//       documents,
-//       role,
-//     });
-
-//     await newSubadmin.save();
-
-//     res.status(201).json({ message: "Subadmin signed up successfully", subadmin: newSubadmin });
-
-//   } catch (err) {
-//     res.status(500).json({ message: "Server error", error: err.message });
-//   }
-// };
-
-
-// const login = async (req, res) => {
-//   try {
-//     const { identifier, password } = req.body;
-
-//     if (!identifier || !password) {
-//       return res.status(400).json({ message: "Email, Phone, or Username, and password are required" });
-//     }
-
-//     // Find the subadmin and populate branch details
-//     const subadmin = await Subadmin.findOne({
-//       $or: [{ email: identifier }, { phone: identifier }, { username: identifier }]
-//     }).populate({
-//       path: "branchId",
-//       select: "branchUniqueId location name city"
-//     });
-
-//     if (!subadmin) {
-//       return res.status(404).json({ message: "Employee not found!" });
-//     }
-
-//     const isMatch = await bcrypt.compare(password, subadmin.password);
-//     if (!isMatch) {
-//       return res.status(401).json({ message: "Incorrect password" });
-//     }
-
-//     const ipAddress = req.headers["x-forwarded-for"]?.split(",")[0].trim() ||
-//                       req.socket?.remoteAddress ||
-//                       req.connection?.remoteAddress;
-
-//     await Subadmin.findByIdAndUpdate(subadmin._id, { ipAddress });
-
-//     // Ensure `branchId` and its properties exist
-//     const branchId = subadmin.branchId ? subadmin.branchId.branchUniqueId : null;
-//     const branchLocation = subadmin.branchId ? subadmin.branchId.location : "Not Assigned";
-//     const branchName = subadmin.branchId ? subadmin.branchId.name : "Not Assigned";
-//     const branchCity = subadmin.branchId ? subadmin.branchId.city : "Not Assigned"; // ✅ Fix applied
-
-//     // Create the JWT payload
-//     const tokenPayload = {
-//       subadminUniqueId: subadmin.subadminUniqueId,
-//       id: subadmin._id,
-//       role: subadmin.role,
-//       name:subadmin.name,
-//       location: subadmin.location,
-//       branchId,
-//       branchLocation,
-//       branchName,
-//       branchCity, 
-//       ipAddress,
-//     companyId: subadmin.companyId?.toString() // 
-//     };
-
-//     // console.log(tokenPayload)
-
-//     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
-
-//     res.status(200).json({
-//       message: "Login successful",
-//       token,
-//       role: subadmin.role
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: "Server Error", error: error.message });
-//   }
-// };
- 
 
 
 const login = async (req, res) => {
@@ -328,7 +196,7 @@ const login = async (req, res) => {
       path: "companyId",
       select: "name code" // populate only required fields
     });
-console.log("Company Info:", subadmin.companyId);
+// console.log("Company Info:", subadmin.companyId);
 
     if (!subadmin) {
       return res.status(404).json({ message: "Employee not found!" });

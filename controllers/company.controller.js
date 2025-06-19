@@ -87,6 +87,8 @@ const loginCompany = async (req, res) => {
     // Sign token
     const token = jwt.sign(tokenPayload, process.env.COMPANY_SECRET, {expiresIn: "1d"});
 
+       console.log("🔐 Logged in Company ID:", tokenPayload.companyId);
+
     res.status(200).json({
       message: "Company logged in successfully",
       token
@@ -96,8 +98,6 @@ const loginCompany = async (req, res) => {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
-
-
 
 
 const updateCompany = async (req, res) => {
@@ -145,9 +145,15 @@ const getAllCompanies = async (req, res) => {
   }
 };
 
+
 const setSubscription = async (req, res) => {
   try {
-    const { companyId, plan, bookingLimit } = req.body;
+    const { plan, bookingLimit } = req.body;
+    const companyId = req.user?.companyId; // ✅ Extract from token
+
+    if (!companyId) {
+      return res.status(401).json({ msg: "Unauthorized: companyId missing in token" });
+    }
 
     const durationMap = {
       monthly: 30,
@@ -170,7 +176,7 @@ const setSubscription = async (req, res) => {
           validTill,
           startDate,
         },
-        bookingLimit, // ✅ Dynamic limit from frontend
+        bookingLimit, // ✅ Optional and dynamic
       },
       { new: true }
     );
@@ -178,14 +184,41 @@ const setSubscription = async (req, res) => {
     if (!company) return res.status(404).json({ msg: "Company not found" });
 
     res.json({
-      msg: "Subscription updated",
+      msg: "Subscription updated successfully",
       subscription: company.subscription,
       bookingLimit: company.bookingLimit,
     });
   } catch (err) {
+    console.error("Set Subscription Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 };
+
+const checkCompanyAccess = async (req, res, next) => {
+  try {
+    const companyId = req.user?.companyId;
+
+    if (!companyId) {
+      return res.status(401).json({ message: "Company ID missing in token" });
+    }
+
+    const company = await Company.findById(companyId).select("isBlocked");
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    if (company.isBlocked) {
+      return res.status(403).json({ message: "Access denied. Company is blocked." });
+    }
+
+    next(); // ✅ Allow to proceed
+  } catch (error) {
+    console.error("Access check error:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
 // Get Subsidiaries
 const getSubsidiaries = async (req, res) => {
   try {
@@ -280,6 +313,7 @@ export default {
   deleteCompany,
   setSubscription,
   checkMembershipStatus,
-  updateCompany
+  updateCompany,
+  checkCompanyAccess
 };
      

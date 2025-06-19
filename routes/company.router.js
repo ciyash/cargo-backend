@@ -10,6 +10,8 @@ router.post("/subsidiary/register", companyController.registerSubsidiaryCompany)
 
 router.post("/subsidiary/login", companyController.loginCompany); 
 
+router.post("/company-access", companyAuth, companyController.checkCompanyAccess); // Check if company has access to a project
+
 router.get("/get-companies", companyController.getAllCompanies);    // Get all companies
 
 router.patch("/update", companyAuth, companyController.updateCompany); // Update company details
