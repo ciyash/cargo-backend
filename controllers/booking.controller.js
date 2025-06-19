@@ -17,8 +17,6 @@ const generateGrnNumber = async (companyId) => {
   return typeof lastGrn === "number" ? lastGrn + 1 : 1000;
 };
 
-
-
 // Helper to extract 2-letter initials (smart fallback)
 const extractInitials = (name) => {
   if (!name) return "XX";
@@ -188,6 +186,29 @@ const createBooking = async (req, res) => {
       });
     }
 
+    // --- Booking limit check ---
+    const company = await Company.findById(req.user.companyId);
+    if (!company || !company.subscription?.validTill) {
+      return res.status(403).json({
+        message: "Subscription expired or not active. Booking not allowed.",
+      });
+    }
+
+    const { startDate, validTill } = company.subscription;
+    const limit = company.bookingLimit || 1000;
+
+    const currentBookingCount = await Booking.countDocuments({
+      companyId: req.user.companyId,
+      bookingDate: { $gte: startDate, $lte: validTill }
+    });
+
+    if (currentBookingCount >= limit) {
+      return res.status(403).json({
+        message: `Booking limit reached (${limit}). Please upgrade plan or wait.`,
+      });
+    }
+
+    // --- Input sanitization ---
     const {
       fromCity,
       toCity,
@@ -265,7 +286,7 @@ const createBooking = async (req, res) => {
     const pickUpBranchId = pickUpBranchdata._id;
 
     const companyId = req.user.companyId;
-    const companyName = req.user.companyName; // ✅ use name instead of shortCode
+    const companyName = req.user.companyName;
     const location = req.user.branchName;
     const bookedBy = req.user.id;
     const bookingStatus = 0;
@@ -273,7 +294,7 @@ const createBooking = async (req, res) => {
 
     const [grnNo, lrNumber, eWayBillNo, generatedReceiptNo] = await Promise.all([
       generateGrnNumber(companyId),
-      generateLrNumber(fromCity, location, companyId, companyName), // ✅ FIXED here
+      generateLrNumber(fromCity, location, companyId, companyName),
       generateEWayBillNo(),
       generateReceiptNumber(),
     ]);
@@ -338,10 +359,6 @@ const createBooking = async (req, res) => {
     });
 
     const savedBooking = await booking.save();
-
-    // 🧪 For testing purpose only:
-
-    // const savedBooking = true;
 
     if (savedBooking) {
       await Promise.all([
@@ -780,8 +797,6 @@ const updateAllGrnNumbers = async (req, res) => {
     });
   }
 };
-
-
 
 const getBookingsfromCityTotoCity = async (req, res) => {
   try {
@@ -4957,6 +4972,7 @@ const statusWiseSummary = async (req, res) => {
   }
 };
 
+
 const getTotalByBranchAndDate = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -4970,14 +4986,13 @@ const getTotalByBranchAndDate = async (req, res) => {
       return res.status(400).json({ message: "bookingDate is required" });
     }
 
-    // Assuming bookingDate input format is "YYYY-MM-DD" or ISO string
-    const startDate = new Date(bookingDate);
-    startDate.setUTCHours(0, 0, 0, 0);
-    const endDate = new Date(startDate);
-    endDate.setUTCDate(endDate.getUTCDate() + 1);
+    // Convert to date object & build 00:00 to 23:59 UTC range
+    const date = new Date(bookingDate);
+    const startDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0));
+    const endDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, 0, 0, 0));
 
     const matchStage = {
-      companyId,
+      companyId: new mongoose.Types.ObjectId(companyId),
       bookingDate: {
         $gte: startDate,
         $lt: endDate,
@@ -5009,6 +5024,7 @@ const getTotalByBranchAndDate = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 export default {

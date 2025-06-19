@@ -98,6 +98,8 @@ const loginCompany = async (req, res) => {
 };
 
 
+
+
 const updateCompany = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -143,14 +145,14 @@ const getAllCompanies = async (req, res) => {
   }
 };
 
-// Set Subscription
 const setSubscription = async (req, res) => {
   try {
-    const { companyId, plan } = req.body;
+    const { companyId, plan, bookingLimit } = req.body;
+
     const durationMap = {
       monthly: 30,
       "half-yearly": 182,
-      yearly: 365
+      yearly: 365,
     };
 
     if (!durationMap[plan]) {
@@ -158,22 +160,33 @@ const setSubscription = async (req, res) => {
     }
 
     const validTill = new Date(Date.now() + durationMap[plan] * 24 * 60 * 60 * 1000);
+    const startDate = new Date();
 
     const company = await Company.findByIdAndUpdate(
       companyId,
-      { subscription: { plan, validTill } },
+      {
+        subscription: {
+          plan,
+          validTill,
+          startDate,
+        },
+        bookingLimit, // ✅ Dynamic limit from frontend
+      },
       { new: true }
     );
 
     if (!company) return res.status(404).json({ msg: "Company not found" });
 
-    res.json({ msg: "Subscription updated", subscription: company.subscription });
+    res.json({
+      msg: "Subscription updated",
+      subscription: company.subscription,
+      bookingLimit: company.bookingLimit,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-};  
-
-// Get Subsidiaries 
+};
+// Get Subsidiaries
 const getSubsidiaries = async (req, res) => {
   try {
     const { parentCompanyId } = req.params;

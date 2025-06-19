@@ -20,7 +20,7 @@ router.post("/toggle-project", companyController.toggleProjectAccess);
 
 router.delete("/delete/:id",companyController.deleteCompany);
 
-router.post("/subscription", companyController.setSubscription);
+router.post("/subscription", companyAuth, companyController.setSubscription);
 
 router.get("/check/membership/:companyId", companyController.checkMembershipStatus);
 
