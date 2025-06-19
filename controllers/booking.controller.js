@@ -669,7 +669,8 @@ const updateBookings = async (req, res) => {
     const { id } = req.params;
     const update = { ...req.body };
 
-    // ❌ Don't allow updating these fields
+    // ❌ Prevent updates to immutable/sensitive fields
+    delete update._id;
     delete update.grnNo;
     delete update.lrNumber;
 
@@ -683,7 +684,7 @@ const updateBookings = async (req, res) => {
     );
 
     if (!booking) {
-      return res.status(404).json({ message: "booking not found!" });
+      return res.status(404).json({ message: "Booking not found!" });
     }
 
     res.status(200).json({ message: "Successfully updated booking", booking });
@@ -691,6 +692,7 @@ const updateBookings = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const updateGRNBookings = async (req, res) => {
   try {
