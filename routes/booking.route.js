@@ -25,7 +25,7 @@ router.get("/user/credit",auth,bookingController.getCreditBookings)
 
 // bookings 
  
-router.post("/",auth,bookingController.createBooking)
+router.post("/",auth,checkCompanyAccess,bookingController.createBooking)
 
 router.get("/",auth,bookingController.getAllBookings)
 

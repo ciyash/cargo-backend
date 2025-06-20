@@ -168,6 +168,254 @@ const checkMembership = async (user) => {
 
 
 
+// const createBooking = async (req, res) => {
+//   try {
+//     if (!req.user) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: User data missing",
+//       });
+//     }
+
+//     // --- Membership check ---
+//     const hasActiveMembership = await checkMembership(req.user);
+//     if (!hasActiveMembership) {
+//       return res.status(403).json({
+//         success: false,
+//         message: "Company membership expired or inactive. Booking not allowed.",
+//       });
+//     }
+
+//     // --- Booking limit check ---
+//     const company = await Company.findById(req.user.companyId);
+//     if (!company || !company.subscription?.validTill) {
+//       return res.status(403).json({
+//         message: "Subscription expired or not active. Booking not allowed.",
+//       });
+//     }
+
+//     const { startDate, validTill } = company.subscription;
+//     const limit = company.bookingLimit || 1000;
+
+//     const currentBookingCount = await Booking.countDocuments({
+//       companyId: req.user.companyId,
+//       bookingDate: { $gte: startDate, $lte: validTill }
+//     });
+
+//     if (currentBookingCount >= limit) {
+//       return res.status(403).json({
+//         message: `Booking limit reached (${limit}). Please upgrade plan or wait.`,
+//       });
+//     }
+
+//     // --- Input sanitization ---
+//     const {
+//       fromCity,
+//       toCity,
+//       pickUpBranch,
+//       dropBranch,
+//       totalPrice,
+//       dispatchType,
+//       bookingType,
+//       agent,
+//       packages,
+//       senderName,
+//       senderMobile,
+//       senderAddress,
+//       senderGst,
+//       actualWeight,
+//       receiverName,
+//       grandTotal,
+//       receiverMobile,
+//       receiverAddress,
+//       receiverGst,
+//       parcelGstAmount,
+//       vehicleNumber,
+//       serviceCharges,
+//       hamaliCharges,
+//       doorDeliveryCharges,
+//       doorPickupCharges,
+//       valueOfGoods,
+//       items,
+//     } = Object.fromEntries(
+//       Object.entries(req.body).map(([key, value]) => [
+//         key,
+//         sanitizeInput(value),
+//       ])
+//     );
+
+//     if (
+//       !fromCity ||
+//       !toCity ||
+//       !pickUpBranch ||
+//       !dropBranch ||
+//       !bookingType ||
+//       !grandTotal
+//     ) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Missing required booking fields",
+//       });
+//     }
+
+//     if (!senderName || !senderMobile || !receiverName || !receiverMobile) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Sender and receiver details are required",
+//       });
+//     }
+
+//     if (bookingType === "credit" && (!agent || agent.trim() === "")) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Agent is required when booking type is 'credit'",
+//       });
+//     }
+
+//     const [pickUpBranchdata, dropBranchdata] = await Promise.all([
+//       Branch.findOne({ branchUniqueId: pickUpBranch }).lean(),
+//       Branch.findOne({ branchUniqueId: dropBranch }).lean(),
+//     ]);
+
+//     if (!pickUpBranchdata || !dropBranchdata) {
+//       return res.status(404).json({ message: "Invalid branch provided" });
+//     }
+
+//     const pickUpBranchname = pickUpBranchdata.name;
+//     const dropBranchname = dropBranchdata.name;
+//     const pickUpBranchId = pickUpBranchdata._id;
+
+//     const companyId = req.user.companyId;
+//     const companyName = req.user.companyName;
+//     const location = req.user.branchName;
+//     const bookedBy = req.user.id;
+//     const bookingStatus = 0;
+//     const adminUniqueId = req.user.subadminUniqueId;
+
+//     const [grnNo, lrNumber, eWayBillNo, generatedReceiptNo] = await Promise.all([
+//       generateGrnNumber(companyId),
+//       generateLrNumber(fromCity, location, companyId, companyName),
+//       generateEWayBillNo(),
+//       generateReceiptNumber(),
+//     ]);
+
+//     const totalQuantity = packages.reduce(
+//       (sum, pkg) => sum + Number(pkg.quantity || 0),
+//       0
+//     );
+
+//     const totalCharge = packages.reduce((sum, pkg) => {
+//       const price = Number(pkg.totalPrice) || 0;
+//       return sum + price;
+//     }, 0);
+
+//     const totalPackages = packages.length;
+
+//     const booking = new Booking({
+//       grnNo,
+//       lrNumber,
+//       companyId,
+//       totalCharge,
+//       location,
+//       adminUniqueId,
+//       bookingTime: Date.now(),
+//       fromCity,
+//       toCity,
+//       agent,
+//       pickUpBranch,
+//       dropBranch,
+//       dispatchType,
+//       bookingType,
+//       packages,
+//       totalQuantity,
+//       totalPackages,
+//       senderName,
+//       senderMobile,
+//       senderAddress,
+//       senderGst,
+//       receiverName,
+//       receiverMobile,
+//       receiverAddress,
+//       receiverGst,
+//       parcelGstAmount,
+//       receiptNo: generatedReceiptNo,
+//       totalPrice,
+//       grandTotal,
+//       serviceCharges,
+//       hamaliCharges,
+//       doorDeliveryCharges,
+//       doorPickupCharges,
+//       valueOfGoods,
+//       bookingStatus,
+//       bookedBy,
+//       items,
+//       eWayBillNo,
+//       vehicleNumber,
+//       actualWeight,
+//       bookingDate: new Date(),
+//       bookbranchid: pickUpBranchId,
+//       pickUpBranchname,
+//       dropBranchname,
+//     });
+
+//     const savedBooking = await booking.save();
+
+//     if (savedBooking) {
+//       await Promise.all([
+//         (async () => {
+//           try {
+//             const senderExists = await User.findOne({
+//               phone: senderMobile,
+//               companyId,
+//             });
+
+//             if (!senderExists) {
+//               await User.create({
+//                 name: senderName,
+//                 phone: senderMobile,
+//                 address: senderAddress,
+//                 gst: senderGst,
+//                 companyId,
+//               });
+//             }
+//           } catch (err) {
+//             console.error("Sender save error:", err.message);
+//           }
+//         })(),
+//         (async () => {
+//           try {
+//             const receiverExists = await User.findOne({
+//               phone: receiverMobile,
+//               companyId,
+//             });
+
+//             if (!receiverExists) {
+//               await User.create({
+//                 name: receiverName,
+//                 phone: receiverMobile,
+//                 address: receiverAddress,
+//                 gst: receiverGst,
+//                 companyId,
+//               });
+//             }
+//           } catch (err) {
+//             console.error("Receiver save error:", err.message);
+//           }
+//         })(),
+//       ]);
+//     }
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Booking created successfully",
+//       data: booking,
+//     });
+//   } catch (error) {
+//     console.log("Booking Error:", error.message);
+//     return res.status(500).json({ error: error.message });
+//   }
+// };
+
 const createBooking = async (req, res) => {
   try {
     if (!req.user) {
@@ -197,16 +445,22 @@ const createBooking = async (req, res) => {
     const { startDate, validTill } = company.subscription;
     const limit = company.bookingLimit || 1000;
 
-    const currentBookingCount = await Booking.countDocuments({
-      companyId: req.user.companyId,
-      bookingDate: { $gte: startDate, $lte: validTill }
-    });
+    // Normalize date range
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(validTill);
+    end.setHours(23, 59, 59, 999);
 
-    if (currentBookingCount >= limit) {
-      return res.status(403).json({
-        message: `Booking limit reached (${limit}). Please upgrade plan or wait.`,
-      });
-    }
+   const currentBookingCount = await Booking.countDocuments({
+  companyId: req.user.companyId,
+  bookingDate: { $gte: start, $lte: end }
+});
+
+if (currentBookingCount >= limit) {
+  return res.status(403).json({
+    message: `Booking limit reached (${limit}). Please upgrade plan or wait.`,
+  });
+}
 
     // --- Input sanitization ---
     const {
@@ -415,8 +669,7 @@ const createBooking = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
-
-
+ 
 
 const getAllBookings = async (req, res) => {
   try {

@@ -73,7 +73,10 @@ const companySchema = new mongoose.Schema({
     type: String,
     default: null,
   },
-
+  bookingLimit: {
+    type: Number,
+    default: 1000, // or any sensible default
+  },
   subscription: {
     type: subscriptionSchema,
     default: () => ({
