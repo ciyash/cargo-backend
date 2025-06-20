@@ -146,10 +146,59 @@ const getAllCompanies = async (req, res) => {
 };
 
 
+// const setSubscription = async (req, res) => {
+//   try {
+//     const { plan, bookingLimit } = req.body;
+//     const companyId = req.user?.companyId; // ✅ Extract from token
+
+//     if (!companyId) {
+//       return res.status(401).json({ msg: "Unauthorized: companyId missing in token" });
+//     }
+
+//     const durationMap = {
+//       monthly: 30,
+//       "half-yearly": 182,
+//       yearly: 365,
+//     };
+
+//     if (!durationMap[plan]) {
+//       return res.status(400).json({ msg: "Invalid plan" });
+//     }
+
+//     const validTill = new Date(Date.now() + durationMap[plan] * 24 * 60 * 60 * 1000);
+//     const startDate = new Date();
+
+//     const company = await Company.findByIdAndUpdate(
+//       companyId,
+//       {
+//         subscription: {
+//           plan,
+//           validTill,
+//           startDate,
+//         },
+//         bookingLimit, // ✅ Optional and dynamic
+//       },
+//       { new: true }
+//     );
+
+//     if (!company) return res.status(404).json({ msg: "Company not found" });
+
+//     res.json({
+//       msg: "Subscription updated successfully",
+//       subscription: company.subscription,
+//       bookingLimit: company.bookingLimit,
+//     });
+//   } catch (err) {
+//     console.error("Set Subscription Error:", err.message);
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
+
 const setSubscription = async (req, res) => {
   try {
     const { plan, bookingLimit } = req.body;
-    const companyId = req.user?.companyId; // ✅ Extract from token
+    const companyId = req.user?.companyId;
 
     if (!companyId) {
       return res.status(401).json({ msg: "Unauthorized: companyId missing in token" });
@@ -168,31 +217,35 @@ const setSubscription = async (req, res) => {
     const validTill = new Date(Date.now() + durationMap[plan] * 24 * 60 * 60 * 1000);
     const startDate = new Date();
 
+    // 👉 Determine access based on plan
+    const companyAccess = plan !== "monthly"; // only true for half-yearly and yearly
+
     const company = await Company.findByIdAndUpdate(
       companyId,
       {
-        subscription: {
-          plan,
-          validTill,
-          startDate,
-        },
-        bookingLimit, // ✅ Optional and dynamic
+        subscription: { plan, validTill, startDate },
+        bookingLimit,
+        companyAccess, // ✅ conditional value
       },
       { new: true }
     );
 
-    if (!company) return res.status(404).json({ msg: "Company not found" });
+    if (!company) {
+      return res.status(404).json({ msg: "Company not found" });
+    }
 
     res.json({
       msg: "Subscription updated successfully",
       subscription: company.subscription,
       bookingLimit: company.bookingLimit,
+      companyAccess: company.companyAccess,
     });
   } catch (err) {
     console.error("Set Subscription Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 };
+
 
 const checkCompanyAccess = async (req, res, next) => {
   try {

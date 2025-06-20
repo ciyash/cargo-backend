@@ -15,7 +15,7 @@ const router=express.Router()
 
 // router.get("/users",auth,bookingController.getAllUsers)  
 
-router.get("/users", auth, checkCompanyAccess, bookingController.getAllUsers);
+router.get("/users", auth,checkCompanyAccess, bookingController.getAllUsers);
 
 router.get("/users/search",auth,bookingController.getUsersBySearch)
 
@@ -25,7 +25,7 @@ router.get("/user/credit",auth,bookingController.getCreditBookings)
 
 // bookings 
  
-router.post("/",auth,checkCompanyAccess,bookingController.createBooking)
+router.post("/",auth,bookingController.createBooking)
 
 router.get("/",auth,bookingController.getAllBookings)
 

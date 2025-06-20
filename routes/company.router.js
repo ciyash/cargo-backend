@@ -18,7 +18,7 @@ router.patch("/update", companyAuth, companyController.updateCompany); // Update
 
 router.get("/subsidiaries/:parentCompanyId", companyController.getSubsidiaries);
 
-router.post("/toggle-project", companyController.toggleProjectAccess);
+// router.post("/toggle-project", companyController.toggleProjectAccess);
 
 router.delete("/delete/:id",companyController.deleteCompany);
 
