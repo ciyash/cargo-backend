@@ -2957,6 +2957,463 @@ const branchWiseCollectionReport = async (req, res) => {
   }
 };
 
+//.....................................................................................
+
+
+//for summary for details report working
+
+const collectionforSummaryReport = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
+    }
+
+    const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ error: "fromDate and toDate are required" });
+    }
+
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    if (isNaN(start) || isNaN(end)) {
+      return res.status(400).json({ error: "Invalid date format" });
+    }
+
+    const filter = {
+      bookingDate: { $gte: start, $lte: end },
+      companyId: new mongoose.Types.ObjectId(companyId),
+    };
+    if (fromCity) filter.fromCity = fromCity;
+    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+    if (bookedBy) filter.bookedBy = bookedBy;
+
+    const reportData = await Booking.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: "$pickUpBranchname",
+          totalAmount: {
+            $sum: { $add: [
+              { $cond: [{ $ne: ["$bookingStatus", 5] }, "$grandTotal", 0] },
+              { $cond: [{ $eq: ["$bookingStatus", 5] }, "$grandTotal", 0] }
+            ]}
+          },
+          cancelAmount: {
+            $sum: { $cond: [{ $eq: ["$bookingStatus", 5] }, "$grandTotal", 0] }
+          },
+          totalQuantity: {
+            $sum: { $add: [
+              { $cond: [{ $ne: ["$bookingStatus", 5] }, "$totalQuantity", 0] },
+              { $cond: [{ $eq: ["$bookingStatus", 5] }, "$totalQuantity", 0] }
+            ]}
+          },
+          cancelQuantity: {
+            $sum: { $cond: [{ $eq: ["$bookingStatus", 5] }, "$totalQuantity", 0] }
+          },
+          netAmount: {
+            $sum: { $cond: [{ $ne: ["$bookingStatus", 5] }, "$grandTotal", 0] }
+          },
+          netQuantity: {
+            $sum: { $cond: [{ $ne: ["$bookingStatus", 5] }, "$totalQuantity", 0] }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          branchName: "$_id",
+          totalAmount: 1,
+          totalQuantity: 1,
+          cancelAmount: 1,
+          cancelQuantity: 1,
+          netAmount: 1,
+          netQuantity: 1,
+          netTotal: "$netAmount"
+        }
+      },
+      { $sort: { branchName: 1 } }
+    ]);
+
+    if (!reportData.length) {
+      return res.status(404).json({ message: "No bookings found." });
+    }
+
+    // Calculate final summary
+    const summary = reportData.reduce((acc, curr) => {
+      acc.finalTotalAmount += curr.totalAmount;
+      acc.finalTotalQuantity += curr.totalQuantity;
+      acc.finalCancelAmount += curr.cancelAmount;
+      acc.finalCancelQuantity += curr.cancelQuantity;
+      acc.finalNetTotal += curr.netTotal;
+      return acc;
+    }, {
+      finalTotalAmount: 0,
+      finalTotalQuantity: 0,
+      finalCancelAmount: 0,
+      finalCancelQuantity: 0,
+      finalNetTotal: 0
+    });
+
+    // Final Response
+    res.status(200).json({
+      branches: reportData,
+      ...summary
+    });
+
+  } catch (err) {
+    console.error("Error generating report:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const collectionReportToPay = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
+    }
+
+    const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ error: "fromDate and toDate are required" });
+    }
+
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    if (isNaN(start) || isNaN(end)) {
+      return res.status(400).json({ error: "Invalid date format" });
+    }
+
+    // Build base filter
+    const filter = {
+      bookingDate: { $gte: start, $lte: end },
+      bookingType: "toPay", // Only include toPay type bookings
+      companyId: new mongoose.Types.ObjectId(companyId),
+    };
+    if (fromCity) filter.fromCity = fromCity;
+    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+    if (bookedBy) filter.bookedBy = bookedBy;
+
+    const reportData = await Booking.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: "$pickUpBranchname",
+          totalAmount: {
+            $sum: {
+              $add: [
+                { $cond: [{ $ne: ["$bookingStatus", 5] }, "$grandTotal", 0] },
+                { $cond: [{ $eq: ["$bookingStatus", 5] }, "$grandTotal", 0] }
+              ]
+            }
+          },
+          cancelAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingStatus", 5] }, "$grandTotal", 0]
+            }
+          },
+          totalQuantity: {
+            $sum: {
+              $add: [
+                { $cond: [{ $ne: ["$bookingStatus", 5] }, "$totalQuantity", 0] },
+                { $cond: [{ $eq: ["$bookingStatus", 5] }, "$totalQuantity", 0] }
+              ]
+            }
+          },
+          cancelQuantity: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingStatus", 5] }, "$totalQuantity", 0]
+            }
+          },
+          netAmount: {
+            $sum: {
+              $cond: [{ $ne: ["$bookingStatus", 5] }, "$grandTotal", 0]
+            }
+          },
+          netQuantity: {
+            $sum: {
+              $cond: [{ $ne: ["$bookingStatus", 5] }, "$totalQuantity", 0]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          branchName: "$_id",
+          totalAmount: 1,
+          totalQuantity: 1,
+          cancelAmount: 1,
+          cancelQuantity: 1,
+          netAmount: 1,
+          netQuantity: 1,
+          netTotal: "$netAmount"
+        }
+      },
+      { $sort: { branchName: 1 } }
+    ]);
+
+    if (!reportData.length) {
+      return res.status(404).json({ message: "No bookings found." });
+    }
+
+    // Final Summary Calculation
+    const summary = reportData.reduce((acc, curr) => {
+      acc.finalTotalAmount += curr.totalAmount;
+      acc.finalTotalQuantity += curr.totalQuantity;
+      acc.finalCancelAmount += curr.cancelAmount;
+      acc.finalCancelQuantity += curr.cancelQuantity;
+      acc.finalNetTotal += curr.netTotal;
+      return acc;
+    }, {
+      finalTotalAmount: 0,
+      finalTotalQuantity: 0,
+      finalCancelAmount: 0,
+      finalCancelQuantity: 0,
+      finalNetTotal: 0
+    });
+
+    res.status(200).json({
+      branches: reportData,
+      ...summary
+    });
+
+  } catch (err) {
+    console.error("Error generating report:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+const allCollectionReport = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
+    }
+
+    const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ error: "fromDate and toDate are required" });
+    }
+
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    if (isNaN(start) || isNaN(end)) {
+      return res.status(400).json({ error: "Invalid date format" });
+    }
+
+    const filter = {
+      bookingDate: { $gte: start, $lte: end },
+      companyId: new mongoose.Types.ObjectId(companyId),
+    };
+    if (fromCity) filter.fromCity = fromCity;
+    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+    if (bookedBy) filter.bookedBy = bookedBy;
+
+    const reportData = await Booking.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: "$pickUpBranchname",
+          paidAmount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ["$bookingType", "paid"] }, { $ne: ["$bookingStatus", 5] }] },
+                "$grandTotal",
+                0
+              ]
+            }
+          },
+          toPayAmount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ["$bookingType", "toPay"] }, { $ne: ["$bookingStatus", 5] }] },
+                "$grandTotal",
+                0
+              ]
+            }
+          },
+          deliveryAmount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ["$bookingType", "delivery"] }, { $ne: ["$bookingStatus", 5] }] },
+                "$grandTotal",
+                0
+              ]
+            }
+          },
+          cancelAmount: {
+            $sum: {
+              $cond: [
+                { $eq: ["$bookingStatus", 5] },
+                "$grandTotal",
+                0
+              ]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          branchName: "$_id",
+          paidAmount: 1,
+          toPayAmount: 1,
+          deliveryAmount: 1,
+          cancelAmount: 1,
+          netAmount: {
+            $subtract: [
+              { $add: ["$paidAmount", "$deliveryAmount"] },
+              "$cancelAmount"
+            ]
+          }
+        }
+      },
+      { $sort: { branchName: 1 } }
+    ]);
+
+    if (!reportData.length) {
+      return res.status(404).json({ message: "No bookings found." });
+    }
+
+    const summary = reportData.reduce((acc, curr) => {
+      acc.finalPaidAmount += curr.paidAmount;
+      acc.finalToPayAmount += curr.toPayAmount;
+      acc.finalDeliveryAmount += curr.deliveryAmount;
+      acc.finalCancelAmount += curr.cancelAmount;
+      acc.finalNetAmount += curr.netAmount;
+      return acc;
+    }, {
+      finalPaidAmount: 0,
+      finalToPayAmount: 0,
+      finalDeliveryAmount: 0,
+      finalCancelAmount: 0,
+      finalNetAmount: 0
+    });
+
+    res.status(200).json({
+      branches: reportData,
+      ...summary
+    });
+
+  } catch (err) {
+    console.error("Error generating report:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const bookingTypeWiseCollection = async (req, res) => {
+  try {
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Company ID missing",
+      });
+    }
+
+    const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
+
+    if (!fromDate || !toDate) {
+      return res.status(400).json({ error: "fromDate and toDate are required" });
+    }
+
+    const start = new Date(fromDate);
+    const end = new Date(toDate);
+    end.setHours(23, 59, 59, 999);
+
+    const filter = {
+      bookingDate: { $gte: start, $lte: end },
+      bookingStatus: { $ne: 5 }, // exclude cancelled
+      companyId: new mongoose.Types.ObjectId(companyId),
+    };
+    if (fromCity) filter.fromCity = fromCity;
+    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+    if (bookedBy) filter.bookedBy = bookedBy;
+
+    const reportData = await Booking.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: {
+            date: {
+              $dateToString: { format: "%d-%m-%Y", date: "$bookingDate" }
+            },
+            branch: "$pickUpBranchname"
+          },
+          paidAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingType", "paid"] }, "$grandTotal", 0]
+            }
+          },
+          toPayAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingType", "toPay"] }, "$grandTotal", 0]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          bookingDate: "$_id.date",
+          branchName: "$_id.branch",
+          paidAmount: 1,
+          toPayAmount: 1,
+          total: { $add: ["$paidAmount", "$toPayAmount"] }
+        }
+      },
+      { $sort: { bookingDate: 1, branchName: 1 } }
+    ]);
+
+    if (!reportData.length) {
+      return res.status(404).json({ message: "No bookings found." });
+    }
+
+    const summary = reportData.reduce((acc, curr) => {
+      acc.finalPaidAmount += curr.paidAmount;
+      acc.finalToPayAmount += curr.toPayAmount;
+      acc.finalTotalAmount += curr.total;
+      return acc;
+    }, {
+      finalPaidAmount: 0,
+      finalToPayAmount: 0,
+      finalTotalAmount: 0
+    });
+
+    res.status(200).json({
+      data: reportData,
+      ...summary
+    });
+
+  } catch (err) {
+    console.error("Error generating report:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+//.......................................................................................
+
   
 
 const parcelBranchConsolidatedReport = async (req, res) => {
@@ -5336,7 +5793,13 @@ export default {
   parcelBookingSummaryReport,
   parcelBookingMobileNumber,
   regularCustomerBooking,
+
   branchWiseCollectionReport,
+  collectionforSummaryReport,
+  collectionReportToPay,
+  allCollectionReport,
+bookingTypeWiseCollection,
+
   parcelBranchConsolidatedReport,
   parcelBranchWiseGSTReport,
   senderReceiverGSTReport,
