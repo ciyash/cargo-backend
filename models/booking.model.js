@@ -108,7 +108,6 @@ const bookingSchema = new mongoose.Schema(
     cancelByUser: { type: String, default: null },
     cancelCity: { type: String, default: null },
     cancelBranch: { type: String, default: null },
-    refundCharge: { type: Number, default: 0 },
     refundAmount: { type: Number, default: 0 },
 //  missing  data
     missingDate: { type: Date, default: null },
