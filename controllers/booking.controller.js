@@ -270,12 +270,12 @@ const createBooking = async (req, res) => {
     }
 
     // ❌ Block if fromCity and toCity are the same (case-insensitive)
-    if (pickUpBranch.trim().toLowerCase() === pickUpBranch.trim().toLowerCase()) {
-      return res.status(400).json({
-        success: false,
-        message: "Pick branch and To Drop branch  be the same branches . Please change To city.",
-      });
-    }
+//    if (pickUpBranch.trim().toLowerCase() === dropBranch.trim().toLowerCase()) {
+//   return res.status(400).json({
+//     success: false,
+//     message: "Pickup branch and Drop branch  be the same . Please select a different branch.",
+//   });
+// }
 
     if (bookingType === "credit" && (!agent || agent.trim() === "")) {
       return res.status(400).json({
