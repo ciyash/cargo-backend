@@ -3340,12 +3340,17 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       companyId: new mongoose.Types.ObjectId(companyId)
     };
 
+    // Normalize date range to include full day
     if (fromDate && toDate) {
-      matchStage.bookingDate = {
-        $gte: new Date(fromDate),
-        $lte: new Date(toDate)
-      };
+      const from = new Date(fromDate);
+      from.setHours(0, 0, 0, 0);
+
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999);
+
+      matchStage.bookingDate = { $gte: from, $lte: to };
     }
+
     if (fromCity) matchStage.fromCity = fromCity;
     if (pickUpBranch) matchStage.pickUpBranch = pickUpBranch;
 
