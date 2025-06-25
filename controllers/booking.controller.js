@@ -201,16 +201,16 @@ const createBooking = async (req, res) => {
     const end = new Date(validTill);
     end.setHours(23, 59, 59, 999);
 
-   const currentBookingCount = await Booking.countDocuments({
-  companyId: req.user.companyId,
-  bookingDate: { $gte: start, $lte: end }
-});
+    const currentBookingCount = await Booking.countDocuments({
+      companyId: req.user.companyId,
+      bookingDate: { $gte: start, $lte: end }
+    });
 
-if (currentBookingCount >= limit) {
-  return res.status(403).json({
-    message: `Booking limit reached (${limit}). Please upgrade plan or wait.`,
-  });
-}
+    if (currentBookingCount >= limit) {
+      return res.status(403).json({
+        message: `Booking limit reached (${limit}). Please upgrade plan or wait.`,
+      });
+    }
 
     // --- Input sanitization ---
     const {
@@ -266,6 +266,14 @@ if (currentBookingCount >= limit) {
       return res.status(400).json({
         success: false,
         message: "Sender and receiver details are required",
+      });
+    }
+
+    // ❌ Block if fromCity and toCity are the same (case-insensitive)
+    if (fromCity.trim().toLowerCase() === toCity.trim().toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        message: "From city and To city cannot be the same. Please change To city.",
       });
     }
 
@@ -364,10 +372,10 @@ if (currentBookingCount >= limit) {
 
     const savedBooking = await booking.save();
 
-   if (savedBooking) {
-  await Promise.all([
-    (async () => {
+    // Save users
+    if (savedBooking) {
       try {
+        // Save sender
         const senderExists = await User.findOne({
           phone: senderMobile,
           companyId,
@@ -382,33 +390,29 @@ if (currentBookingCount >= limit) {
             companyId,
           });
         }
-      } catch (err) {
-        console.error("Sender save error:", err.message);
-      }
-    })(),
-    (async () => {
-      try {
-        const receiverExists = await User.findOne({
-          phone: receiverMobile,
-          companyId,
-        });
 
-        if (!receiverExists) {
-          await User.create({
-            name: receiverName,
+        // Save receiver only if it's a different number
+        if (receiverMobile !== senderMobile) {
+          const receiverExists = await User.findOne({
             phone: receiverMobile,
-            address: receiverAddress,
-            gst: receiverGst,
             companyId,
           });
-        }
-      } catch (err) {
-        console.error("Receiver save error:", err.message);
-      }
-    })(),
-  ]);
-}
 
+          if (!receiverExists) {
+            await User.create({
+              name: receiverName,
+              phone: receiverMobile,
+              address: receiverAddress,
+              gst: receiverGst,
+              companyId,
+            });
+          }
+        }
+
+      } catch (err) {
+        console.error("User save error:", err.message);
+      }
+    }
 
     return res.status(201).json({
       success: true,
