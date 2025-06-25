@@ -83,6 +83,7 @@ router.post("/booking-typew-ise-collection",auth,bookingController.bookingTypeWi
 
 
 router.post("/parcel-branch-consolidated-report",auth,bookingController.parcelBranchConsolidatedReport)
+router.post("/consolidated-report-branch",auth,bookingController.consolidatedReportBranch)
 router.post("/parcel-branch-wise-gst-report",auth,bookingController.parcelBranchWiseGSTReport)
 router.post("/sender-receiver-gst-report",auth,bookingController.senderReceiverGSTReport)
 router.post("/pending-delivery-stock-report",auth,bookingController.pendingDeliveryStockReport) //sudheer

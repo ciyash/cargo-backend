@@ -3152,179 +3152,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 
   
 
-// const parcelBranchConsolidatedReport = async (req, res) => {
-//   try {
-//     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
 
-//     const companyId = req.user?.companyId;
-//     if (!companyId) {
-//       return res.status(401).json({ message: "Unauthorized: companyId missing" });
-//     }
-
-//     const matchStage = {
-//       bookingDate: { $ne: null },
-//       companyId: new mongoose.Types.ObjectId(companyId)
-//     };
-
-//     if (fromDate && toDate) {
-//       matchStage.bookingDate = {
-//         $gte: new Date(fromDate),
-//         $lte: new Date(toDate)
-//       };
-//     }
-//     if (fromCity)       matchStage.fromCity         = fromCity;
-//     if (pickUpBranch)   matchStage.pickUpBranch     = pickUpBranch;
-
-//     const bookingData = await Booking.aggregate([
-//       { $match: matchStage },
-//       {
-//         $lookup: {
-//           from: "cities",
-//           localField: "fromCity",
-//           foreignField: "cityName",
-//           as: "fromCityData"
-//         }
-//       },
-//       { $unwind: { path: "$fromCityData", preserveNullAndEmptyArrays: true } },
-//       {
-//         $lookup: {
-//           from: "cities",
-//           localField: "toCity",
-//           foreignField: "cityName",
-//           as: "toCityData"
-//         }
-//       },
-//       { $unwind: { path: "$toCityData", preserveNullAndEmptyArrays: true } },
-//       {
-//         $addFields: {
-//           sameState: {
-//             $eq: [
-//               { $toLower: "$fromCityData.state" },
-//               { $toLower: "$toCityData.state" }
-//             ]
-//           }
-//         }
-//       },
-//       {
-//         $addFields: {
-//           igstAmount: {
-//             $cond: [{ $eq: ["$sameState", false] }, "$parcelGstAmount", 0]
-//           },
-//           cgstAmount: {
-//             $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
-//           },
-//           sgstAmount: {
-//             $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
-//           }
-//         }
-//       },
-//       {
-//         $group: {
-//           _id: {
-//             branchName:    "$pickUpBranchname",
-//             bookingStatus: "$bookingStatus",
-//             bookingType:   "$bookingType"
-//           },
-//           count:           { $sum: 1 },
-//           grandTotal:      { $sum: "$grandTotal" },
-//           parcelGstAmount: { $sum: "$parcelGstAmount" },
-//           igstAmount:      { $sum: "$igstAmount" },
-//           cgstAmount:      { $sum: "$cgstAmount" },
-//           sgstAmount:      { $sum: "$sgstAmount" }
-//         }
-//       }
-//     ]);
-
-//     const branchMap = {};
-//     const totals = {
-//       finalPaid: 0, finalToPay: 0, finalCredit: 0,
-//       finalFOC: 0, finalCLR: 0,
-//       finalBookingTotal: 0,
-//       finalTotalDelivery: 0, finalTotalCancel: 0,
-//       finalParcelGstAmount: 0,
-//       totalIgst: 0, totalCgst: 0, totalSgst: 0
-//     };
-
-//     for (const record of bookingData) {
-//       const { branchName, bookingStatus, bookingType } = record._id;
-
-//       if (!branchMap[branchName]) {
-//         branchMap[branchName] = {
-//           branchName,
-//           paid: 0, toPay: 0, credit: 0, FOC: 0, CLR: 0,
-//           BookingTotal: 0, booking: 0,
-//           delivered: 0, cancelled: 0,
-//           grandTotal: 0, bookingTotalAmount: 0,
-//           deliveredTotalAmount: 0, cancelTotalAmount: 0,
-//           parcelGstAmount: 0, cancelAmount: 0,
-//           igstAmount: 0, cgstAmount: 0, sgstAmount: 0,
-//           deliveredAmountByType: {
-//             paid: 0, toPay: 0, credit: 0, FOC: 0, CLR: 0
-//           }
-//         };
-//       }
-
-//       const entry = branchMap[branchName];
-
-//       if (bookingType === "paid")    { entry.paid   += record.grandTotal; totals.finalPaid  += record.grandTotal; }
-//       if (bookingType === "toPay")   { entry.toPay  += record.grandTotal; totals.finalToPay += record.grandTotal; }
-//       if (bookingType === "credit")  { entry.credit += record.grandTotal; totals.finalCredit+= record.grandTotal; }
-//       if (bookingType === "FOC")     { entry.FOC    += record.grandTotal; totals.finalFOC   += record.grandTotal; }
-//       if (bookingType === "CLR")     { entry.CLR    += record.grandTotal; totals.finalCLR   += record.grandTotal; }
-
-//       entry.grandTotal       += record.grandTotal;
-//       entry.parcelGstAmount  += record.parcelGstAmount;
-//       entry.igstAmount       += record.igstAmount;
-//       entry.cgstAmount       += record.cgstAmount;
-//       entry.sgstAmount       += record.sgstAmount;
-
-//       totals.finalParcelGstAmount += record.parcelGstAmount;
-//       totals.totalIgst            += record.igstAmount;
-//       totals.totalCgst            += record.cgstAmount;
-//       totals.totalSgst            += record.sgstAmount;
-
-//       entry.BookingTotal += record.count;
-//       entry.booking      += record.count;
-//       totals.finalBookingTotal += record.grandTotal;
-
-//       if (bookingStatus === 4) {
-//         entry.delivered               += record.count;
-//         entry.deliveredTotalAmount   += record.grandTotal;
-//         totals.finalTotalDelivery    += record.grandTotal;
-
-//         if (entry.deliveredAmountByType[bookingType] !== undefined) {
-//           entry.deliveredAmountByType[bookingType] += record.grandTotal;
-//         }
-//       }
-
-//       if (bookingStatus === 5) {
-//         entry.cancelled           += record.count;
-//         entry.cancelTotalAmount   += record.grandTotal;
-//         entry.cancelAmount        += record.grandTotal;
-//         totals.finalTotalCancel   += record.grandTotal;
-//       }
-
-//       entry.bookingTotalAmount = entry.grandTotal;
-//     }
-
-//     Object.values(branchMap).forEach(entry => {
-//       entry.afterCalculate = entry.bookingTotalAmount - entry.cancelTotalAmount;
-//     });
-
-//     const finalNetBookingAmount = totals.finalBookingTotal - totals.finalTotalCancel;
-
-//     res.status(200).json({
-//       data: Object.values(branchMap),
-//       ...totals,
-//       finalNetBookingAmount
-//     });
-
-//   } catch (err) {
-//     console.error("Error in parcelBranchConsolidatedReport:", err);
-//     res.status(500).json({ message: "Server Error", error: err.message });
-//   }
-// };
-  
 
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
@@ -3504,6 +3332,163 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
+const consolidatedReportBranch = async (req, res) => {
+  try {
+    const { fromDate, toDate } = req.body;
+    const companyId = req.user?.companyId;
+
+    if (!companyId) {
+      return res.status(401).json({ message: "Unauthorized: companyId missing" });
+    }
+
+    const matchStage = {
+      bookingDate: { $ne: null },
+      companyId: new mongoose.Types.ObjectId(companyId)
+    };
+
+    if (fromDate && toDate) {
+      const from = new Date(fromDate);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999);
+      matchStage.bookingDate = { $gte: from, $lte: to };
+    }
+
+    // Booked ToPay Details
+    const bookedToPay = await Booking.aggregate([
+      { $match: { ...matchStage, bookingStatus: 0, bookingType: "toPay" } },
+      {
+        $group: {
+          _id: null,
+          finalPackages: { $sum: { $size: "$packages" } },
+          finalServiceCharges: { $sum: "$serviceCharges" },
+          finalDoorDeliveryCharges: { $sum: "$doorDeliveryCharges" },
+          finalOtherCharges: { $sum: "$otherCharges" },
+          finalGrandTotal: { $sum: "$grandTotal" },
+          records: { $push: "$ROOT" }
+        }
+      }
+    ]);
+
+    // Delivered ToPay Details
+    const deliveredToPay = await Booking.aggregate([
+      { $match: { ...matchStage, bookingStatus: 4, bookingType: "toPay" } },
+      {
+        $group: {
+          _id: null,
+          finalPackages: { $sum: { $size: "$packages" } },
+          finalServiceCharges: { $sum: "$serviceCharges" },
+          finalDoorDeliveryCharges: { $sum: "$doorDeliveryCharges" },
+          finalOtherCharges: { $sum: "$otherCharges" },
+          finalGrandTotal: { $sum: "$grandTotal" },
+          records: { $push: "$ROOT" }
+        }
+      }
+    ]);
+
+    // City Wise Booking Details
+    const cityWiseBooking = await Booking.aggregate([
+      { $match: { ...matchStage, bookingStatus: 0 } },
+      {
+        $group: {
+          _id: "$fromCity",
+          noOfParcels: { $sum: { $size: "$packages" } },
+          paidAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingType", "paid"] }, "$grandTotal", 0]
+            }
+          },
+          toPayAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingType", "toPay"] }, "$grandTotal", 0]
+            }
+          },
+          FOCAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingType", "FOC"] }, "$grandTotal", 0]
+            }
+          },
+          creditAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingType", "credit"] }, "$grandTotal", 0]
+            }
+          },
+          totalBookingAmount: { $sum: "$grandTotal" },
+          totalCancelAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingStatus", 5] }, "$grandTotal", 0]
+            }
+          }
+        }
+      }
+    ]);
+
+    // City Wise Delivery Details
+    const cityWiseDelivery = await Booking.aggregate([
+      { $match: { ...matchStage, bookingStatus: 4 } },
+      {
+        $group: {
+          _id: "$fromCity",
+          noOfParcels: { $sum: { $size: "$packages" } },
+          paidAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingType", "paid"] }, "$grandTotal", 0]
+            }
+          },
+          toPayAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingType", "toPay"] }, "$grandTotal", 0]
+            }
+          },
+          FOCAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingType", "FOC"] }, "$grandTotal", 0]
+            }
+          },
+          creditAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingType", "credit"] }, "$grandTotal", 0]
+            }
+          },
+          totalBookingAmount: { $sum: "$grandTotal" },
+          totalCancelAmount: {
+            $sum: {
+              $cond: [{ $eq: ["$bookingStatus", 5] }, "$grandTotal", 0]
+            }
+          }
+        }
+      }
+    ]);
+
+    // Category Wise Booking Details
+    const categoryWiseBooking = await Booking.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: "$bookingType",
+          noOfPackages: { $sum: { $size: "$packages" } },
+          serviceCharge: { $sum: "$serviceCharges" },
+          doorDeliveryCharges: { $sum: "$doorDeliveryCharges" },
+          doorPickupCharges: { $sum: "$doorPickupCharges" },
+          otherCharges: { $sum: "$otherCharges" }
+        }
+      }
+    ]);
+
+    res.json({
+      bookedToPayDetails: bookedToPay[0] || {},
+      deliveredToPayDetails: deliveredToPay[0] || {},
+      cityWiseBookingDetails: cityWiseBooking,
+      cityWiseDeliveryDetails: cityWiseDelivery,
+      categoryWiseBookingDetails: categoryWiseBooking
+    });
+  } catch (err) {
+    console.error("Report Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 
 
 const parcelBranchWiseGSTReport = async (req, res) => {
@@ -5493,6 +5478,7 @@ export default {
 bookingTypeWiseCollection,
 
   parcelBranchConsolidatedReport,
+  consolidatedReportBranch,
   parcelBranchWiseGSTReport,
   senderReceiverGSTReport,
   pendingDeliveryStockReport,
