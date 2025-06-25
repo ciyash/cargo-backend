@@ -36,6 +36,11 @@ const companySchema = new mongoose.Schema({
     required: true,
   },
 
+  logo: {
+    type:String,
+    default:""
+  },
+
   companyAccess: {
   type: Boolean,
   default: false,

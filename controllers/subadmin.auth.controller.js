@@ -231,7 +231,7 @@ const login = async (req, res) => {
       branchCity: branch.city || "Not Assigned",
       ipAddress,
 
-      // ✅ Full company details in token
+      // ✅ Full company details  token
       companyId: company._id?.toString() || null,
       companyName: company.name || null,
       companyCode: company.code || null,
