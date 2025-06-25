@@ -270,10 +270,10 @@ const createBooking = async (req, res) => {
     }
 
     // ❌ Block if fromCity and toCity are the same (case-insensitive)
-    if (fromCity.trim().toLowerCase() === toCity.trim().toLowerCase()) {
+    if (pickUpBranch.trim().toLowerCase() === pickUpBranch.trim().toLowerCase()) {
       return res.status(400).json({
         success: false,
-        message: "From city and To city  be the same cities . Please change To city.",
+        message: "Pick branch and To Drop branch  be the same branches . Please change To city.",
       });
     }
 
