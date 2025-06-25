@@ -23,6 +23,8 @@ router.get("/user/:senderMobile",auth,bookingController.getUserByMobile)
 
 router.get("/user/credit",auth,bookingController.getCreditBookings)
 
+router.delete("/user/delete-phone/:phone",auth,bookingController.deleteUserByPhone)
+
 // bookings 
  
 router.post("/",auth,bookingController.createBooking)

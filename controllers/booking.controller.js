@@ -364,50 +364,51 @@ if (currentBookingCount >= limit) {
 
     const savedBooking = await booking.save();
 
-    if (savedBooking) {
-      await Promise.all([
-        (async () => {
-          try {
-            const senderExists = await User.findOne({
-              phone: senderMobile,
-              companyId,
-            });
+   if (savedBooking) {
+  await Promise.all([
+    (async () => {
+      try {
+        const senderExists = await User.findOne({
+          phone: senderMobile,
+          companyId,
+        });
 
-            if (!senderExists) {
-              await User.create({
-                name: senderName,
-                phone: senderMobile,
-                address: senderAddress,
-                gst: senderGst,
-                companyId,
-              });
-            }
-          } catch (err) {
-            console.error("Sender save error:", err.message);
-          }
-        })(),
-        (async () => {
-          try {
-            const receiverExists = await User.findOne({
-              phone: receiverMobile,
-              companyId,
-            });
+        if (!senderExists) {
+          await User.create({
+            name: senderName,
+            phone: senderMobile,
+            address: senderAddress,
+            gst: senderGst,
+            companyId,
+          });
+        }
+      } catch (err) {
+        console.error("Sender save error:", err.message);
+      }
+    })(),
+    (async () => {
+      try {
+        const receiverExists = await User.findOne({
+          phone: receiverMobile,
+          companyId,
+        });
 
-            if (!receiverExists) {
-              await User.create({
-                name: receiverName,
-                phone: receiverMobile,
-                address: receiverAddress,
-                gst: receiverGst,
-                companyId,
-              });
-            }
-          } catch (err) {
-            console.error("Receiver save error:", err.message);
-          }
-        })(),
-      ]);
-    }
+        if (!receiverExists) {
+          await User.create({
+            name: receiverName,
+            phone: receiverMobile,
+            address: receiverAddress,
+            gst: receiverGst,
+            companyId,
+          });
+        }
+      } catch (err) {
+        console.error("Receiver save error:", err.message);
+      }
+    })(),
+  ]);
+}
+
 
     return res.status(201).json({
       success: true,
@@ -1406,6 +1407,41 @@ const getAllUsers = async (req, res) => {
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const deleteUserByPhone = async (req, res) => {
+  try {
+    const { phone } = req.params;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+
+    const deletedUser = await User.findOneAndDelete({ phone });
+
+    if (!deletedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found with this phone number",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User deleted successfully",
+      data: deletedUser,
+    });
+  } catch (error) {
+    console.error("Error deleting user:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
 
@@ -5713,9 +5749,12 @@ export default {
   getAllBookingsPages,
   getBookingsByAnyField,
   markParcelAsMissing,
+//users data
   getUserByMobile,
   getAllUsers,
   getUsersBySearch,
+  deleteUserByPhone,
+
   getCreditBookings,
   toDayBookings,
   unReceivedBookings,
