@@ -43,7 +43,7 @@ const bookingSchema = new mongoose.Schema(
     dispatchType: { type: String },
     bookingType: {
       type: String,
-      enum: ["paid", "toPay", "credit", "CLR", "FOC"],
+      enum: ["paid", "toPay", "credit", "FOC"],
       required: true,
     },
     totalQuantity: { type: Number, required: true },

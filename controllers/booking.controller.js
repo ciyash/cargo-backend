@@ -5388,8 +5388,8 @@ const getTotalByBranchAndDate = async (req, res) => {
 
     const { bookingDate, pickupBranch } = req.body;
 
-    if (!bookingDate) {
-      return res.status(400).json({ message: "bookingDate is required" });
+    if (!bookingDate || !pickupBranch) {
+      return res.status(400).json({ message: "bookingDate and pickupBranch are  required" });
     }
 
     // Convert to date object & build 00:00 to 23:59 UTC range
