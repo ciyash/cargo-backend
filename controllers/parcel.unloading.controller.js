@@ -14,7 +14,7 @@ const getParcelsLoading = async (req, res) => {
       });
     }
 
-    const { fromDate, toDate, fromCity, toCity, bookingType, bookingStatus } = req.body;
+    const { fromDate, toDate, fromCity, toCity,branch, bookingType, bookingStatus } = req.body;
 
     if (!fromDate || !toDate) {
       return res.status(400).json({
@@ -43,7 +43,7 @@ const getParcelsLoading = async (req, res) => {
     }
 
     const grnNos = parcelData.map((p) => p.grnNo).flat();
-    console.log('grn',grnNos)
+    // console.log('grn',grnNos)
     const bookingFilter = {
       grnNo: { $in: grnNos },
       bookingStatus: 1,
@@ -52,6 +52,7 @@ const getParcelsLoading = async (req, res) => {
 
     if (fromCity) bookingFilter.fromCity = fromCity;
     if (toCity) bookingFilter.toCity = toCity;
+    if(branch) bookingFilter.dropBranch=branch
     if (bookingType) bookingFilter.bookingType = bookingType;
     if (bookingStatus !== undefined) bookingFilter.bookingStatus = bookingStatus;
 
@@ -63,8 +64,7 @@ const getParcelsLoading = async (req, res) => {
   } catch (error) {
     console.error("Error in getParcelsLoading:", error);
     return res.status(500).json({
-      success: false,
-      message: "Server error",
+      error:error.message
     });
   }
 };
