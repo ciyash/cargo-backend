@@ -5382,54 +5382,99 @@ const statusWiseSummary = async (req, res) => {
 const getTotalByBranchAndDate = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
-    if (!companyId) {
-      return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+    const branchId = req.user?.branchId;
+
+    if (!companyId || !branchId) {
+      return res.status(401).json({ message: "Unauthorized: Company ID or Branch ID missing" });
     }
 
-    const { bookingDate, pickupBranch } = req.body;
-
-    if (!bookingDate || !pickupBranch) {
-      return res.status(400).json({ message: "bookingDate and pickupBranch are  required" });
-    }
-
-    // Convert to date object & build 00:00 to 23:59 UTC range
-    const date = new Date(bookingDate);
-    const startDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0));
-    const endDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, 0, 0, 0));
+    // Use current date
+    const now = new Date();
+    const startDate = new Date(now.setHours(0, 0, 0, 0));
+    const endDate = new Date(now.setHours(23, 59, 59, 999));
 
     const matchStage = {
       companyId: new mongoose.Types.ObjectId(companyId),
-      bookingDate: {
-        $gte: startDate,
-        $lt: endDate,
-      },
+      bookingDate: { $gte: startDate, $lte: endDate },
+      pickUpBranch: branchId
     };
-
-    if (pickupBranch) {
-      matchStage.pickUpBranch = pickupBranch;
-    }
 
     const bookings = await Booking.aggregate([
       { $match: matchStage },
       {
         $group: {
           _id: "$pickUpBranch",
-          total: { $sum: "$grandTotal" },
-          count: { $sum: 1 },
-        },
-      },
+          totalAmount: { $sum: "$grandTotal" },
+          totalBookings: { $sum: 1 }
+        }
+      }
     ]);
 
-    if (bookings.length === 0) {
-      return res.status(404).json({ message: "No bookings found for this date" });
+    if (!bookings.length) {
+      return res.status(404).json({ message: "No bookings found for today at this branch" });
     }
 
-    return res.status(200).json({ bookings });
+    return res.status(200).json({bookings });
+
   } catch (error) {
-    console.error("Error getting totals:", error);
-    return res.status(500).json({ message: "Server error" });
+    console.error("Error in getTotalByBranchAndDate:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+// const getTotalByBranchAndDate = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     console.log(req.user)
+//     if (!companyId) {
+//       return res.status(401).json({ message: "Unauthorized: Company ID missing" });
+//     }
+
+//     const { bookingDate, pickupBranch } = req.body;
+
+//     if (!bookingDate || !pickupBranch) {
+//       return res.status(400).json({ message: "bookingDate and pickupBranch are  required" });
+//     }
+
+//     // Convert to date object & build 00:00 to 23:59 UTC range
+//     const date = new Date(bookingDate);
+//     const startDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0));
+//     const endDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, 0, 0, 0));
+
+//     const matchStage = {
+//       companyId: new mongoose.Types.ObjectId(companyId),
+//       bookingDate: {
+//         $gte: startDate,
+//         $lt: endDate,
+//       },
+//     };
+
+//     if (pickupBranch) {
+//       matchStage.pickUpBranch = req.user.branchId;
+//     }
+
+//     const bookings = await Booking.aggregate([
+//       { $match: matchStage },
+//       {
+//         $group: {
+//           _id: "$pickUpBranch",
+//           total: { $sum: "$grandTotal" },
+//           count: { $sum: 1 },
+//         },
+//       },
+//     ]);
+
+//     if (bookings.length === 0) {
+//       return res.status(404).json({ message: "No bookings found for this date" });
+//     }
+
+//     return res.status(200).json({ bookings });
+//   } catch (error) {
+//     console.error("Error getting totals:", error);
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// };
 
 
 
