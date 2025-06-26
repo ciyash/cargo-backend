@@ -254,7 +254,7 @@ const createBooking = async (req, res) => {
       !pickUpBranch ||
       !dropBranch ||
       !bookingType ||
-      !grandTotal
+     grandTotal === undefined || grandTotal === null
     ) {
       return res.status(400).json({
         success: false,
