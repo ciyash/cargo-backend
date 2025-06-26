@@ -258,7 +258,7 @@ const createBooking = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "Missing required booking fields",
+        message: "Missing required   fromCity  toCity  pickUpBranch   dropBranch,bookingType grandTotal fields",
       });
     }
 
