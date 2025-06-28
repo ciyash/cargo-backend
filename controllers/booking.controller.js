@@ -254,7 +254,7 @@ const createBooking = async (req, res) => {
       !pickUpBranch ||
       !dropBranch ||
       !bookingType ||
-     grandTotal === undefined || grandTotal === null
+       grandTotal === undefined || grandTotal === null
     ) {
       return res.status(400).json({
         success: false,
@@ -450,8 +450,6 @@ const getAllBookings = async (req, res) => {
       .json({ message: "Server Error", error: err.message });
   }
 };
-
-
 const getAllBookingsPages = async (req, res) => {
   try {
     const user = req.user;
@@ -466,9 +464,20 @@ const getAllBookingsPages = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized: Company ID missing" });
     }
 
-    // 🔍 Dynamic filter based on role
-    let filter = { companyId };
+    // 🕒 Set time range for today
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // 📌 Base filter
+    let filter = {
+      companyId,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }, // today only
+    };
+
+    // 🔍 Dynamic filter based on role
     if (role === "employee") {
       if (!branchId) {
         return res.status(400).json({ success: false, message: "Branch ID missing for employee" });
@@ -480,14 +489,11 @@ const getAllBookingsPages = async (req, res) => {
       }
       filter.fromCity = branchCity;
     }
-    // Admin sees all bookings — no extra filtering
 
-    // 🔢 Pagination logic
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // 📊 Count and query
     const totalBookings = await Booking.countDocuments(filter);
     const totalPages = Math.ceil(totalBookings / limit);
 
@@ -497,19 +503,6 @@ const getAllBookingsPages = async (req, res) => {
       .limit(limit)
       .sort({ createdAt: -1 });
 
-    if (bookings.length === 0) {
-      return res.status(200).json({
-        success: true,
-        message: "No bookings found",
-        page,
-        limit,
-        totalPages,
-        totalBookings,
-        bookings: [],
-      });
-    }
-
-    // ⏭️ Pagination metadata
     const nextPage = page < totalPages ? page + 1 : null;
     const prevPage = page > 1 ? page - 1 : null;
 
@@ -528,6 +521,84 @@ const getAllBookingsPages = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
+// const getAllBookingsPages = async (req, res) => {
+//   try {
+//     const user = req.user;
+
+//     if (!user) {
+//       return res.status(401).json({ success: false, message: "Unauthorized: User data missing" });
+//     }
+
+//     const { companyId, role, branchId, branchCity } = user;
+
+//     if (!companyId) {
+//       return res.status(401).json({ success: false, message: "Unauthorized: Company ID missing" });
+//     }
+
+//     // 🔍 Dynamic filter based on role
+//     let filter = { companyId };
+
+//     if (role === "employee") {
+//       if (!branchId) {
+//         return res.status(400).json({ success: false, message: "Branch ID missing for employee" });
+//       }
+//       filter.pickUpBranch = branchId;
+//     } else if (role === "subadmin") {
+//       if (!branchCity) {
+//         return res.status(400).json({ success: false, message: "Branch city missing for subadmin" });
+//       }
+//       filter.fromCity = branchCity;
+//     }
+//     // Admin sees all bookings — no extra filtering
+
+//     // 🔢 Pagination logic
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const skip = (page - 1) * limit;
+
+//     // 📊 Count and query
+//     const totalBookings = await Booking.countDocuments(filter);
+//     const totalPages = Math.ceil(totalBookings / limit);
+
+//     const bookings = await Booking.find(filter)
+//       .populate("bookedBy")
+//       .skip(skip)
+//       .limit(limit)
+//       .sort({ createdAt: -1 });
+
+//     if (bookings.length === 0) {
+//       return res.status(200).json({
+//         success: true,
+//         message: "No bookings found",
+//         page,
+//         limit,
+//         totalPages,
+//         totalBookings,
+//         bookings: [],
+//       });
+//     }
+
+//     // ⏭️ Pagination metadata
+//     const nextPage = page < totalPages ? page + 1 : null;
+//     const prevPage = page > 1 ? page - 1 : null;
+
+//     res.status(200).json({
+//       success: true,
+//       page,
+//       limit,
+//       totalPages,
+//       totalBookings,
+//       nextPage,
+//       prevPage,
+//       bookings,
+//     });
+//   } catch (error) {
+//     console.error("Error in getAllBookingsPages:", error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
 
 
 const getBookingByGrnNo = async (req, res) => {

@@ -20,4 +20,6 @@ router.post("/voucher-details",  auth, cfVoucherController.voucherDetails);
 
 router.post("/voucher-details-print",  auth, cfVoucherController.voucherDetailsPrint);
 
+router.post("/voucher-unload",auth,cfVoucherController.createCFVoucherUnload)
+
 export default router;

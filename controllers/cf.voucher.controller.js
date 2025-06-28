@@ -1,5 +1,6 @@
 import CFVoucher from '../models/cf.voucher.generate.model.js';
 import { Booking } from '../models/booking.model.js';
+import CFVoucherUnload from "../models/cf.voucher.unload.model.js"
 
 // Generate the next voucher number
 const generateVoucher = async () => {
@@ -7,40 +8,6 @@ const generateVoucher = async () => {
   return lastVoucher ? lastVoucher.voucherNo + 1 : 100;
 };
 
-// Fetch bookings eligible for voucher generation
-// const creditForVoucherGenerate = async (req, res) => {
-//   try {
-//     const { fromDate, toDate, senderName } = req.body;
-//       console.log(req.user,'hjgfdj')
-//     const companyId = req.user?.companyId;
-//     if (!companyId) return res.status(401).json({ success: false, message: "Unauthorized" });
-
-//     if (!fromDate || !toDate) return res.status(400).json({ message: "Missing date filters" });
-
-//     const from = new Date(fromDate);
-//     const to = new Date(toDate);
-//     to.setHours(23, 59, 59, 999);
-
-//     const query = {
-//       companyId,
-//       bookingDate: { $gte: from, $lte: to },
-//       agent: { $exists: true, $type: "string", $ne: "" },
-//       bookingStatus: 0
-//     };
-
-//     if (senderName) query.senderName = { $regex: `^${senderName}$`, $options: "i" };
-
-//     const bookings = await Booking.find(query)
-//       .sort({ bookingDate: -1 })
-//       .select("grnNo lrNumber senderName pickUpBranchname dropBranchname bookingStatus grandTotal bookingDate agent");
-
-//     if (!bookings.length) return res.status(404).json({ message: "No bookings found" });
-
-//     res.status(200).json(bookings);
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: "Server error", error: error.message });
-//   }
-// };
 
 const creditForVoucherGenerate = async (req, res) => {
   try {
@@ -369,6 +336,58 @@ const voucherDetailsPrint = async (req, res) => {
   }
 };
 
+
+
+// Generate the next unLoadVoucher number
+const generateVoucherNumber = async () => {
+  const lastVoucher = await CFVoucherUnload.findOne().sort({ unLoadVoucher: -1 });
+  return lastVoucher ? lastVoucher.unLoadVoucher + 1 : 1000; // Start from 1000
+};
+
+ const createCFVoucherUnload = async (req, res) => {
+  try {
+    const {
+      companyId,
+      grnNo,
+      lrNumber,
+      unloadBranch,
+      unLaodingDate, // Optional override
+      remarks,
+    } = req.body;
+
+    // Validate required fields
+    if (!companyId || !grnNo || !lrNumber || !unloadBranch) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const unLoadVoucher = await generateVoucherNumber();
+
+    const newVoucher = new CFVoucherUnload({
+      companyId,
+      unLoadVoucher,
+      grnNo,
+      lrNumber,
+      unloadBranch,
+      bookingStatus: 2,  
+      unLaodingDate: unLaodingDate || new Date(),
+      remarks,
+    });
+
+    await newVoucher.save();
+
+    await Booking.updateMany(
+  { grnNo: { $in: grnNo } },
+  { $set: { bookingStatus: 2 } }
+);
+
+    return res.status(201).json({ success: true, message: "CF Voucher created", data: newVoucher });
+  } catch (error) {
+    console.error("Error creating CF voucher:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+
 export default {
   creditForVoucherGenerate,
   createCFVoucher,
@@ -377,5 +396,6 @@ export default {
   updateCFVoucher,
   deleteCFVoucher,
   voucherDetails,
-  voucherDetailsPrint
+  voucherDetailsPrint,
+  createCFVoucherUnload
 };
