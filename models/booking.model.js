@@ -96,7 +96,7 @@ const bookingSchema = new mongoose.Schema(
     deliveryDate: { type: Date, default: null },
     deliveryEmployee: { type: String, default: null },
     deliveryBranchName: { type: String, default: null },
-
+    deliveryAmount: { type: Number, default: 0 },
     //last transactions
     ltDate: { type: Date, default: () => new Date() },
     ltCity: { type: String, default: null },
@@ -108,7 +108,8 @@ const bookingSchema = new mongoose.Schema(
     cancelByUser: { type: String, default: null },
     cancelCity: { type: String, default: null },
     cancelBranch: { type: String, default: null },
-    refundAmount: { type: Number, default: 0 },
+    refundAmount:{type:Number,default:0},
+   
 //  missing  data
     missingDate: { type: Date, default: null },
     missingByUser: { type: String, default: null },
@@ -142,10 +143,11 @@ const deliverySchema = new mongoose.Schema({
   },
    grnNo: { type: Number, required: true }, // auto generate
    receiverName: { type: String, required: true },
-  receiverMobile: { type: String, required: true },
-  deliveryDate: { type: Date, required: true },
-  deliveryEmployee: { type: String, default: null },
-  deliveryBranchName: { type: String, default: null },
+   receiverMobile: { type: String, required: true },
+   deliveryAmount:{type:Number,required:true},
+   deliveryDate: { type: Date, required: true },
+   deliveryEmployee: { type: String, default: null },
+   deliveryBranchName: { type: String, default: null },
 });
 
 const User = mongoose.model("User", userSchema);
