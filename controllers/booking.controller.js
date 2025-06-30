@@ -284,6 +284,14 @@ const createBooking = async (req, res) => {
       });
     }
 
+  // const bookingStatus = 0; // move this up here
+
+  let deliveryAmount = 0;
+    if (bookingType === "paid") {
+     deliveryAmount = grandTotal;
+}
+
+
     const [pickUpBranchdata, dropBranchdata] = await Promise.all([
       Branch.findOne({ branchUniqueId: pickUpBranch }).lean(),
       Branch.findOne({ branchUniqueId: dropBranch }).lean(),
@@ -368,6 +376,7 @@ const createBooking = async (req, res) => {
       bookbranchid: pickUpBranchId,
       pickUpBranchname,
       dropBranchname,
+       deliveryAmount,
     });
 
     const savedBooking = await booking.save();
