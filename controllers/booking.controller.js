@@ -3549,7 +3549,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 //   }
 // };
 
-
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
@@ -3564,14 +3563,9 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       companyId: new mongoose.Types.ObjectId(companyId)
     };
 
-    // Normalize date range to include full day
     if (fromDate && toDate) {
-      const from = new Date(fromDate);
-      from.setHours(0, 0, 0, 0);
-
-      const to = new Date(toDate);
-      to.setHours(23, 59, 59, 999);
-
+      const from = new Date(`${fromDate}T00:00:00.000Z`);
+      const to = new Date(`${toDate}T23:59:59.999Z`);
       matchStage.bookingDate = { $gte: from, $lte: to };
     }
 
@@ -3580,6 +3574,22 @@ const parcelBranchConsolidatedReport = async (req, res) => {
 
     const bookingData = await Booking.aggregate([
       { $match: matchStage },
+
+      {
+        $lookup: {
+          from: "deliveries",
+          localField: "grnNo",
+          foreignField: "grnNo",
+          as: "deliveryInfo"
+        }
+      },
+      {
+        $unwind: {
+          path: "$deliveryInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+
       {
         $lookup: {
           from: "cities",
@@ -3589,6 +3599,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         }
       },
       { $unwind: { path: "$fromCityData", preserveNullAndEmptyArrays: true } },
+
       {
         $lookup: {
           from: "cities",
@@ -3598,6 +3609,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         }
       },
       { $unwind: { path: "$toCityData", preserveNullAndEmptyArrays: true } },
+
       {
         $addFields: {
           sameState: {
@@ -3618,9 +3630,18 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           },
           sgstAmount: {
             $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
+          },
+          deliveryAmount: {
+            $convert: {
+              input: "$deliveryInfo.deliveryAmount",
+              to: "double",
+              onError: 0,
+              onNull: 0
+            }
           }
         }
       },
+
       {
         $group: {
           _id: {
@@ -3630,6 +3651,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           },
           count: { $sum: 1 },
           grandTotal: { $sum: "$grandTotal" },
+          deliveryAmount: { $sum: "$deliveryAmount" },
           parcelGstAmount: { $sum: "$parcelGstAmount" },
           igstAmount: { $sum: "$igstAmount" },
           cgstAmount: { $sum: "$cgstAmount" },
@@ -3690,11 +3712,8 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         totals.finalCreditAmount += record.grandTotal;
       }
 
-      // ✅ Corrected deliveryAmount calculation
-      if (bookingStatus === 4) {
-        entry.deliveryAmount += record.grandTotal;
-        totals.finalDeliveryAmount += record.grandTotal;
-      }
+      entry.deliveryAmount += record.deliveryAmount;
+      totals.finalDeliveryAmount += record.deliveryAmount;
 
       if (bookingStatus === 5) {
         entry.cancelAmount += record.grandTotal;
@@ -3729,6 +3748,8 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
+
 
 
 const consolidatedReportBranch = async (req, res) => {
