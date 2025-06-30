@@ -1556,7 +1556,6 @@ const cancelBooking = async (req, res) => {
 };
 
 
-
 const parcelBookingReports = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -1661,8 +1660,6 @@ const parcelBookingReports = async (req, res) => {
     });
   }
 };
-
-
 
 
 // const parcelBookingReports = async (req, res) => {
@@ -1823,7 +1820,6 @@ const parcelBookingReports = async (req, res) => {
 // };
 
 
-
 const allParcelBookingReport = async (req, res) => {
   try {
     if (!req.user) {
@@ -1941,8 +1937,6 @@ const allParcelBookingReport = async (req, res) => {
   }
 };
 
-
-
 const parcelReportSerialNo = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -2044,9 +2038,6 @@ const parcelReportSerialNo = async (req, res) => {
     });
   }
 };
-
-
-
 
 const parcelCancelReport = async (req, res) => {
   try {
@@ -2163,7 +2154,6 @@ const parcelCancelReport = async (req, res) => {
   }
 };
 
-
 const parcelBookingSummaryReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -2251,10 +2241,6 @@ const parcelBookingSummaryReport = async (req, res) => {
     });
   }
 };
-
-
-
-
 
 // const parcelBookingSummaryReport = async (req, res) => {
 //   try {
@@ -2455,8 +2441,6 @@ const parcelBookingSummaryReport = async (req, res) => {
 // };
 
 
-
-
 const parcelBookingMobileNumber = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -2576,8 +2560,6 @@ const parcelBookingMobileNumber = async (req, res) => {
     });
   }
 };
-
-
 
 const regularCustomerBooking = async (req, res) => {
   try {
@@ -3374,9 +3356,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 };
 
 //.......................................................................................
-
-  
-
 
 
 // const parcelBranchConsolidatedReport = async (req, res) => {
