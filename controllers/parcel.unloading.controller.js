@@ -6,7 +6,7 @@ import {Booking} from '../models/booking.model.js'
 const getParcelsLoading = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
-    console.log(req.user.name)
+    
     if (!companyId) {
       return res.status(401).json({
         success: false,

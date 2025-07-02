@@ -61,6 +61,8 @@ router.post("/receivedBooking",auth,bookingController.receivedBooking)
 
 router.get("/get-deliveries",auth,bookingController.getAllDeliveries)
 
+router.patch("/update/:id",auth,bookingController.updateDelivery)
+
 router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)   
 
 router.post("/markParcelAsMissing/:grnNo", auth, bookingController.markParcelAsMissing) // Mark parcel as missing

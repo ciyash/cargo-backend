@@ -1482,6 +1482,41 @@ const getAllDeliveries = async (req, res) => {
 };
 
 
+const updateDelivery = async (req, res) => {
+  try {
+    const { id } = req.params; // from route like /delivery/:deliveryId
+    const updateFields = req.body;     // contains fields to update
+
+    if (!id) {
+      return res.status(400).json({ message: "Delivery ID is required" });
+    }
+
+    const updatedDelivery = await Delivery.findByIdAndUpdate(
+      id,
+      { $set: updateFields },
+      { new: true } // return updated document
+    );
+
+    if (!updatedDelivery) {
+      return res.status(404).json({ message: "Delivery not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Delivery updated successfully",
+      data: updatedDelivery,
+    });
+  } catch (error) {
+    console.error("Error updating delivery:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+
 const cancelBooking = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -3537,6 +3572,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //   }
 // };
 
+
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
@@ -3546,9 +3582,15 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized: companyId missing" });
     }
 
+    if (!pickUpBranch) {
+      return res.status(400).json({ message: "pickUpBranch is required" });
+    }
+
+    // Build match stage
     const matchStage = {
       bookingDate: { $ne: null },
-      companyId: new mongoose.Types.ObjectId(companyId)
+      companyId: new mongoose.Types.ObjectId(companyId),
+      pickUpBranch: pickUpBranch // match by branch code
     };
 
     if (fromDate && toDate) {
@@ -3557,9 +3599,11 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       matchStage.bookingDate = { $gte: from, $lte: to };
     }
 
-    if (fromCity) matchStage.fromCity = fromCity;
-    if (pickUpBranch) matchStage.pickUpBranch = pickUpBranch;
+    if (fromCity) {
+      matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
+    }
 
+    // Aggregation pipeline
     const bookingData = await Booking.aggregate([
       { $match: matchStage },
 
@@ -3571,12 +3615,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           as: "deliveryInfo"
         }
       },
-      {
-        $unwind: {
-          path: "$deliveryInfo",
-          preserveNullAndEmptyArrays: true
-        }
-      },
+      { $unwind: { path: "$deliveryInfo", preserveNullAndEmptyArrays: true } },
 
       {
         $lookup: {
@@ -3633,6 +3672,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       {
         $group: {
           _id: {
+            branchCode: "$pickUpBranch",
             branchName: "$pickUpBranchname",
             bookingStatus: "$bookingStatus",
             bookingType: "$bookingType"
@@ -3648,6 +3688,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       }
     ]);
 
+    // Processing results
     const branchMap = {};
     const totals = {
       finalPaidAmount: 0,
@@ -3664,10 +3705,11 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     };
 
     for (const record of bookingData) {
-      const { branchName, bookingStatus, bookingType } = record._id;
+      const { branchCode, branchName, bookingStatus, bookingType } = record._id;
 
-      if (!branchMap[branchName]) {
-        branchMap[branchName] = {
+      if (!branchMap[branchCode]) {
+        branchMap[branchCode] = {
+          branchCode,
           branchName,
           paidAmount: 0,
           toPayAmount: 0,
@@ -3683,7 +3725,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         };
       }
 
-      const entry = branchMap[branchName];
+      const entry = branchMap[branchCode];
 
       if (bookingType === "paid") {
         entry.paidAmount += record.grandTotal;
@@ -5912,7 +5954,7 @@ export default {
   receivedBooking,
   getAllDeliveries,
   cancelBooking,
-
+  updateDelivery,
   // Reports
 
   parcelBookingReports,
