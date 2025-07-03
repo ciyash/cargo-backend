@@ -3249,7 +3249,6 @@ const collectionReportToPay = async (req, res) => {
 // };
 
 
-
 const allCollectionReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -3303,6 +3302,15 @@ const allCollectionReport = async (req, res) => {
               ],
             },
           },
+          creditAmount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ["$bookingType", "credit"] }, { $ne: ["$bookingStatus", 5] }] },
+                "$grandTotal",
+                0,
+              ],
+            },
+          },
           cancelAmount: {
             $sum: {
               $cond: [
@@ -3329,7 +3337,7 @@ const allCollectionReport = async (req, res) => {
           _id: "$deliveryBranchName",
           deliveryAmount: {
             $sum: {
-              $toDouble: "$deliveryAmount", // in case it's still stored as string
+              $toDouble: "$deliveryAmount", // In case stored as string
             },
           },
         },
@@ -3348,9 +3356,10 @@ const allCollectionReport = async (req, res) => {
         branchName: b._id,
         paidAmount: b.paidAmount,
         toPayAmount: b.toPayAmount,
+        creditAmount: b.creditAmount,
         cancelAmount: b.cancelAmount,
         deliveryAmount,
-        netAmount: b.paidAmount + deliveryAmount - b.cancelAmount,
+        netAmount: b.paidAmount + b.creditAmount + deliveryAmount - b.cancelAmount,
       };
     });
 
@@ -3362,6 +3371,7 @@ const allCollectionReport = async (req, res) => {
     const summary = reportData.reduce((acc, curr) => {
       acc.finalPaidAmount += curr.paidAmount;
       acc.finalToPayAmount += curr.toPayAmount;
+      acc.finalCreditAmount += curr.creditAmount;
       acc.finalDeliveryAmount += curr.deliveryAmount;
       acc.finalCancelAmount += curr.cancelAmount;
       acc.finalNetAmount += curr.netAmount;
@@ -3369,6 +3379,7 @@ const allCollectionReport = async (req, res) => {
     }, {
       finalPaidAmount: 0,
       finalToPayAmount: 0,
+      finalCreditAmount: 0,
       finalDeliveryAmount: 0,
       finalCancelAmount: 0,
       finalNetAmount: 0,
@@ -3384,6 +3395,7 @@ const allCollectionReport = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 
 
