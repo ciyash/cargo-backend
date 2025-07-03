@@ -53,7 +53,7 @@ router.patch("/grnNo/:grnNo",auth,bookingController.updateGRNBookings)
 
 router.post("/updateAllGrnNumbers",auth,bookingController.updateAllGrnNumbers)
 
-router.post("/unreceived-booking",auth,bookingController.unReceivedBookings)
+// router.post("/unreceived-booking",auth,bookingController.unReceivedBookings)
 
 // 
 

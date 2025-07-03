@@ -1315,70 +1315,150 @@ const getCreditBookings = async (req, res) => {
 };
 
 
-const unReceivedBookings = async (req, res) => {
-  try {
-    const companyId = req.user?.companyId;
-    if (!companyId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: Company ID missing",
-      });
-    }
+// const unReceivedBookings = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: Company ID missing",
+//       });
+//     }
 
-    const {
-      fromDate,
-      toDate,
-      fromCity,
-      toCity,
-      fromBranch,
-      toBranch,
-    } = req.body;
+//     const {
+//       fromDate,
+//       toDate,
+//       fromCity,
+//       toCity,
+//       fromBranch,
+//       toBranch,
+//     } = req.body;
 
-    if (!fromDate || !toDate) {
-      return res.status(400).json({
-        success: false,
-        message: "fromDate and toDate are required!",
-      });
-    }
+//     if (!fromDate || !toDate) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "fromDate and toDate are required!",
+//       });
+//     }
 
-    const start = new Date(fromDate);
-    const end = new Date(toDate);
-    end.setHours(23, 59, 59, 999); // Include the full toDate
+//     const start = new Date(fromDate);
+//     const end = new Date(toDate);
+//     end.setHours(23, 59, 59, 999); // Include the full toDate
 
-    // Build dynamic query
-    const query = {
-      companyId,
-      bookingDate: { $gte: start, $lte: end },
-      bookingStatus: 2, // Status 2 indicates 'unreceived'
-    };
+//     // Build dynamic query
+//     const query = {
+//       companyId,
+//       bookingDate: { $gte: start, $lte: end },
+//       bookingStatus: 2, // Status 2 indicates 'unreceived'
+//     };
 
-    if (fromCity) query.fromCity = fromCity;
-    if (toCity) query.toCity = toCity;
-    if (fromBranch) query.pickUpBranch = fromBranch;
-    if (toBranch) query.dropBranch = toBranch;
+//     if (fromCity) query.fromCity = fromCity;
+//     if (toCity) query.toCity = toCity;
+//     if (fromBranch) query.pickUpBranch = fromBranch;
+//     if (toBranch) query.dropBranch = toBranch;
 
-    const bookings = await Booking.find(query);
+//     const bookings = await Booking.find(query);
 
-    if (!bookings.length) {
-      return res.status(404).json({
-        success: false,
-        message: "No unreceived bookings found in the selected filters.",
-      });
-    }
+//     if (!bookings.length) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "No unreceived bookings found in the selected filters.",
+//       });
+//     }
 
-    return res.status(200).json({
-      success: true,
-      count: bookings.length,
-      data: bookings,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-};
+//     return res.status(200).json({
+//       success: true,
+//       count: bookings.length,
+//       data: bookings,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
+// const receivedBooking = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: Company ID missing",
+//       });
+//     }
+
+//     const { grnNo, receiverName, receiverMobile,deliveryAmount } = req.body;
+//     const deliveryEmployee = req.user?.name;
+//     const deliveryBranchName = req.user?.branchName || null;
+
+//     if (!grnNo) {
+//       return res.status(400).json({ message: "grnNo is required!" });
+//     }
+//     if (!deliveryEmployee) {
+//       return res.status(400).json({ message: "Delivery employee name is required!" });
+//     }
+//     if (!receiverName || !receiverMobile) {
+//       return res.status(400).json({ message: "Receiver name and mobile number are required!" });
+//     }
+
+//      if (!deliveryAmount) {
+//       return res.status(400).json({ message: "Delivery amount is missing!" });
+//     }
+
+//     const booking = await Booking.findOne({ grnNo, companyId });
+//     if (!booking) {
+//       return res.status(404).json({ message: "Booking not found!" });
+//     }
+
+//     if (booking.bookingStatus === 4) {
+//       return res.status(400).json({ message: "Parcel already received!" });
+//     }
+//     if (booking.bookingStatus !== 2) {
+//       return res.status(400).json({
+//         message: "Your parcel is not eligible for receiving (unloading not completed).",
+//       });
+//     }
+
+//     const deliveryDate = new Date();
+
+//     // ✅ Save in Delivery model
+//     const newDelivery = new Delivery({
+//       companyId,
+//       grnNo,
+//       receiverName,
+//       receiverMobile,
+//       deliveryDate,
+//       deliveryAmount,
+//       deliveryEmployee,
+//       deliveryBranchName,
+//     });
+//     await newDelivery.save();
+
+//     // ✅ Update Booking model
+//     booking.bookingStatus = 4;
+//     booking.deliveryDate = deliveryDate;
+//     booking.deliveryAmount=deliveryAmount;
+//     booking.deliveryEmployee = deliveryEmployee;
+//     booking.deliveryBranchName = deliveryBranchName;
+//     booking.receiverName = receiverName;
+//     booking.receiverMobile = receiverMobile;
+
+//     await booking.save({ validateModifiedOnly: true });
+
+//     // ✅ Response kept same as you requested
+//     return res.status(200).json({
+//       success: true,
+//       message: "Booking received successfully",
+//       booking,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ success: false, error: error.message });
+//   }
+// };
 
 
 const receivedBooking = async (req, res) => {
@@ -1391,7 +1471,7 @@ const receivedBooking = async (req, res) => {
       });
     }
 
-    const { grnNo, receiverName, receiverMobile,deliveryAmount } = req.body;
+    const { grnNo, receiverName, receiverMobile, deliveryAmount } = req.body;
     const deliveryEmployee = req.user?.name;
     const deliveryBranchName = req.user?.branchName || null;
 
@@ -1404,8 +1484,7 @@ const receivedBooking = async (req, res) => {
     if (!receiverName || !receiverMobile) {
       return res.status(400).json({ message: "Receiver name and mobile number are required!" });
     }
-
-     if (!deliveryAmount) {
+    if (!deliveryAmount) {
       return res.status(400).json({ message: "Delivery amount is missing!" });
     }
 
@@ -1420,6 +1499,15 @@ const receivedBooking = async (req, res) => {
     if (booking.bookingStatus !== 2) {
       return res.status(400).json({
         message: "Your parcel is not eligible for receiving (unloading not completed).",
+      });
+    }
+
+    // ✅ Check if receiving branch matches unloading branch
+    if (booking.unloadingBranchname !== deliveryBranchName) {
+      return res.status(403).json({
+        message: "You cannot receive this parcel. It was unloaded at a different branch.",
+        unloadingBranch: booking.unloadingBranchname,
+        yourBranch: deliveryBranchName,
       });
     }
 
@@ -1441,7 +1529,7 @@ const receivedBooking = async (req, res) => {
     // ✅ Update Booking model
     booking.bookingStatus = 4;
     booking.deliveryDate = deliveryDate;
-    booking.deliveryAmount=deliveryAmount;
+    booking.deliveryAmount = deliveryAmount;
     booking.deliveryEmployee = deliveryEmployee;
     booking.deliveryBranchName = deliveryBranchName;
     booking.receiverName = receiverName;
@@ -1449,7 +1537,6 @@ const receivedBooking = async (req, res) => {
 
     await booking.save({ validateModifiedOnly: true });
 
-    // ✅ Response kept same as you requested
     return res.status(200).json({
       success: true,
       message: "Booking received successfully",
@@ -5949,7 +6036,7 @@ export default {
 
   getCreditBookings,
   toDayBookings,
-  unReceivedBookings,
+  // unReceivedBookings,
 
   receivedBooking,
   getAllDeliveries,
