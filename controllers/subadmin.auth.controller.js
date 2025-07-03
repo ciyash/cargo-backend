@@ -369,7 +369,7 @@ const getAllEmployees = async (req, res) => {
 
     const subadmins = await Subadmin.find({ companyId })
       .populate("branchId", "name branchUniqueId branchType city location address")
-      .populate("companyId", "name email phone address state customerName");
+      .populate("companyId", "name email logo phone address state customerName");
 
     if (subadmins.length === 0) {
       return res.status(404).json({ message: "No subadmins in database" });

@@ -1,12 +1,17 @@
 import express from "express";
 import companyController from '../controllers/company.controller.js';
 import companyAuth from '../config/company.auth.js';
+import multer from 'multer';
 
 const router = express.Router();
 
 
+const storage=multer.memoryStorage()
 
-router.post("/subsidiary/register", companyController.registerSubsidiaryCompany); 
+const upload=multer({storage}).single("logo")
+
+
+router.post("/subsidiary/register", upload,companyController.registerSubsidiaryCompany); 
 
 router.post("/subsidiary/login", companyController.loginCompany); 
 
@@ -14,7 +19,7 @@ router.post("/company-access", companyAuth, companyController.checkCompanyAccess
 
 router.get("/get-companies", companyController.getAllCompanies);    // Get all companies
 
-router.patch("/update", companyAuth, companyController.updateCompany); // Update company details
+router.patch("/update", companyAuth, upload, companyController.updateCompany); // Update company details
 
 router.get("/subsidiaries/:parentCompanyId", companyController.getSubsidiaries);
 

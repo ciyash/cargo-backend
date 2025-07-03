@@ -2,6 +2,7 @@ import Company from "../models/company.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+
 // Register Subsidiary
 const registerSubsidiaryCompany = async (req, res) => {
   try {
@@ -16,6 +17,8 @@ const registerSubsidiaryCompany = async (req, res) => {
       customerName
     } = req.body;
 
+     const logo = req.file.buffer.toString("base64");
+
     const existing = await Company.findOne({ email });
     if (existing) return res.status(400).json({ msg: "Company already exists" });
 
@@ -26,6 +29,7 @@ const registerSubsidiaryCompany = async (req, res) => {
       email,
       password: hashed,
       phone,
+      logo,
       address,
       state,
       customerName,
@@ -109,8 +113,14 @@ const updateCompany = async (req, res) => {
 
     const updateData = { ...req.body };
 
+    // ✅ Handle password hashing if password is being updated
     if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
+
+    // ✅ Handle logo update (if a file is uploaded)
+    if (req.file) {
+      updateData.logo = req.file.buffer.toString("base64");
     }
 
     const updatedCompany = await Company.findByIdAndUpdate(id, updateData, {
@@ -131,6 +141,7 @@ const updateCompany = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 
 const getAllCompanies = async (req, res) => {
