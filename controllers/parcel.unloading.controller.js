@@ -124,11 +124,110 @@ const getParcelunLoadingByGrnNumber = async (req, res) => {
 
 const generateUnloadingVoucher = () => Math.floor(10000 + Math.random() * 90000);
 
+// const createParcelUnloading = async (req, res) => {
+//   try {
+//     const { vehicalNumber, branch, lrNumber, grnNo, bookingType } = req.body;
+
+//     // Get companyId from authenticated user
+//     const companyId = req.user?.companyId;
+//     const unLoadingBy = req.user?.id;
+
+//     if (!companyId) {
+//       return res.status(403).json({ message: "Unauthorized: Company ID missing" });
+//     }
+
+//     // Basic validation
+//     if (!vehicalNumber ) {
+//       return res.status(400).json({ message: "vehicalNumber,  bookingType are required" });
+//     }
+
+//       if (!branch) {
+//       return res.status(400).json({ message: " branch is required" });
+//     }
+
+//       if (!bookingType) {
+//       return res.status(400).json({ message: "bookingType is required" });
+//     }
+
+//     if (!grnNo || !Array.isArray(grnNo) || grnNo.length === 0) {
+//       return res.status(400).json({ message: "GRN numbers are required and should be a non-empty array" });
+//     }
+
+//     // if (!lrNumber || !Array.isArray(lrNumber) || lrNumber.length === 0) {
+//     //   return res.status(400).json({ message: "LR numbers are required and should be a non-empty array" });
+//     // }
+
+//     // Convert GRN numbers to numbers
+//     const grnNumbers = grnNo.map(num => Number(num));
+
+//     // Validate GRNs are valid numbers
+//     if (grnNumbers.some(isNaN)) {
+//       return res.status(400).json({ message: "All GRN numbers must be valid numbers" });
+//     }
+
+//     const currentDate = new Date();
+
+//     // Check if all GRNs exist within this company
+//     const existingBookings = await Booking.find({
+//       grnNo: { $in: grnNumbers },
+//       companyId, // <-- Filter by companyId
+//     });
+
+//     const existingGrnNumbers = existingBookings.map(booking => booking.grnNo);
+
+//     const missingGrnNumbers = grnNumbers.filter(grn => !existingGrnNumbers.includes(grn));
+
+//     if (missingGrnNumbers.length > 0) {
+//       return res.status(400).json({
+//         message: "Some GRN numbers do not exist in the system under your company",
+//         missingGrnNumbers,
+//       });
+//     }
+
+//     // Update booking status and unloading date within company scope
+//   await Booking.updateMany(
+//   {
+//     grnNo: { $in: grnNumbers },
+//     companyId,
+//   },
+//   {
+//     $set: {
+//       bookingStatus: 2,
+//       unloadingDate: currentDate,
+//       unloadingBranchname: req.user?.branchName || '',      // ← assuming `branch` is branch name
+//       unloadingByemp: req.user?.name || req.user?.username || '', // ← add proper fallback
+//     },
+//   }
+// );
+
+
+
+//     // Create a new Parcel Unloading document with companyId
+//     const newParcel = new ParcelUnloading({
+//       unLoadingVoucher: generateUnloadingVoucher(),
+//       unLoadingBy,
+//       branch,
+//       vehicalNumber,
+//       lrNumber,
+//       grnNo: grnNumbers,
+//       bookingType,
+//       unloadingDate: currentDate,
+//       companyId, // <-- store companyId here as well
+//     });
+
+//     await newParcel.save();
+
+//     res.status(201).json({ message: "Parcel unloading created successfully", data: newParcel });
+//   } catch (error) {
+//     console.error("Error creating parcel unloading:", error);
+//     res.status(500).json({ message: "Error creating parcel unloading", error: error.message });
+//   }
+// };
+
 const createParcelUnloading = async (req, res) => {
   try {
     const { vehicalNumber, branch, lrNumber, grnNo, bookingType } = req.body;
 
-    // Get companyId from authenticated user
     const companyId = req.user?.companyId;
     const unLoadingBy = req.user?.id;
 
@@ -136,16 +235,15 @@ const createParcelUnloading = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized: Company ID missing" });
     }
 
-    // Basic validation
-    if (!vehicalNumber ) {
-      return res.status(400).json({ message: "vehicalNumber,  bookingType are required" });
+    if (!vehicalNumber) {
+      return res.status(400).json({ message: "vehicalNumber is required" });
     }
 
-      if (!branch) {
-      return res.status(400).json({ message: " branch is required" });
+    if (!branch) {
+      return res.status(400).json({ message: "branch is required" });
     }
 
-      if (!bookingType) {
+    if (!bookingType) {
       return res.status(400).json({ message: "bookingType is required" });
     }
 
@@ -153,28 +251,20 @@ const createParcelUnloading = async (req, res) => {
       return res.status(400).json({ message: "GRN numbers are required and should be a non-empty array" });
     }
 
-    // if (!lrNumber || !Array.isArray(lrNumber) || lrNumber.length === 0) {
-    //   return res.status(400).json({ message: "LR numbers are required and should be a non-empty array" });
-    // }
-
-    // Convert GRN numbers to numbers
     const grnNumbers = grnNo.map(num => Number(num));
 
-    // Validate GRNs are valid numbers
     if (grnNumbers.some(isNaN)) {
       return res.status(400).json({ message: "All GRN numbers must be valid numbers" });
     }
 
     const currentDate = new Date();
 
-    // Check if all GRNs exist within this company
     const existingBookings = await Booking.find({
       grnNo: { $in: grnNumbers },
-      companyId, // <-- Filter by companyId
+      companyId,
     });
 
     const existingGrnNumbers = existingBookings.map(booking => booking.grnNo);
-
     const missingGrnNumbers = grnNumbers.filter(grn => !existingGrnNumbers.includes(grn));
 
     if (missingGrnNumbers.length > 0) {
@@ -184,25 +274,23 @@ const createParcelUnloading = async (req, res) => {
       });
     }
 
-    // Update booking status and unloading date within company scope
-  await Booking.updateMany(
-  {
-    grnNo: { $in: grnNumbers },
-    companyId,
-  },
-  {
-    $set: {
-      bookingStatus: 2,
-      unloadingDate: currentDate,
-      unloadingBranchname: req.user?.branchName || '',      // ← assuming `branch` is branch name
-      unloadingByemp: req.user?.name || req.user?.username || '', // ← add proper fallback
-    },
-  }
-);
+    // Update bookings
+    await Booking.updateMany(
+      {
+        grnNo: { $in: grnNumbers },
+        companyId,
+      },
+      {
+        $set: {
+          bookingStatus: 2,
+          unloadingDate: currentDate,
+          unloadingBranchname: req.user?.branchName || '',
+          unloadingByemp: req.user?.name || req.user?.username || '',
+        },
+      }
+    );
 
-
-
-    // Create a new Parcel Unloading document with companyId
+    // Create Parcel Unloading document
     const newParcel = new ParcelUnloading({
       unLoadingVoucher: generateUnloadingVoucher(),
       unLoadingBy,
@@ -212,12 +300,22 @@ const createParcelUnloading = async (req, res) => {
       grnNo: grnNumbers,
       bookingType,
       unloadingDate: currentDate,
-      companyId, // <-- store companyId here as well
+      companyId,
     });
 
     await newParcel.save();
 
-    res.status(201).json({ message: "Parcel unloading created successfully", data: newParcel });
+    // ✅ Fetch full Booking data again to send in response
+    const bookingDetails = await Booking.find({
+      grnNo: { $in: grnNumbers },
+      companyId,
+    });
+
+    res.status(201).json({
+      message: "Parcel unloading created successfully",
+      data: newParcel,
+      bookingDetails, // ✅ Full Booking records included
+    });
   } catch (error) {
     console.error("Error creating parcel unloading:", error);
     res.status(500).json({ message: "Error creating parcel unloading", error: error.message });
