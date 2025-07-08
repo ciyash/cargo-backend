@@ -1502,7 +1502,7 @@ const receivedBooking = async (req, res) => {
       });
     }
 
-    // ✅ Check if receiving branch matches unloading branch
+    // ✅ Check branch match
     if (booking.unloadingBranchname !== deliveryBranchName) {
       return res.status(403).json({
         message: "You cannot receive this parcel. It was unloaded at a different branch.",
@@ -1546,6 +1546,7 @@ const receivedBooking = async (req, res) => {
     return res.status(500).json({ success: false, error: error.message });
   }
 };
+
 
 const getAllDeliveries = async (req, res) => {
   try {
@@ -3671,11 +3672,10 @@ const bookingTypeWiseCollection = async (req, res) => {
 //   }
 // };
 
-
+   
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
-
     const companyId = req.user?.companyId;
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized: companyId missing" });
@@ -3685,11 +3685,10 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       return res.status(400).json({ message: "pickUpBranch is required" });
     }
 
-    // Build match stage
     const matchStage = {
       bookingDate: { $ne: null },
       companyId: new mongoose.Types.ObjectId(companyId),
-      pickUpBranch: pickUpBranch // match by branch code
+      pickUpBranch: pickUpBranch
     };
 
     if (fromDate && toDate) {
@@ -3702,19 +3701,9 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
     }
 
-    // Aggregation pipeline
+    // ✅ Aggregation pipeline
     const bookingData = await Booking.aggregate([
       { $match: matchStage },
-
-      {
-        $lookup: {
-          from: "deliveries",
-          localField: "grnNo",
-          foreignField: "grnNo",
-          as: "deliveryInfo"
-        }
-      },
-      { $unwind: { path: "$deliveryInfo", preserveNullAndEmptyArrays: true } },
 
       {
         $lookup: {
@@ -3746,6 +3735,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           }
         }
       },
+
       {
         $addFields: {
           igstAmount: {
@@ -3759,7 +3749,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           },
           deliveryAmount: {
             $convert: {
-              input: "$deliveryInfo.deliveryAmount",
+              input: "$deliveryAmount",  // ✅ Direct from Booking
               to: "double",
               onError: 0,
               onNull: 0
@@ -3787,7 +3777,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       }
     ]);
 
-    // Processing results
+    // ✅ Process Results
     const branchMap = {};
     const totals = {
       finalPaidAmount: 0,
@@ -3877,8 +3867,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
-
-
 
 
 const consolidatedReportBranch = async (req, res) => {
