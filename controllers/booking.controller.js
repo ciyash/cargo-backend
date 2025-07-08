@@ -3493,36 +3493,39 @@ const bookingTypeWiseCollection = async (req, res) => {
 //.......................................................................................
 
 
+
+
+   
 // const parcelBranchConsolidatedReport = async (req, res) => {
 //   try {
 //     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
-
 //     const companyId = req.user?.companyId;
 //     if (!companyId) {
 //       return res.status(401).json({ message: "Unauthorized: companyId missing" });
 //     }
 
-//     const matchStage = {
-//       bookingDate: { $ne: null },
-//       companyId: new mongoose.Types.ObjectId(companyId)
-//     };
-
-//     // Normalize date range to include full day
-//     if (fromDate && toDate) {
-//       const from = new Date(fromDate);
-//       from.setHours(0, 0, 0, 0);
-
-//       const to = new Date(toDate);
-//       to.setHours(23, 59, 59, 999);
-
-//       matchStage.bookingDate = { $gte: from, $lte: to };
+//     if (!pickUpBranch) {
+//       return res.status(400).json({ message: "pickUpBranch is required" });
 //     }
 
-//     if (fromCity) matchStage.fromCity = fromCity;
-//     if (pickUpBranch) matchStage.pickUpBranch = pickUpBranch;
+    
 
+//     const matchStage = {
+//       bookingDate: { $ne: null },
+//       companyId: new mongoose.Types.ObjectId(companyId),
+//       pickUpBranch: pickUpBranch
+//     };
+
+   
+
+//     if (fromCity) {
+//       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
+//     }
+
+//     // ✅ Aggregation pipeline
 //     const bookingData = await Booking.aggregate([
 //       { $match: matchStage },
+
 //       {
 //         $lookup: {
 //           from: "cities",
@@ -3532,6 +3535,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //         }
 //       },
 //       { $unwind: { path: "$fromCityData", preserveNullAndEmptyArrays: true } },
+
 //       {
 //         $lookup: {
 //           from: "cities",
@@ -3541,6 +3545,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //         }
 //       },
 //       { $unwind: { path: "$toCityData", preserveNullAndEmptyArrays: true } },
+
 //       {
 //         $addFields: {
 //           sameState: {
@@ -3551,6 +3556,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //           }
 //         }
 //       },
+
 //       {
 //         $addFields: {
 //           igstAmount: {
@@ -3561,18 +3567,29 @@ const bookingTypeWiseCollection = async (req, res) => {
 //           },
 //           sgstAmount: {
 //             $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
+//           },
+//           deliveryAmount: {
+//             $convert: {
+//               input: "$deliveryAmount",  // ✅ Direct from Booking
+//               to: "double",
+//               onError: 0,
+//               onNull: 0
+//             }
 //           }
 //         }
 //       },
+
 //       {
 //         $group: {
 //           _id: {
+//             branchCode: "$pickUpBranch",
 //             branchName: "$pickUpBranchname",
 //             bookingStatus: "$bookingStatus",
 //             bookingType: "$bookingType"
 //           },
 //           count: { $sum: 1 },
 //           grandTotal: { $sum: "$grandTotal" },
+//           deliveryAmount: { $sum: "$deliveryAmount" },
 //           parcelGstAmount: { $sum: "$parcelGstAmount" },
 //           igstAmount: { $sum: "$igstAmount" },
 //           cgstAmount: { $sum: "$cgstAmount" },
@@ -3581,6 +3598,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       }
 //     ]);
 
+//     // ✅ Process Results
 //     const branchMap = {};
 //     const totals = {
 //       finalPaidAmount: 0,
@@ -3597,10 +3615,11 @@ const bookingTypeWiseCollection = async (req, res) => {
 //     };
 
 //     for (const record of bookingData) {
-//       const { branchName, bookingStatus, bookingType } = record._id;
+//       const { branchCode, branchName, bookingStatus, bookingType } = record._id;
 
-//       if (!branchMap[branchName]) {
-//         branchMap[branchName] = {
+//       if (!branchMap[branchCode]) {
+//         branchMap[branchCode] = {
+//           branchCode,
 //           branchName,
 //           paidAmount: 0,
 //           toPayAmount: 0,
@@ -3616,7 +3635,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //         };
 //       }
 
-//       const entry = branchMap[branchName];
+//       const entry = branchMap[branchCode];
 
 //       if (bookingType === "paid") {
 //         entry.paidAmount += record.grandTotal;
@@ -3633,10 +3652,8 @@ const bookingTypeWiseCollection = async (req, res) => {
 //         totals.finalCreditAmount += record.grandTotal;
 //       }
 
-//       if (bookingType === "delivery" && bookingStatus === 4) {
-//         entry.deliveryAmount += record.grandTotal;
-//         totals.finalDeliveryAmount += record.grandTotal;
-//       }
+//       entry.deliveryAmount += record.deliveryAmount;
+//       totals.finalDeliveryAmount += record.deliveryAmount;
 
 //       if (bookingStatus === 5) {
 //         entry.cancelAmount += record.grandTotal;
@@ -3672,7 +3689,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //   }
 // };
 
-   
+
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
@@ -3685,17 +3702,17 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       return res.status(400).json({ message: "pickUpBranch is required" });
     }
 
+    // ✅ Correct Date Filtering for IST (Indian Time)
+    const from = new Date(fromDate);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(toDate);
+    to.setHours(23, 59, 59, 999);
+
     const matchStage = {
-      bookingDate: { $ne: null },
+      bookingDate: { $gte: from, $lte: to },
       companyId: new mongoose.Types.ObjectId(companyId),
       pickUpBranch: pickUpBranch
     };
-
-    if (fromDate && toDate) {
-      const from = new Date(`${fromDate}T00:00:00.000Z`);
-      const to = new Date(`${toDate}T23:59:59.999Z`);
-      matchStage.bookingDate = { $gte: from, $lte: to };
-    }
 
     if (fromCity) {
       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
