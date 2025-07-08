@@ -55,7 +55,7 @@ router.post("/updateAllGrnNumbers",auth,bookingController.updateAllGrnNumbers)
 
 // router.post("/unreceived-booking",auth,bookingController.unReceivedBookings)
 
-// 
+//   
 
 router.post("/receivedBooking",auth,bookingController.receivedBooking)
 
@@ -111,3 +111,4 @@ router.get("/get-total",auth,bookingController.getTotalByBranchAndDate)
 
 export default router
   
+
