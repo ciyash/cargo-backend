@@ -17,7 +17,7 @@ const generateGrnNumber = async (companyId) => {
   return typeof lastGrn === "number" ? lastGrn + 1 : 1000;
 };
 
-// Helper to extract 2-letter initials (smart fallback)
+// Helper to extract 2-letter initialsss (smart fallback)
 const extractInitials = (name) => {
   if (!name) return "XX";
 
