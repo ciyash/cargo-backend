@@ -4797,150 +4797,6 @@ const parcelReceivedStockReport = async (req, res) => {
 
 
 
-// const deliveredStockReport = async (req, res) => {
-//   try {
-//     const companyId = req.user?.companyId;
-//     if (!companyId) {
-//       return res.status(401).json({
-//         success: false,
-//         message: "Unauthorized: Company ID missing",
-//       });
-//     }
-
-//     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;
-
-//     if (!fromDate || !toDate) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "fromDate and toDate are required",
-//       });
-//     }
-
-//     const start = new Date(fromDate);
-//     const end = new Date(toDate);
-//     end.setHours(23, 59, 59, 999);
-
-//     let query = {
-//       companyId,
-//       deliveryDate: { $gte: start, $lte: end },  // ✅ Correct date filter
-//       bookingStatus: 4,
-//     };
-
-//     if (fromCity) query.fromCity = fromCity;
-//     if (toCity) query.toCity = toCity;
-//     if (pickUpBranch) query.pickUpBranch = pickUpBranch;
-//     if (dropBranch) query.dropBranch = dropBranch;
-
-//     const stockReport = await Booking.find(query)
-//       .select(
-//         "grnNo lrNumber deliveryEmployee grandTotal fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharges hamaliCharges doorDeliveryCharges doorPickupCharges"
-//       )
-//       .lean();
-
-//     if (!stockReport.length) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "No stock found for the given criteria",
-//       });
-//     }
-
-//     let totalPackages = 0;
-//     let totalFreight = 0;
-//     let totalGST = 0;
-//     let totalOtherCharges = 0;
-//     let totalNetAmount = 0;
-
-//     const bookingTypeSummary = {};
-
-//     const updatedDeliveries = stockReport.map((delivery, index) => {
-//       const {
-//         grnNo,
-//         lrNumber,
-//         deliveryEmployee,
-//         grandTotal = 0,
-//         fromCity,
-//         pickUpBranchname,
-//         senderName,
-//         senderMobile,
-//         bookingType,
-//         receiverName,
-//         packages = [],
-//         parcelGstAmount = 0,
-//         totalPackages: packageCount = 0,
-//         serviceCharges = 0,
-//         hamaliCharges = 0,
-//         doorDeliveryCharges = 0,
-//         doorPickupCharges = 0,
-//       } = delivery;
-
-//       const otherCharges = serviceCharges + hamaliCharges + doorDeliveryCharges + doorPickupCharges;
-
-//       totalFreight += grandTotal;  // ✅ Summing grandTotal now
-//       totalGST += parcelGstAmount;
-//       totalOtherCharges += otherCharges;
-//       totalNetAmount += grandTotal;  // ✅ Net total is grandTotal itself here
-//       totalPackages += packageCount;
-
-//       const normalizedType = (bookingType || "").toLowerCase();
-
-//       if (!bookingTypeSummary[normalizedType]) {
-//         bookingTypeSummary[normalizedType] = {
-//           freight: 0,
-//           gst: 0,
-//           otherCharges: 0,
-//           netAmount: 0,
-//         };
-//       }
-
-//       bookingTypeSummary[normalizedType].freight += grandTotal;  // ✅ Using grandTotal
-//       bookingTypeSummary[normalizedType].gst += parcelGstAmount;
-//       bookingTypeSummary[normalizedType].otherCharges += otherCharges;
-//       bookingTypeSummary[normalizedType].netAmount += grandTotal;
-
-//       const parcelItems = packages
-//         .map((pkg) => `${pkg.quantity || 0}-${pkg.packageType || ""}`)
-//         .join(", ");
-
-//       return {
-//         SrNo: index + 1,
-//         WBNo: lrNumber,
-//         SourceSubregion: `${fromCity} (${pickUpBranchname})`,
-//         ReceivedBy: deliveryEmployee,
-//         Consigner: senderName,
-//         Consignee: receiverName,
-//         WBType: normalizedType,
-//         ParcelItem: parcelItems,
-//         Pkgs: packageCount,
-//         Amount: grandTotal,  // ✅ Showing grandTotal here
-//       };
-//     });
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Delivered stock report generated successfully",
-//       data: {
-//         deliveries: updatedDeliveries,
-//         summary: {
-//           totalPackages,
-//           totalFreight,
-//           totalGST,
-//           totalOtherCharges,
-//           totalNetAmount,
-//           bookingTypeSummary,
-//         },
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error in deliveredStockReport:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal server error",
-//       error: error.message,
-//     });
-//   }
-// };
-
-
 const deliveredStockReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -4960,9 +4816,8 @@ const deliveredStockReport = async (req, res) => {
       });
     }
 
-    const start = new Date(fromDate);
-    const end = new Date(toDate);
-    end.setHours(23, 59, 59, 999);
+    const start = new Date(fromDate + 'T00:00:00+05:30');
+    const end = new Date(toDate + 'T23:59:59+05:30');
 
     let query = {
       companyId,
@@ -5003,7 +4858,6 @@ const deliveredStockReport = async (req, res) => {
 
     const updatedDeliveries = stockReport.map((delivery, index) => {
       const {
-        grnNo,
         lrNumber,
         deliveryEmployee,
         grandTotal = 0,
@@ -5021,10 +4875,11 @@ const deliveredStockReport = async (req, res) => {
         doorPickupCharges = 0,
       } = delivery;
 
+      const freight = packages.reduce((sum, pkg) => sum + (pkg.totalPrice || 0), 0);
       const otherCharges = serviceCharges + hamaliCharges + doorPickupCharges + doorDeliveryCharges;
       const netAmount = grandTotal;
 
-      totalFreight += serviceCharges;
+      totalFreight += freight;
       totalGST += parcelGstAmount;
       totalOtherCharges += otherCharges;
       totalDeliveryCharges += doorDeliveryCharges || 0;
@@ -5032,17 +4887,12 @@ const deliveredStockReport = async (req, res) => {
       totalPackages += packageCount;
 
       let normalizedType = (bookingType || "").toLowerCase();
-      if (normalizedType === "paid") {
-        normalizedType = "Paid";
-      } else if (normalizedType === "topay") {
-        normalizedType = "ToPay";
-      } else if (normalizedType === "credit") {
-        normalizedType = "Credit";
-      } else {
-        return null; // Skip FOC or unknown types
-      }
+      if (normalizedType === "paid") normalizedType = "Paid";
+      else if (normalizedType === "topay" || normalizedType === "toPay") normalizedType = "ToPay";
+      else if (normalizedType === "credit") normalizedType = "Credit";
+      else return null;
 
-      bookingTypeSummary[normalizedType].freight += serviceCharges;
+      bookingTypeSummary[normalizedType].freight += freight;
       bookingTypeSummary[normalizedType].gst += parcelGstAmount;
       bookingTypeSummary[normalizedType].otherCharges += otherCharges;
       bookingTypeSummary[normalizedType].doorDeliveryCharges += doorDeliveryCharges || 0;
@@ -5077,7 +4927,7 @@ const deliveredStockReport = async (req, res) => {
           totalFreight,
           totalGST,
           totalOtherCharges,
-          totalDeliveryCharges,  // ✅ Added total delivery charges here
+          totalDeliveryCharges,
           totalNetAmount,
           bookingTypeSummary,
         },
@@ -5092,7 +4942,6 @@ const deliveredStockReport = async (req, res) => {
     });
   }
 };
-
 
 
 
