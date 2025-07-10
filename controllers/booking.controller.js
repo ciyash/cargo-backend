@@ -3355,6 +3355,8 @@ const bookingTypeWiseCollection = async (req, res) => {
 //.......................................................................................
 
 
+
+
 // const parcelBranchConsolidatedReport = async (req, res) => {
 //   try {
 //     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
@@ -3363,41 +3365,32 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       return res.status(401).json({ message: "Unauthorized: companyId missing" });
 //     }
 
+//     // ✅ Set Date Range with IST (+05:30)
 //     const from = new Date(fromDate + 'T00:00:00+05:30');
 //     const to = new Date(toDate + 'T23:59:59+05:30');
 
 //     const matchStage = {
 //       bookingDate: { $gte: from, $lte: to },
-//       companyId: new mongoose.Types.ObjectId(companyId),
+//       companyId: new mongoose.Types.ObjectId(companyId)
 //     };
 
 //     if (pickUpBranch) {
 //       matchStage.pickUpBranch = pickUpBranch;
 //     }
-
 //     if (fromCity) {
 //       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
 //     }
 
+//     // ✅ 1. Pickup Branch Bookings Aggregation
 //     const bookingData = await Booking.aggregate([
 //       { $match: matchStage },
 //       {
 //         $addFields: {
 //           deliveryAmount: {
-//             $convert: {
-//               input: "$deliveryAmount",
-//               to: "double",
-//               onError: 0,
-//               onNull: 0
-//             }
+//             $convert: { input: "$deliveryAmount", to: "double", onError: 0, onNull: 0 }
 //           },
 //           toPayDeliveredAmount: {
-//             $convert: {
-//               input: "$toPayDeliveredAmount",
-//               to: "double",
-//               onError: 0,
-//               onNull: 0
-//             }
+//             $convert: { input: "$toPayDeliveredAmount", to: "double", onError: 0, onNull: 0 }
 //           }
 //         }
 //       },
@@ -3429,6 +3422,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       finalToPayDeliveredAmount: 0
 //     };
 
+//     // ✅ Process Pickup Booking Data
 //     for (const record of bookingData) {
 //       const { branchCode, branchName, bookingStatus, bookingType } = record._id;
 
@@ -3440,10 +3434,10 @@ const bookingTypeWiseCollection = async (req, res) => {
 //           toPayAmount: 0,
 //           creditAmount: 0,
 //           deliveryAmount: 0,
+//           toPayDeliveredAmount: 0,
 //           cancelAmount: 0,
 //           bookingTotal: 0,
-//           total: 0,
-//           toPayDeliveredAmount: 0  // ✅ Added to store delivery collected toPay
+//           total: 0
 //         };
 //       }
 
@@ -3453,17 +3447,14 @@ const bookingTypeWiseCollection = async (req, res) => {
 //         entry.paidAmount += record.grandTotal;
 //         totals.finalPaidAmount += record.grandTotal;
 //       }
-
 //       if (bookingType === "credit") {
 //         entry.creditAmount += record.grandTotal;
 //         totals.finalCreditAmount += record.grandTotal;
 //       }
-
 //       if (bookingStatus === 5) {
 //         entry.cancelAmount += record.grandTotal;
 //         totals.finalCancelAmount += record.grandTotal;
 //       }
-
 //       if (bookingType === "toPay") {
 //         entry.toPayAmount += record.grandTotal;
 //         totals.finalToPayAmount += record.grandTotal;
@@ -3472,12 +3463,61 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       entry.deliveryAmount += record.deliveryAmount;
 //       totals.finalDeliveryAmount += record.deliveryAmount;
 
-//       // ✅ Sum collected toPay amount (delivery branch collected)
 //       entry.toPayDeliveredAmount += record.toPayDeliveredAmount;
 //       totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
 //     }
 
-//     // Final total calculation
+//     // ✅ 2. Delivery Side Aggregation (for toPayDeliveredAmount)
+//     const deliveryData = await Booking.aggregate([
+//       {
+//         $match: {
+//           bookingDate: { $gte: from, $lte: to },
+//           companyId: new mongoose.Types.ObjectId(companyId),
+//           bookingType: "toPay",
+//           toPayDeliveredAmount: { $gt: 0 }
+//         }
+//       },
+//       {
+//         $group: {
+//           _id: "$deliveryBranchName",
+//           toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
+//         }
+//       }
+//     ]);
+
+//     // ✅ Merge Delivery Data into Branch Map
+//     for (const record of deliveryData) {
+//       const branchName = record._id;
+//       let found = false;
+
+//       for (const entry of Object.values(branchMap)) {
+//         if (entry.branchName === branchName) {
+//           entry.toPayDeliveredAmount += record.toPayDeliveredAmount;
+//           totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
+//           found = true;
+//           break;
+//         }
+//       }
+
+//       if (!found && branchName) {
+//         // Branch has no bookings but has delivered toPay parcels → Add as new branch
+//         branchMap[branchName] = {
+//           branchCode: "-",
+//           branchName,
+//           paidAmount: 0,
+//           toPayAmount: 0,
+//           creditAmount: 0,
+//           deliveryAmount: 0,
+//           toPayDeliveredAmount: record.toPayDeliveredAmount,
+//           cancelAmount: 0,
+//           bookingTotal: 0,
+//           total: 0
+//         };
+//         totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
+//       }
+//     }
+
+//     // ✅ Final Calculations per Branch
 //     for (const entry of Object.values(branchMap)) {
 //       entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
 //       entry.total = entry.paidAmount + entry.deliveryAmount;
@@ -3485,6 +3525,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       totals.finalTotal += entry.total;
 //     }
 
+//     // ✅ Final Response
 //     res.status(200).json({
 //       data: Object.values(branchMap),
 //       ...totals
@@ -3495,8 +3536,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 //     res.status(500).json({ message: "Server Error", error: err.message });
 //   }
 // };
-
-
 
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
@@ -3522,29 +3561,9 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
     }
 
-    // ✅ Step 1: Bookings Data
+    // ✅ Bookings Side
     const bookingData = await Booking.aggregate([
       { $match: matchStage },
-      {
-        $addFields: {
-          deliveryAmount: {
-            $convert: {
-              input: "$deliveryAmount",
-              to: "double",
-              onError: 0,
-              onNull: 0
-            },
-          },
-          toPayDeliveredAmount: {
-            $convert: {
-              input: "$toPayDeliveredAmount",
-              to: "double",
-              onError: 0,
-              onNull: 0
-            }
-          }
-        }
-      },
       {
         $group: {
           _id: {
@@ -3553,7 +3572,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
             bookingStatus: "$bookingStatus",
             bookingType: "$bookingType"
           },
-          count: { $sum: 1 },
           grandTotal: { $sum: "$grandTotal" },
           deliveryAmount: { $sum: "$deliveryAmount" },
           toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
@@ -3597,17 +3615,14 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         entry.paidAmount += record.grandTotal;
         totals.finalPaidAmount += record.grandTotal;
       }
-
       if (bookingType === "credit") {
         entry.creditAmount += record.grandTotal;
         totals.finalCreditAmount += record.grandTotal;
       }
-
       if (bookingStatus === 5) {
         entry.cancelAmount += record.grandTotal;
         totals.finalCancelAmount += record.grandTotal;
       }
-
       if (bookingType === "toPay") {
         entry.toPayAmount += record.grandTotal;
         totals.finalToPayAmount += record.grandTotal;
@@ -3620,7 +3635,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
     }
 
-    // ✅ Step 2: Delivery Side (Separate Aggregation)
+    // ✅ Delivery Side
     const deliveryData = await Booking.aggregate([
       {
         $match: {
@@ -3638,7 +3653,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       }
     ]);
 
-    // ✅ Merge Delivery Side
     for (const record of deliveryData) {
       const branchName = record._id;
       let found = false;
@@ -3669,7 +3683,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       }
     }
 
-    // ✅ Final calculations
     for (const entry of Object.values(branchMap)) {
       entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
       entry.total = entry.paidAmount + entry.deliveryAmount;
