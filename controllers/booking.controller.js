@@ -5194,9 +5194,9 @@ const deliveredStockReport = async (req, res) => {
     let totalNetAmount = 0;
 
     const bookingTypeSummary = {
-      Paid: { freight: 0, gst: 0, otherCharges: 0, "door deliverycharges": 0, credit: 0, netAmount: 0 },
-      ToPay: { freight: 0, gst: 0, otherCharges: 0, "door deliverycharges": 0, credit: 0, netAmount: 0 },
-      Credit: { freight: 0, gst: 0, otherCharges: 0, "door deliverycharges": 0, credit: 0, netAmount: 0 },
+      Paid: { freight: 0, gst: 0, otherCharges: 0, "doorDeliveryCharges": 0, credit: 0, netAmount: 0 },
+      ToPay: { freight: 0, gst: 0, otherCharges: 0, "doorDeliveryCharges": 0, credit: 0, netAmount: 0 },
+      Credit: { freight: 0, gst: 0, otherCharges: 0, "doorDeliveryCharges": 0, credit: 0, netAmount: 0 },
     };
 
     const updatedDeliveries = stockReport.map((delivery, index) => {
@@ -5242,7 +5242,7 @@ const deliveredStockReport = async (req, res) => {
       bookingTypeSummary[normalizedType].freight += grandTotal;
       bookingTypeSummary[normalizedType].gst += parcelGstAmount;
       bookingTypeSummary[normalizedType].otherCharges += otherCharges;
-      bookingTypeSummary[normalizedType]["door deliverycharges"] += doorDeliveryCharges || 0;
+      bookingTypeSummary[normalizedType]["doorDeliveryCharges"] += doorDeliveryCharges || 0;
       bookingTypeSummary[normalizedType].credit += normalizedType === "Credit" ? grandTotal : 0;
       bookingTypeSummary[normalizedType].netAmount += netAmount;
 
