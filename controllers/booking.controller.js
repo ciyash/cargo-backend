@@ -5165,7 +5165,7 @@ const deliveredStockReport = async (req, res) => {
 
     let query = {
       companyId,
-      deliveryDate: { $gte: start, $lte: end }, // ✅ Correct date filter
+      deliveryDate: { $gte: start, $lte: end },
       bookingStatus: 4,
     };
 
@@ -5191,12 +5191,13 @@ const deliveredStockReport = async (req, res) => {
     let totalFreight = 0;
     let totalGST = 0;
     let totalOtherCharges = 0;
+    let totalDeliveryCharges = 0;
     let totalNetAmount = 0;
 
     const bookingTypeSummary = {
-      Paid: { freight: 0, gst: 0, otherCharges: 0, "doorDeliveryCharges": 0, credit: 0, netAmount: 0 },
-      ToPay: { freight: 0, gst: 0, otherCharges: 0, "doorDeliveryCharges": 0, credit: 0, netAmount: 0 },
-      Credit: { freight: 0, gst: 0, otherCharges: 0, "doorDeliveryCharges": 0, credit: 0, netAmount: 0 },
+      Paid: { freight: 0, gst: 0, otherCharges: 0, doorDeliveryCharges: 0, credit: 0, netAmount: 0 },
+      ToPay: { freight: 0, gst: 0, otherCharges: 0, doorDeliveryCharges: 0, credit: 0, netAmount: 0 },
+      Credit: { freight: 0, gst: 0, otherCharges: 0, doorDeliveryCharges: 0, credit: 0, netAmount: 0 },
     };
 
     const updatedDeliveries = stockReport.map((delivery, index) => {
@@ -5219,12 +5220,13 @@ const deliveredStockReport = async (req, res) => {
         doorPickupCharges = 0,
       } = delivery;
 
-      const otherCharges = serviceCharges + hamaliCharges + doorPickupCharges;
+      const otherCharges = serviceCharges + hamaliCharges + doorPickupCharges + doorDeliveryCharges;
       const netAmount = grandTotal;
 
-      totalFreight += grandTotal;
+      totalFreight += serviceCharges;
       totalGST += parcelGstAmount;
       totalOtherCharges += otherCharges;
+      totalDeliveryCharges += doorDeliveryCharges || 0;
       totalNetAmount += netAmount;
       totalPackages += packageCount;
 
@@ -5236,13 +5238,13 @@ const deliveredStockReport = async (req, res) => {
       } else if (normalizedType === "credit") {
         normalizedType = "Credit";
       } else {
-        return null;  // Skip FOC or unknown types
+        return null; // Skip FOC or unknown types
       }
 
       bookingTypeSummary[normalizedType].freight += grandTotal;
       bookingTypeSummary[normalizedType].gst += parcelGstAmount;
       bookingTypeSummary[normalizedType].otherCharges += otherCharges;
-      bookingTypeSummary[normalizedType]["doorDeliveryCharges"] += doorDeliveryCharges || 0;
+      bookingTypeSummary[normalizedType].doorDeliveryCharges += doorDeliveryCharges || 0;
       bookingTypeSummary[normalizedType].credit += normalizedType === "Credit" ? grandTotal : 0;
       bookingTypeSummary[normalizedType].netAmount += netAmount;
 
@@ -5262,7 +5264,7 @@ const deliveredStockReport = async (req, res) => {
         Pkgs: packageCount,
         Amount: grandTotal,
       };
-    }).filter(Boolean); // Filter out skipped entries (like FOC)
+    }).filter(Boolean);
 
     return res.status(200).json({
       success: true,
@@ -5274,6 +5276,7 @@ const deliveredStockReport = async (req, res) => {
           totalFreight,
           totalGST,
           totalOtherCharges,
+          totalDeliveryCharges,  // ✅ Added total delivery charges here
           totalNetAmount,
           bookingTypeSummary,
         },
@@ -5288,7 +5291,6 @@ const deliveredStockReport = async (req, res) => {
     });
   }
 };
-
 
 
 
