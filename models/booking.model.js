@@ -12,7 +12,7 @@ const packageSchema = new mongoose.Schema({
 
 const bookingSchema = new mongoose.Schema(
   {
-    grnNo: { type: Number, unique: true }, //auto  generate
+    grnNo: { type: Number, required: true }, //auto  generate
     lrNumber: { type: String, required: true }, //auto  generate
     adminUniqueId: { type: Number, required: true }, //auto entered
     bookedBy: {
@@ -122,7 +122,8 @@ const bookingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-bookingSchema.index({ grnNo: 1, adminUniqueId: 1, bookingStatus: 1 });
+// bookingSchema.index({ grnNo: 1, adminUniqueId: 1, bookingStatus: 1 });
+bookingSchema.index({ companyId: 1, grnNo: 1 }, { unique: true });
 
 const userSchema = new mongoose.Schema({
   companyId: {
