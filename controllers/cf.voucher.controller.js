@@ -31,7 +31,7 @@ const creditForVoucherGenerate = async (req, res) => {
       companyId,
       bookingDate: { $gte: from, $lte: to },
       agent: { $exists: true, $type: "string", $ne: "" },
-      bookingStatus: 0
+      // bookingStatus: 0
     };
 
     // 🔐 Role-based filtering
