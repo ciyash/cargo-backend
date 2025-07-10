@@ -5140,7 +5140,6 @@ const parcelReceivedStockReport = async (req, res) => {
 // };
 
 
-
 const deliveredStockReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -5164,10 +5163,9 @@ const deliveredStockReport = async (req, res) => {
     const end = new Date(toDate);
     end.setHours(23, 59, 59, 999);
 
-    // Build query including companyId and bookingStatus = 4 (delivered)
     let query = {
       companyId,
-      bookingDate: { $gte: start, $lte: end },
+      deliveryDate: { $gte: start, $lte: end }, // ✅ Correct date filter
       bookingStatus: 4,
     };
 
@@ -5178,7 +5176,7 @@ const deliveredStockReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryEmployee totalCharge fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
+        "grnNo lrNumber deliveryEmployee grandTotal fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharges hamaliCharges doorDeliveryCharges doorPickupCharges"
       )
       .lean();
 
@@ -5205,7 +5203,7 @@ const deliveredStockReport = async (req, res) => {
         grnNo,
         lrNumber,
         deliveryEmployee,
-        totalCharge = 0,
+        grandTotal = 0,
         fromCity,
         pickUpBranchname,
         senderName,
@@ -5215,26 +5213,26 @@ const deliveredStockReport = async (req, res) => {
         packages = [],
         parcelGstAmount = 0,
         totalPackages: packageCount = 0,
-        serviceCharge = 0,
-        hamaliCharge = 0,
-        doorDeliveryCharge = 0,
-        doorPickupCharge = 0,
+        serviceCharges = 0,
+        hamaliCharges = 0,
+        doorDeliveryCharges = 0,
+        doorPickupCharges = 0,
       } = delivery;
 
-      const otherCharges = serviceCharge + hamaliCharge + doorDeliveryCharge + doorPickupCharge;
-      const netAmount = totalCharge + parcelGstAmount + otherCharges;
+      const otherCharges = serviceCharges + hamaliCharges + doorDeliveryCharges + doorPickupCharges;
+      const netAmount = grandTotal;  // ✅ Already includes everything in grandTotal
 
-      // Normalize bookingType to "Paid" or "ToPay"
-      const normalizedType = (bookingType || "").toLowerCase() === "paid" ? "Paid" : "ToPay";
-
-      totalFreight += totalCharge;
+      totalFreight += grandTotal;
       totalGST += parcelGstAmount;
       totalOtherCharges += otherCharges;
       totalNetAmount += netAmount;
       totalPackages += packageCount;
 
+      // Normalize bookingType
+      const normalizedType = (bookingType || "").toLowerCase() === "paid" ? "Paid" : "ToPay";
+
       if (bookingTypeSummary[normalizedType]) {
-        bookingTypeSummary[normalizedType].freight += totalCharge;
+        bookingTypeSummary[normalizedType].freight += grandTotal;
         bookingTypeSummary[normalizedType].gst += parcelGstAmount;
         bookingTypeSummary[normalizedType].otherCharges += otherCharges;
         bookingTypeSummary[normalizedType].netAmount += netAmount;
@@ -5254,7 +5252,7 @@ const deliveredStockReport = async (req, res) => {
         WBType: normalizedType,
         ParcelItem: parcelItems,
         Pkgs: packageCount,
-        Amount: totalCharge,
+        Amount: grandTotal,
       };
     });
 
@@ -5282,6 +5280,8 @@ const deliveredStockReport = async (req, res) => {
     });
   }
 };
+
+
 
 const pendingDispatchStockReport = async (req, res) => {
   try {
