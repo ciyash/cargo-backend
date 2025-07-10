@@ -5194,8 +5194,9 @@ const deliveredStockReport = async (req, res) => {
     let totalNetAmount = 0;
 
     const bookingTypeSummary = {
-      Paid: { freight: 0, gst: 0, otherCharges: 0, netAmount: 0 },
-      ToPay: { freight: 0, gst: 0, otherCharges: 0, netAmount: 0 },
+      Paid: { freight: 0, gst: 0, otherCharges: 0, "door deliverycharges": 0, credit: 0, netAmount: 0 },
+      ToPay: { freight: 0, gst: 0, otherCharges: 0, "door deliverycharges": 0, credit: 0, netAmount: 0 },
+      Credit: { freight: 0, gst: 0, otherCharges: 0, "door deliverycharges": 0, credit: 0, netAmount: 0 },
     };
 
     const updatedDeliveries = stockReport.map((delivery, index) => {
@@ -5207,7 +5208,6 @@ const deliveredStockReport = async (req, res) => {
         fromCity,
         pickUpBranchname,
         senderName,
-        senderMobile,
         bookingType,
         receiverName,
         packages = [],
@@ -5219,8 +5219,8 @@ const deliveredStockReport = async (req, res) => {
         doorPickupCharges = 0,
       } = delivery;
 
-      const otherCharges = serviceCharges + hamaliCharges + doorDeliveryCharges + doorPickupCharges;
-      const netAmount = grandTotal;  // ✅ Already includes everything in grandTotal
+      const otherCharges = serviceCharges + hamaliCharges + doorPickupCharges;
+      const netAmount = grandTotal;
 
       totalFreight += grandTotal;
       totalGST += parcelGstAmount;
@@ -5228,15 +5228,23 @@ const deliveredStockReport = async (req, res) => {
       totalNetAmount += netAmount;
       totalPackages += packageCount;
 
-      // Normalize bookingType
-      const normalizedType = (bookingType || "").toLowerCase() === "paid" ? "Paid" : "ToPay";
-
-      if (bookingTypeSummary[normalizedType]) {
-        bookingTypeSummary[normalizedType].freight += grandTotal;
-        bookingTypeSummary[normalizedType].gst += parcelGstAmount;
-        bookingTypeSummary[normalizedType].otherCharges += otherCharges;
-        bookingTypeSummary[normalizedType].netAmount += netAmount;
+      let normalizedType = (bookingType || "").toLowerCase();
+      if (normalizedType === "paid") {
+        normalizedType = "Paid";
+      } else if (normalizedType === "topay") {
+        normalizedType = "ToPay";
+      } else if (normalizedType === "credit") {
+        normalizedType = "Credit";
+      } else {
+        return null;  // Skip FOC or unknown types
       }
+
+      bookingTypeSummary[normalizedType].freight += grandTotal;
+      bookingTypeSummary[normalizedType].gst += parcelGstAmount;
+      bookingTypeSummary[normalizedType].otherCharges += otherCharges;
+      bookingTypeSummary[normalizedType]["door deliverycharges"] += doorDeliveryCharges || 0;
+      bookingTypeSummary[normalizedType].credit += normalizedType === "Credit" ? grandTotal : 0;
+      bookingTypeSummary[normalizedType].netAmount += netAmount;
 
       const parcelItems = packages
         .map((pkg) => `${pkg.quantity || 0}-${pkg.packageType || ""}`)
@@ -5254,7 +5262,7 @@ const deliveredStockReport = async (req, res) => {
         Pkgs: packageCount,
         Amount: grandTotal,
       };
-    });
+    }).filter(Boolean); // Filter out skipped entries (like FOC)
 
     return res.status(200).json({
       success: true,
@@ -5280,6 +5288,8 @@ const deliveredStockReport = async (req, res) => {
     });
   }
 };
+
+
 
 
 
