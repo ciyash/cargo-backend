@@ -5241,7 +5241,7 @@ const deliveredStockReport = async (req, res) => {
         return null; // Skip FOC or unknown types
       }
 
-      bookingTypeSummary[normalizedType].freight += grandTotal;
+      bookingTypeSummary[normalizedType].freight += serviceCharges;
       bookingTypeSummary[normalizedType].gst += parcelGstAmount;
       bookingTypeSummary[normalizedType].otherCharges += otherCharges;
       bookingTypeSummary[normalizedType].doorDeliveryCharges += doorDeliveryCharges || 0;

@@ -17,7 +17,9 @@ const registerSubsidiaryCompany = async (req, res) => {
       customerName
     } = req.body;
 
-     const logo = req.file.buffer.toString("base64");
+    //  const logo = req.file.buffer.toString("base64");
+     const logo = req.file ? req.file.buffer.toString("base64") : "";
+
 
     const existing = await Company.findOne({ email });
     if (existing) return res.status(400).json({ msg: "Company already exists" });
