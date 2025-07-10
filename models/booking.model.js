@@ -47,7 +47,7 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
  toPayCollectedBranch: {
-  type: String, // Branch code or unique id as string
+  type: Number, // Branch code or unique id as number
   default: null
 },
 
