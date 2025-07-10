@@ -1474,6 +1474,7 @@ const receivedBooking = async (req, res) => {
     const { grnNo, receiverName, receiverMobile, deliveryAmount } = req.body;
     const deliveryEmployee = req.user?.name;
     const deliveryBranchName = req.user?.branchName || null;
+    const deliveryBranchId = req.user?.branchUniqueId;  // ✅ Important for toPayCollectedBranch
 
     if (!grnNo) {
       return res.status(400).json({ message: "grnNo is required!" });
@@ -1502,7 +1503,6 @@ const receivedBooking = async (req, res) => {
       });
     }
 
-    // ✅ Check branch match
     if (booking.unloadingBranchname !== deliveryBranchName) {
       return res.status(403).json({
         message: "You cannot receive this parcel. It was unloaded at a different branch.",
@@ -1513,7 +1513,7 @@ const receivedBooking = async (req, res) => {
 
     const deliveryDate = new Date();
 
-    // ✅ Save in Delivery model
+    // ✅ Save Delivery record
     const newDelivery = new Delivery({
       companyId,
       grnNo,
@@ -1526,7 +1526,7 @@ const receivedBooking = async (req, res) => {
     });
     await newDelivery.save();
 
-    // ✅ Update Booking model
+    // ✅ Update Booking
     booking.bookingStatus = 4;
     booking.deliveryDate = deliveryDate;
     booking.deliveryAmount = deliveryAmount;
@@ -1534,6 +1534,11 @@ const receivedBooking = async (req, res) => {
     booking.deliveryBranchName = deliveryBranchName;
     booking.receiverName = receiverName;
     booking.receiverMobile = receiverMobile;
+
+    // ✅ If toPay, store collected branch
+    if (booking.bookingType === "toPay") {
+      booking.toPayCollectedBranch = deliveryBranchId;
+    }
 
     await booking.save({ validateModifiedOnly: true });
 
@@ -1546,6 +1551,93 @@ const receivedBooking = async (req, res) => {
     return res.status(500).json({ success: false, error: error.message });
   }
 };
+
+
+// const receivedBooking = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: Company ID missing",
+//       });
+//     }
+
+//     const { grnNo, receiverName, receiverMobile, deliveryAmount } = req.body;
+//     const deliveryEmployee = req.user?.name;
+//     const deliveryBranchName = req.user?.branchName || null;
+
+//     if (!grnNo) {
+//       return res.status(400).json({ message: "grnNo is required!" });
+//     }
+//     if (!deliveryEmployee) {
+//       return res.status(400).json({ message: "Delivery employee name is required!" });
+//     }
+//     if (!receiverName || !receiverMobile) {
+//       return res.status(400).json({ message: "Receiver name and mobile number are required!" });
+//     }
+//     if (!deliveryAmount) {
+//       return res.status(400).json({ message: "Delivery amount is missing!" });
+//     }
+
+//     const booking = await Booking.findOne({ grnNo, companyId });
+//     if (!booking) {
+//       return res.status(404).json({ message: "Booking not found!" });
+//     }
+
+//     if (booking.bookingStatus === 4) {
+//       return res.status(400).json({ message: "Parcel already received!" });
+//     }
+//     if (booking.bookingStatus !== 2) {
+//       return res.status(400).json({
+//         message: "Your parcel is not eligible for receiving (unloading not completed).",
+//       });
+//     }
+
+//     // ✅ Check branch match
+//     if (booking.unloadingBranchname !== deliveryBranchName) {
+//       return res.status(403).json({
+//         message: "You cannot receive this parcel. It was unloaded at a different branch.",
+//         unloadingBranch: booking.unloadingBranchname,
+//         yourBranch: deliveryBranchName,
+//       });
+//     }
+
+//     const deliveryDate = new Date();
+
+//     // ✅ Save in Delivery model
+//     const newDelivery = new Delivery({
+//       companyId,
+//       grnNo,
+//       receiverName,
+//       receiverMobile,
+//       deliveryDate,
+//       deliveryAmount,
+//       deliveryEmployee,
+//       deliveryBranchName,
+//     });
+//     await newDelivery.save();
+
+//     // ✅ Update Booking model
+//     booking.bookingStatus = 4;
+//     booking.deliveryDate = deliveryDate;
+//     booking.deliveryAmount = deliveryAmount;
+//     booking.deliveryEmployee = deliveryEmployee;
+//     booking.deliveryBranchName = deliveryBranchName;
+//     booking.receiverName = receiverName;
+//     booking.receiverMobile = receiverMobile;
+
+//     await booking.save({ validateModifiedOnly: true });
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Booking received successfully",
+//       booking,
+//     });
+//   } catch (error) {
+//     return res.status(500).json({ success: false, error: error.message });
+//   }
+// };
 
 
 const getAllDeliveries = async (req, res) => {
@@ -3702,11 +3794,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized: companyId missing" });
     }
 
-    if (!pickUpBranch) {
-      return res.status(400).json({ message: "pickUpBranch is required" });
-    }
-
-    // ✅ Correct Date Filtering for IST (Indian Time)
     const from = new Date(fromDate);
     from.setHours(0, 0, 0, 0);
     const to = new Date(toDate);
@@ -3722,55 +3809,14 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
     }
 
-    // ✅ Aggregation pipeline
     const bookingData = await Booking.aggregate([
       { $match: matchStage },
 
       {
-        $lookup: {
-          from: "cities",
-          localField: "fromCity",
-          foreignField: "cityName",
-          as: "fromCityData"
-        }
-      },
-      { $unwind: { path: "$fromCityData", preserveNullAndEmptyArrays: true } },
-
-      {
-        $lookup: {
-          from: "cities",
-          localField: "toCity",
-          foreignField: "cityName",
-          as: "toCityData"
-        }
-      },
-      { $unwind: { path: "$toCityData", preserveNullAndEmptyArrays: true } },
-
-      {
         $addFields: {
-          sameState: {
-            $eq: [
-              { $toLower: "$fromCityData.state" },
-              { $toLower: "$toCityData.state" }
-            ]
-          }
-        }
-      },
-
-      {
-        $addFields: {
-          igstAmount: {
-            $cond: [{ $eq: ["$sameState", false] }, "$parcelGstAmount", 0]
-          },
-          cgstAmount: {
-            $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
-          },
-          sgstAmount: {
-            $cond: [{ $eq: ["$sameState", true] }, { $divide: ["$parcelGstAmount", 2] }, 0]
-          },
           deliveryAmount: {
             $convert: {
-              input: "$deliveryAmount",  // ✅ Direct from Booking
+              input: "$deliveryAmount",
               to: "double",
               onError: 0,
               onNull: 0
@@ -3784,110 +3830,32 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           _id: {
             branchCode: "$pickUpBranch",
             branchName: "$pickUpBranchname",
-            bookingStatus: "$bookingStatus",
-            bookingType: "$bookingType"
+            bookingType: "$bookingType",
+            toPayCollectedBranch: "$toPayCollectedBranch"  // ✅ Added
           },
-          count: { $sum: 1 },
-          grandTotal: { $sum: "$grandTotal" },
-          deliveryAmount: { $sum: "$deliveryAmount" },
-          parcelGstAmount: { $sum: "$parcelGstAmount" },
-          igstAmount: { $sum: "$igstAmount" },
-          cgstAmount: { $sum: "$cgstAmount" },
-          sgstAmount: { $sum: "$sgstAmount" }
+          totalGrandTotal: { $sum: "$grandTotal" },
+          totalDeliveryAmount: { $sum: "$deliveryAmount" }
         }
       }
     ]);
 
-    // ✅ Process Results
-    const branchMap = {};
-    const totals = {
-      finalPaidAmount: 0,
-      finalToPayAmount: 0,
-      finalCreditAmount: 0,
-      finalDeliveryAmount: 0,
-      finalCancelAmount: 0,
-      finalBookingTotal: 0,
-      finalTotal: 0,
-      finalParcelGstAmount: 0,
-      totalIgst: 0,
-      totalCgst: 0,
-      totalSgst: 0
-    };
+    // ✅ Result processing
+    const results = bookingData.map(record => ({
+      pickUpBranch: record._id.branchCode,
+      pickUpBranchname: record._id.branchName,
+      bookingType: record._id.bookingType,
+      toPayCollectedBranch: record._id.toPayCollectedBranch || "-",
+      totalGrandTotal: record.totalGrandTotal,
+      totalDeliveryAmount: record.totalDeliveryAmount
+    }));
 
-    for (const record of bookingData) {
-      const { branchCode, branchName, bookingStatus, bookingType } = record._id;
-
-      if (!branchMap[branchCode]) {
-        branchMap[branchCode] = {
-          branchCode,
-          branchName,
-          paidAmount: 0,
-          toPayAmount: 0,
-          creditAmount: 0,
-          deliveryAmount: 0,
-          cancelAmount: 0,
-          bookingTotal: 0,
-          total: 0,
-          parcelGstAmount: 0,
-          igstAmount: 0,
-          cgstAmount: 0,
-          sgstAmount: 0
-        };
-      }
-
-      const entry = branchMap[branchCode];
-
-      if (bookingType === "paid") {
-        entry.paidAmount += record.grandTotal;
-        totals.finalPaidAmount += record.grandTotal;
-      }
-
-      if (bookingType === "toPay") {
-        entry.toPayAmount += record.grandTotal;
-        totals.finalToPayAmount += record.grandTotal;
-      }
-
-      if (bookingType === "credit") {
-        entry.creditAmount += record.grandTotal;
-        totals.finalCreditAmount += record.grandTotal;
-      }
-
-      entry.deliveryAmount += record.deliveryAmount;
-      totals.finalDeliveryAmount += record.deliveryAmount;
-
-      if (bookingStatus === 5) {
-        entry.cancelAmount += record.grandTotal;
-        totals.finalCancelAmount += record.grandTotal;
-      }
-
-      entry.parcelGstAmount += record.parcelGstAmount;
-      entry.igstAmount += record.igstAmount;
-      entry.cgstAmount += record.cgstAmount;
-      entry.sgstAmount += record.sgstAmount;
-
-      totals.finalParcelGstAmount += record.parcelGstAmount;
-      totals.totalIgst += record.igstAmount;
-      totals.totalCgst += record.cgstAmount;
-      totals.totalSgst += record.sgstAmount;
-    }
-
-    for (const entry of Object.values(branchMap)) {
-      entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
-      entry.total = entry.paidAmount + entry.deliveryAmount;
-      totals.finalBookingTotal += entry.bookingTotal;
-      totals.finalTotal += entry.total;
-    }
-
-    res.status(200).json({
-      data: Object.values(branchMap),
-      ...totals
-    });
-
+    res.status(200).json({ data: results });
   } catch (err) {
     console.error("Error in parcelBranchConsolidatedReport:", err);
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
 
 
 const consolidatedReportBranch = async (req, res) => {

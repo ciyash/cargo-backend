@@ -46,10 +46,5 @@ app.use("/vendor",vendorRouter) // Assuming you have a vendor route
 
 app.use("/branch-report",branchReportRouter) // Assuming you have a branch report route    
 
-// second version 
-
-app.use("/all",allRouter)
-
-
 
 export default app      

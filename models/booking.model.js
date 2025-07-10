@@ -46,6 +46,12 @@ const bookingSchema = new mongoose.Schema(
       enum: ["paid", "toPay", "credit", "FOC"],
       required: true,
     },
+ toPayCollectedBranch: {
+  type: String, // Branch code or unique id as string
+  default: null
+},
+
+
     totalQuantity: { type: Number, required: true },
     packages: { type: [packageSchema], default: [] },
 
