@@ -5019,11 +5019,10 @@ const deliveredStockReport = async (req, res) => {
     const end = new Date(toDate);
     end.setHours(23, 59, 59, 999);
 
-    // Build query including companyId and bookingStatus = 4 (delivered)
     let query = {
       companyId,
-      bookingDate: { $gte: start, $lte: end },
-      bookingStatus: 4,
+      deliveryDate: { $gte: start, $lte: end },  // ✅ Corrected here
+      bookingStatus: 4,  // delivered status
     };
 
     if (fromCity) query.fromCity = fromCity;
@@ -5033,7 +5032,7 @@ const deliveredStockReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryEmployee totalCharge fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharge hamaliCharge doorDeliveryCharge doorPickupCharge"
+        "grnNo lrNumber deliveryEmployee totalCharge fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount totalPackages serviceCharges hamaliCharges doorDeliveryCharges doorPickupCharges"
       )
       .lean();
 
@@ -5050,10 +5049,7 @@ const deliveredStockReport = async (req, res) => {
     let totalOtherCharges = 0;
     let totalNetAmount = 0;
 
-    const bookingTypeSummary = {
-      Paid: { freight: 0, gst: 0, otherCharges: 0, netAmount: 0 },
-      ToPay: { freight: 0, gst: 0, otherCharges: 0, netAmount: 0 },
-    };
+    const bookingTypeSummary = {};
 
     const updatedDeliveries = stockReport.map((delivery, index) => {
       const {
@@ -5070,17 +5066,14 @@ const deliveredStockReport = async (req, res) => {
         packages = [],
         parcelGstAmount = 0,
         totalPackages: packageCount = 0,
-        serviceCharge = 0,
-        hamaliCharge = 0,
-        doorDeliveryCharge = 0,
-        doorPickupCharge = 0,
+        serviceCharges = 0,
+        hamaliCharges = 0,
+        doorDeliveryCharges = 0,
+        doorPickupCharges = 0,
       } = delivery;
 
-      const otherCharges = serviceCharge + hamaliCharge + doorDeliveryCharge + doorPickupCharge;
+      const otherCharges = serviceCharges + hamaliCharges + doorDeliveryCharges + doorPickupCharges;
       const netAmount = totalCharge + parcelGstAmount + otherCharges;
-
-      // Normalize bookingType to "Paid" or "ToPay"
-      const normalizedType = (bookingType || "").toLowerCase() === "paid" ? "Paid" : "ToPay";
 
       totalFreight += totalCharge;
       totalGST += parcelGstAmount;
@@ -5088,12 +5081,21 @@ const deliveredStockReport = async (req, res) => {
       totalNetAmount += netAmount;
       totalPackages += packageCount;
 
-      if (bookingTypeSummary[normalizedType]) {
-        bookingTypeSummary[normalizedType].freight += totalCharge;
-        bookingTypeSummary[normalizedType].gst += parcelGstAmount;
-        bookingTypeSummary[normalizedType].otherCharges += otherCharges;
-        bookingTypeSummary[normalizedType].netAmount += netAmount;
+      const normalizedType = (bookingType || "").toLowerCase();
+
+      if (!bookingTypeSummary[normalizedType]) {
+        bookingTypeSummary[normalizedType] = {
+          freight: 0,
+          gst: 0,
+          otherCharges: 0,
+          netAmount: 0,
+        };
       }
+
+      bookingTypeSummary[normalizedType].freight += totalCharge;
+      bookingTypeSummary[normalizedType].gst += parcelGstAmount;
+      bookingTypeSummary[normalizedType].otherCharges += otherCharges;
+      bookingTypeSummary[normalizedType].netAmount += netAmount;
 
       const parcelItems = packages
         .map((pkg) => `${pkg.quantity || 0}-${pkg.packageType || ""}`)
@@ -5137,6 +5139,8 @@ const deliveredStockReport = async (req, res) => {
     });
   }
 };
+
+
 
 
 
