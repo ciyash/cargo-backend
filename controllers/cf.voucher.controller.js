@@ -32,6 +32,7 @@ const creditForVoucherGenerate = async (req, res) => {
       bookingDate: { $gte: from, $lte: to },
       agent: { $exists: true, $type: "string", $ne: "" },
       // bookingStatus: 0
+      status: false 
     };
 
     // 🔐 Role-based filtering
@@ -101,7 +102,7 @@ const createCFVoucher = async (req, res) => {
 
     await Booking.updateMany(
       { grnNo: { $in: grnList }, companyId },
-      { $set: { bookingStatus: 1 } }
+      { $set: { bookingStatus: 1, status: true } }
     );
 
     res.status(201).json({ message: "CF Voucher created", newVoucher });

@@ -33,6 +33,7 @@ const bookingSchema = new mongoose.Schema(
     totalPackages: { type: Number, required: true },
 
     agent: { type: String, default: "" }, // agent name
+    status:{ type:Boolean, default: false }, // status of the booking
     fromCity: { type: String, required: true },
     toCity: { type: String, required: true },
     pickUpBranch: { type: String, required: true },
