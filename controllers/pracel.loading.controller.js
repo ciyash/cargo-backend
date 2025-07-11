@@ -981,6 +981,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
         packages: (booking.packages || []).map((pkg) => ({
           packageType: pkg.packageType,
           quantity: pkg.quantity,
+          contains: pkg.contains,
         })),
       };
     });
