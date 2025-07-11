@@ -895,7 +895,7 @@ const getBookingsByDateAndBranch = async (req, res) => {
 
 
 const offlineParcelVoucherDetailsPrint = async (req, res) => {
-  try {
+  try {   
     const { companyId } = req.user || {};
     const vocherNoUnique = req.params.vocherNoUnique?.trim();
 
@@ -940,11 +940,10 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
     let allTotal = 0;
     let allQuantity = 0;
 
-    const bookingTypeSummary = {
+    const bookingTypeSummary = { 
       paid: { totalBookings: 0, grandTotal: 0 },
       toPay: { totalBookings: 0, grandTotal: 0 },
       credit: { totalBookings: 0, grandTotal: 0 },
-      CLR: { totalBookings: 0, grandTotal: 0 },
       FOC: { totalBookings: 0, grandTotal: 0 },
     };
 
@@ -955,7 +954,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
       allTotal += bookingTotal;
       allQuantity += bookingQty;
 
-      const type = booking.bookingType?.toString().toLowerCase();
+      const type = booking.bookingType;
 
       if (bookingTypeSummary[type]) {
         bookingTypeSummary[type].totalBookings += 1;
@@ -994,6 +993,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 
 
