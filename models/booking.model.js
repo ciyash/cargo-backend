@@ -87,6 +87,7 @@ const bookingSchema = new mongoose.Schema(
     items: { type: Number },
     bookingDate: { type: Date, default: () => new Date() },
     vehicalNumber: { type: String, default: null },
+    driverName: { type: String, default: null },
 
     // loading data
     loadingDate: { type: Date, default: null },

@@ -237,7 +237,7 @@ const createParcel = async (req, res) => {
     const loadingBy = req.user.id;
     const loadingDate = new Date();
     const vocherNoUnique = generateVocherNoUnique(); // your voucher number generator function
-
+    
     // Create new ParcelLoading document
     const parcel = await new ParcelLoading({
       loadingType: "offload",
@@ -267,6 +267,7 @@ const createParcel = async (req, res) => {
           bookingStatus: 1,
           loadingDate,
           vehicalNumber,
+          driverName,
           ltDate: new Date(),
           loadingBranchname: req.user?.branchName || '', // assuming fromBranch is name string
           loadingByemp: req.user?.name || req.user?.username || '', // use actual user info
@@ -932,6 +933,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
         receiverMobile: 1,
         bookingType: 1,
         vehicalNumber: 1,
+        driverName: 1,
         grandTotal: 1,
         packages: 1,
         _id: 0,
@@ -977,6 +979,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
         bookingType: booking.bookingType,
         bookingDate: booking.bookingDate,
         BusNo: booking.vehicalNumber,
+        driverName: booking.driverName,
         totalQuantity: booking.totalQuantity,
         packages: (booking.packages || []).map((pkg) => ({
           packageType: pkg.packageType,
