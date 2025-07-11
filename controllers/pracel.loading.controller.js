@@ -928,6 +928,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
         totalQuantity: 1,
         receiverName: 1,
         senderMobile: 1,
+        bookingDate: 1,
         receiverMobile: 1,
         bookingType: 1,
         vehicalNumber: 1,
@@ -974,6 +975,7 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
         receiverMobile: booking.receiverMobile,
         Amount: booking.grandTotal,
         bookingType: booking.bookingType,
+        bookingDate: booking.bookingDate,
         BusNo: booking.vehicalNumber,
         totalQuantity: booking.totalQuantity,
         packages: (booking.packages || []).map((pkg) => ({
@@ -993,8 +995,6 @@ const offlineParcelVoucherDetailsPrint = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-
 
 
 const offlineParcelVoucherDetails = async (req, res) => {
