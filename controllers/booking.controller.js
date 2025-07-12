@@ -3365,7 +3365,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       return res.status(401).json({ message: "Unauthorized: companyId missing" });
 //     }
 
-//     // ✅ Set Date Range with IST (+05:30)
 //     const from = new Date(fromDate + 'T00:00:00+05:30');
 //     const to = new Date(toDate + 'T23:59:59+05:30');
 
@@ -3377,23 +3376,14 @@ const bookingTypeWiseCollection = async (req, res) => {
 //     if (pickUpBranch) {
 //       matchStage.pickUpBranch = pickUpBranch;
 //     }
+
 //     if (fromCity) {
 //       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
 //     }
 
-//     // ✅ 1. Pickup Branch Bookings Aggregation
+//     // ✅ Bookings Side
 //     const bookingData = await Booking.aggregate([
 //       { $match: matchStage },
-//       {
-//         $addFields: {
-//           deliveryAmount: {
-//             $convert: { input: "$deliveryAmount", to: "double", onError: 0, onNull: 0 }
-//           },
-//           toPayDeliveredAmount: {
-//             $convert: { input: "$toPayDeliveredAmount", to: "double", onError: 0, onNull: 0 }
-//           }
-//         }
-//       },
 //       {
 //         $group: {
 //           _id: {
@@ -3402,7 +3392,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 //             bookingStatus: "$bookingStatus",
 //             bookingType: "$bookingType"
 //           },
-//           count: { $sum: 1 },
 //           grandTotal: { $sum: "$grandTotal" },
 //           deliveryAmount: { $sum: "$deliveryAmount" },
 //           toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
@@ -3422,7 +3411,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       finalToPayDeliveredAmount: 0
 //     };
 
-//     // ✅ Process Pickup Booking Data
 //     for (const record of bookingData) {
 //       const { branchCode, branchName, bookingStatus, bookingType } = record._id;
 
@@ -3467,7 +3455,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
 //     }
 
-//     // ✅ 2. Delivery Side Aggregation (for toPayDeliveredAmount)
+//     // ✅ Delivery Side
 //     const deliveryData = await Booking.aggregate([
 //       {
 //         $match: {
@@ -3485,7 +3473,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       }
 //     ]);
 
-//     // ✅ Merge Delivery Data into Branch Map
 //     for (const record of deliveryData) {
 //       const branchName = record._id;
 //       let found = false;
@@ -3500,7 +3487,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       }
 
 //       if (!found && branchName) {
-//         // Branch has no bookings but has delivered toPay parcels → Add as new branch
 //         branchMap[branchName] = {
 //           branchCode: "-",
 //           branchName,
@@ -3517,7 +3503,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       }
 //     }
 
-//     // ✅ Final Calculations per Branch
 //     for (const entry of Object.values(branchMap)) {
 //       entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
 //       entry.total = entry.paidAmount + entry.deliveryAmount;
@@ -3525,7 +3510,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 //       totals.finalTotal += entry.total;
 //     }
 
-//     // ✅ Final Response
 //     res.status(200).json({
 //       data: Object.values(branchMap),
 //       ...totals
@@ -3541,6 +3525,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
     const companyId = req.user?.companyId;
+
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized: companyId missing" });
     }
@@ -3561,7 +3546,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
     }
 
-    // ✅ Bookings Side
+    // ✅ Bookings Side (NO deliveryAmount)
     const bookingData = await Booking.aggregate([
       { $match: matchStage },
       {
@@ -3573,7 +3558,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
             bookingType: "$bookingType"
           },
           grandTotal: { $sum: "$grandTotal" },
-          deliveryAmount: { $sum: "$deliveryAmount" },
           toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
         }
       }
@@ -3584,7 +3568,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       finalPaidAmount: 0,
       finalToPayAmount: 0,
       finalCreditAmount: 0,
-      finalDeliveryAmount: 0,
       finalCancelAmount: 0,
       finalBookingTotal: 0,
       finalTotal: 0,
@@ -3601,7 +3584,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           paidAmount: 0,
           toPayAmount: 0,
           creditAmount: 0,
-          deliveryAmount: 0,
           toPayDeliveredAmount: 0,
           cancelAmount: 0,
           bookingTotal: 0,
@@ -3628,14 +3610,11 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         totals.finalToPayAmount += record.grandTotal;
       }
 
-      entry.deliveryAmount += record.deliveryAmount;
-      totals.finalDeliveryAmount += record.deliveryAmount;
-
       entry.toPayDeliveredAmount += record.toPayDeliveredAmount;
       totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
     }
 
-    // ✅ Delivery Side
+    // ✅ Delivery Side (still includes toPayDeliveredAmount separately)
     const deliveryData = await Booking.aggregate([
       {
         $match: {
@@ -3673,7 +3652,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           paidAmount: 0,
           toPayAmount: 0,
           creditAmount: 0,
-          deliveryAmount: 0,
           toPayDeliveredAmount: record.toPayDeliveredAmount,
           cancelAmount: 0,
           bookingTotal: 0,
@@ -3685,7 +3663,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
 
     for (const entry of Object.values(branchMap)) {
       entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
-      entry.total = entry.paidAmount + entry.deliveryAmount;
+      entry.total = entry.paidAmount + entry.toPayDeliveredAmount;
       totals.finalBookingTotal += entry.bookingTotal;
       totals.finalTotal += entry.total;
     }
