@@ -435,8 +435,6 @@ const createBooking = async (req, res) => {
 };
 
 
- 
-
 const getAllBookings = async (req, res) => {
   try {
     const companyId = req.user.companyId;
@@ -1084,8 +1082,6 @@ const toDayBookings = async (req, res) => {
 };
 
 
-
-
 const getUsersBySearch = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -1408,8 +1404,6 @@ const receivedBooking = async (req, res) => {
     return res.status(500).json({ success: false, error: error.message });
   }
 };
-
-
 
 
 const getAllDeliveries = async (req, res) => {
@@ -2987,8 +2981,6 @@ const collectionReportToPay = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
-
 
 
 // const allCollectionReport = async (req, res) => {
@@ -4789,6 +4781,155 @@ const parcelReceivedStockReport = async (req, res) => {
   }
 };
 
+// const deliveredStockReport = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Unauthorized: Company ID missing",
+//       });
+//     }
+
+//     const { fromDate, toDate, fromCity, toCity, pickUpBranch, dropBranch } = req.body;
+
+//     if (!fromDate || !toDate) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "fromDate and toDate are required",
+//       });
+//     }
+
+//     const start = new Date(fromDate + 'T00:00:00+05:30');
+//     const end = new Date(toDate + 'T23:59:59+05:30');
+
+//     let query = {
+//       companyId,
+//       deliveryDate: { $gte: start, $lte: end },
+//       bookingStatus: 4,
+//     };
+
+//     if (fromCity) query.fromCity = fromCity;
+//     if (toCity) query.toCity = toCity;
+//     if (pickUpBranch) query.pickUpBranch = pickUpBranch;
+//     if (dropBranch) query.dropBranch = dropBranch;
+
+//     const stockReport = await Booking.find(query)
+//       .select(
+//         "grnNo lrNumber deliveryEmployee grandTotal fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount serviceCharges hamaliCharges doorDeliveryCharges doorPickupCharges"
+//       )
+//       .lean();
+
+//     if (!stockReport.length) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "No stock found for the given criteria",
+//       });
+//     }
+
+//     // Totals
+//     let totalPackagesSum = 0;
+//     let totalFreight = 0;
+//     let totalGST = 0;
+//     let totalOtherCharges = 0;
+//     let totalDeliveryCharges = 0;
+//     let totalNetAmount = 0;
+
+//     const bookingTypeSummary = {
+//       Paid: { freight: 0, gst: 0, otherCharges: 0, doorDeliveryCharges: 0, credit: 0, netAmount: 0 },
+//       ToPay: { freight: 0, gst: 0, otherCharges: 0, doorDeliveryCharges: 0, credit: 0, netAmount: 0 },
+//       Credit: { freight: 0, gst: 0, otherCharges: 0, doorDeliveryCharges: 0, credit: 0, netAmount: 0 },
+//     };
+
+//     const updatedDeliveries = stockReport.map((delivery, index) => {
+//       const {
+//         lrNumber,
+//         deliveryEmployee,
+//         grandTotal = 0,
+//         fromCity,
+//         pickUpBranchname,
+//         senderName,
+//         bookingType,
+//         receiverName,
+//         packages = [],
+//         parcelGstAmount = 0,
+//         serviceCharges = 0,
+//         hamaliCharges = 0,
+//         doorDeliveryCharges = 0,
+//         doorPickupCharges = 0,
+//       } = delivery;
+
+//      const pkgCount = packages.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0);
+
+//       const freight = packages.reduce((sum, pkg) => sum + (pkg.totalPrice || 0), 0);
+//       const otherCharges = serviceCharges + hamaliCharges + doorPickupCharges;
+//       const netAmount = grandTotal;
+
+//       totalPackagesSum += pkgCount;
+//       totalFreight += freight;
+//       totalGST += parcelGstAmount;
+//       totalOtherCharges += otherCharges;
+//       totalDeliveryCharges += doorDeliveryCharges || 0;
+//       totalNetAmount += netAmount;
+
+//       let normalizedType = (bookingType || "").toLowerCase();
+//       if (normalizedType === "paid") normalizedType = "Paid";
+//       else if (normalizedType === "topay" || normalizedType === "toPay") normalizedType = "ToPay";
+//       else if (normalizedType === "credit") normalizedType = "Credit";
+//       else return null;
+
+//       bookingTypeSummary[normalizedType].freight += freight;
+//       bookingTypeSummary[normalizedType].gst += parcelGstAmount;
+//       bookingTypeSummary[normalizedType].otherCharges += otherCharges;
+//       bookingTypeSummary[normalizedType].doorDeliveryCharges += doorDeliveryCharges || 0;
+//       bookingTypeSummary[normalizedType].credit += normalizedType === "Credit" ? grandTotal : 0;
+//       bookingTypeSummary[normalizedType].netAmount += netAmount;
+
+//       const parcelItems = packages
+//         .map((pkg) => `${pkg.quantity || 0}-${pkg.packageType || ""}`)
+//         .join(", ");
+
+//       return {
+//         SrNo: index + 1,
+//         WBNo: lrNumber,
+//         SourceSubregion: `${fromCity} (${pickUpBranchname})`,
+//         ReceivedBy: deliveryEmployee,
+//         Consigner: senderName,
+//         Consignee: receiverName,
+//         WBType: normalizedType,
+//         ParcelItem: parcelItems,
+//         Pkgs: pkgCount, 
+//         Amount: grandTotal,
+//       };
+//     }).filter(Boolean);
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Delivered stock report generated successfully",
+//       data: {
+//         deliveries: updatedDeliveries,
+//         summary: {
+//           totalPackages: totalPackagesSum,
+//           totalFreight,
+//           totalGST,
+//           totalOtherCharges,
+//           totalDeliveryCharges,
+//           totalNetAmount,
+//           bookingTypeSummary,
+//         },
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error in deliveredStockReport:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 const deliveredStockReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -4824,7 +4965,7 @@ const deliveredStockReport = async (req, res) => {
 
     const stockReport = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryEmployee grandTotal fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount serviceCharges hamaliCharges doorDeliveryCharges doorPickupCharges"
+        "grnNo lrNumber deliveryEmployee grandTotal fromCity pickUpBranchname senderName senderMobile bookingType receiverName packages.packageType packages.quantity packages.totalPrice parcelGstAmount serviceCharges hamaliCharges doorDeliveryCharges doorPickupCharges toPayDeliveredAmount toPayDeliveryAmount"
       )
       .lean();
 
@@ -4835,7 +4976,6 @@ const deliveredStockReport = async (req, res) => {
       });
     }
 
-    // Totals
     let totalPackagesSum = 0;
     let totalFreight = 0;
     let totalGST = 0;
@@ -4865,13 +5005,16 @@ const deliveredStockReport = async (req, res) => {
         hamaliCharges = 0,
         doorDeliveryCharges = 0,
         doorPickupCharges = 0,
+        toPayDeliveredAmount = 0,
+        toPayDeliveryAmount = 0,
       } = delivery;
 
-     const pkgCount = packages.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0);
-
+      const pkgCount = packages.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0);
       const freight = packages.reduce((sum, pkg) => sum + (pkg.totalPrice || 0), 0);
       const otherCharges = serviceCharges + hamaliCharges + doorPickupCharges;
-      const netAmount = grandTotal;
+
+      // ✅ Net amount includes Paid + ToPayDeliveredAmount + ToPayDeliveryAmount
+      const netAmount = grandTotal + toPayDeliveredAmount + toPayDeliveryAmount;
 
       totalPackagesSum += pkgCount;
       totalFreight += freight;
@@ -4906,8 +5049,8 @@ const deliveredStockReport = async (req, res) => {
         Consignee: receiverName,
         WBType: normalizedType,
         ParcelItem: parcelItems,
-        Pkgs: pkgCount, 
-        Amount: grandTotal,
+        Pkgs: pkgCount,
+        Amount: netAmount,
       };
     }).filter(Boolean);
 
@@ -4936,7 +5079,7 @@ const deliveredStockReport = async (req, res) => {
     });
   }
 };
-
+  
 
 
 const pendingDispatchStockReport = async (req, res) => {

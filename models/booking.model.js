@@ -104,7 +104,7 @@ const bookingSchema = new mongoose.Schema(
     deliveryDate: { type: Date, default: null },
     deliveryEmployee: { type: String, default: null },
     deliveryBranchName: { type: String, default: null },
-    deliveryAmount: { type: Number, default: 0 },
+    // deliveryAmount: { type: Number, default: 0 },
     
     //last transactions
     ltDate: { type: Date, default: () => new Date() },
