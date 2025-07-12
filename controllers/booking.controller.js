@@ -4868,7 +4868,7 @@ const deliveredStockReport = async (req, res) => {
      const pkgCount = packages.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0);
 
       const freight = packages.reduce((sum, pkg) => sum + (pkg.totalPrice || 0), 0);
-      const otherCharges = serviceCharges + hamaliCharges + doorPickupCharges + doorDeliveryCharges;
+      const otherCharges = serviceCharges + hamaliCharges + doorPickupCharges;
       const netAmount = grandTotal;
 
       totalPackagesSum += pkgCount;
