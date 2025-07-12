@@ -1026,10 +1026,11 @@ const offlineParcelVoucherDetails = async (req, res) => {
       loadingDate: { $gte: startDate, $lte: endDate },
     };
 
+    // ✅ Apply filters using case-insensitive regex
     if (vehicalNumber) filter.vehicalNumber = vehicalNumber;
-    if (fromCity) filter.fromCity = fromCity;
-    if (toCity) filter.toCity = toCity;
-    if (fromBranch) filter.fromBranch = fromBranch;
+    if (fromCity) filter.fromCity = { $regex: `^${fromCity}$`, $options: "i" };
+    if (toCity) filter.toCity = { $regex: `^${toCity}$`, $options: "i" };
+    if (fromBranch) filter.fromBranch = { $regex: `^${fromBranch}$`, $options: "i" };
 
     const parcels = await ParcelLoading.find(filter).sort({ createdAt: -1 });
 
@@ -1072,9 +1073,11 @@ const offlineParcelVoucherDetails = async (req, res) => {
 
     res.status(200).json(result);
   } catch (error) {
+    console.error("Error in offlineParcelVoucherDetails:", error);
     res.status(500).json({ error: error.message });
   }
 };
+
 
 
 const dispatchedStockReport = async (req, res) => {
