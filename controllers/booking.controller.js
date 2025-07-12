@@ -1339,9 +1339,11 @@ const receivedBooking = async (req, res) => {
     if (!receiverName || !receiverMobile) {
       return res.status(400).json({ message: "Receiver name and mobile number are required!" });
     }
-    if (!toPayDeliveredAmount) {
-      return res.status(400).json({ message: "toPayDeliveredAmount is required!" });
-    }
+   
+    if (toPayDeliveredAmount === undefined || toPayDeliveredAmount === null) {
+  return res.status(400).json({ message: "toPayDeliveredAmount is required!" });
+}
+
 
     const booking = await Booking.findOne({ grnNo, companyId });
     if (!booking) {
