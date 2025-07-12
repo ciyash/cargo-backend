@@ -1314,8 +1314,6 @@ const getCreditBookings = async (req, res) => {
   }
 };
 
-
-
 const receivedBooking = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -1326,11 +1324,12 @@ const receivedBooking = async (req, res) => {
       });
     }
 
-    const { grnNo, receiverName, receiverMobile, deliveryAmount } = req.body;
+    const { grnNo, receiverName, receiverMobile, toPayDeliveredAmount } = req.body;
     const deliveryEmployee = req.user?.name;
     const deliveryBranchName = req.user?.branchName || null;
-    const deliveryBranchId = req.user?.branchUniqueId;  // ✅ Number (branchUniqueId)
+    const deliveryBranchId = req.user?.branchUniqueId;
 
+    // ✅ Input Validations
     if (!grnNo) {
       return res.status(400).json({ message: "grnNo is required!" });
     }
@@ -1340,8 +1339,8 @@ const receivedBooking = async (req, res) => {
     if (!receiverName || !receiverMobile) {
       return res.status(400).json({ message: "Receiver name and mobile number are required!" });
     }
-    if (!deliveryAmount) {
-      return res.status(400).json({ message: "Delivery amount is missing!" });
+    if (!toPayDeliveredAmount) {
+      return res.status(400).json({ message: "toPayDeliveredAmount is required!" });
     }
 
     const booking = await Booking.findOne({ grnNo, companyId });
@@ -1375,7 +1374,7 @@ const receivedBooking = async (req, res) => {
       receiverName,
       receiverMobile,
       deliveryDate,
-      deliveryAmount,
+      toPayDeliveredAmount,
       deliveryEmployee,
       deliveryBranchName,
     });
@@ -1384,16 +1383,15 @@ const receivedBooking = async (req, res) => {
     // ✅ Update Booking
     booking.bookingStatus = 4;
     booking.deliveryDate = deliveryDate;
-    booking.deliveryAmount = deliveryAmount;
+    booking.toPayDeliveredAmount = toPayDeliveredAmount;
     booking.deliveryEmployee = deliveryEmployee;
     booking.deliveryBranchName = deliveryBranchName;
     booking.receiverName = receiverName;
     booking.receiverMobile = receiverMobile;
 
-    // ✅ Save Branch Id & Amount if ToPay
     if (booking.bookingType === "toPay") {
       booking.toPayCollectedBranch = deliveryBranchId;
-      booking.toPayDeliveredAmount = booking.grandTotal;  // ✅ Save amount here directly
+      booking.toPayDeliveredAmount = booking.grandTotal; // or toPayDeliveredAmount if needed
     }
 
     await booking.save({ validateModifiedOnly: true });
@@ -1403,10 +1401,12 @@ const receivedBooking = async (req, res) => {
       message: "Booking received successfully",
       booking,
     });
+
   } catch (error) {
     return res.status(500).json({ success: false, error: error.message });
   }
 };
+
 
 
 
