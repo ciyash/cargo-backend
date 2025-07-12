@@ -3516,6 +3516,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //   }
 // };
 
+
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
@@ -3541,7 +3542,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
     }
 
-    // ✅ Bookings Side (NO deliveryAmount)
+    // Bookings Side
     const bookingData = await Booking.aggregate([
       { $match: matchStage },
       {
@@ -3609,16 +3610,20 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
     }
 
-    // ✅ Delivery Side (still includes toPayDeliveredAmount separately)
+    // ✅ Proper Delivery Side Filtering (using variable construction)
+    const deliveryMatch = {
+      bookingDate: { $gte: from, $lte: to },
+      companyId: new mongoose.Types.ObjectId(companyId),
+      bookingType: "toPay",
+      toPayDeliveredAmount: { $gt: 0 }
+    };
+
+    if (pickUpBranch) {
+      deliveryMatch.pickUpBranch = pickUpBranch;
+    }
+
     const deliveryData = await Booking.aggregate([
-      {
-        $match: {
-          bookingDate: { $gte: from, $lte: to },
-          companyId: new mongoose.Types.ObjectId(companyId),
-          bookingType: "toPay",
-          toPayDeliveredAmount: { $gt: 0 }
-        }
-      },
+      { $match: deliveryMatch },
       {
         $group: {
           _id: "$deliveryBranchName",
@@ -3641,18 +3646,9 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       }
 
       if (!found && branchName) {
-        branchMap[branchName] = {
-          branchCode: "-",
-          branchName,
-          paidAmount: 0,
-          toPayAmount: 0,
-          creditAmount: 0,
-          toPayDeliveredAmount: record.toPayDeliveredAmount,
-          cancelAmount: 0,
-          bookingTotal: 0,
-          total: 0
-        };
-        totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
+        // ❌ This block will no longer run for branches not part of pickUpBranch
+        // So "Auto Nagar" won't appear
+        continue;
       }
     }
 
@@ -3663,18 +3659,17 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       totals.finalTotal += entry.total;
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       data: Object.values(branchMap),
       ...totals
     });
 
   } catch (err) {
     console.error("Error in parcelBranchConsolidatedReport:", err);
-    res.status(500).json({ message: "Server Error", error: err.message });
+    return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
 
-//  
 
 
 
