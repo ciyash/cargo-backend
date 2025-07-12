@@ -154,7 +154,7 @@ const deliverySchema = new mongoose.Schema({
    grnNo: { type: Number, required: true }, // auto generate
    receiverName: { type: String, required: true },
    receiverMobile: { type: String, required: true },
-   deliveryAmount:{type:Number,required:true},
+   toPayDeliveredAmount:{type:Number,required:true},
    deliveryDate: { type: Date, required: true },
    deliveryEmployee: { type: String, default: null },
    deliveryBranchName: { type: String, default: null },
