@@ -376,7 +376,7 @@ const createBooking = async (req, res) => {
       bookbranchid: pickUpBranchId,
       pickUpBranchname,
       dropBranchname,
-       deliveryAmount,
+      toPayDeliveredAmount,
     });
 
     const savedBooking = await booking.save();
