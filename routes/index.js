@@ -20,11 +20,8 @@ import cfExtraChargeRouter from './cf.extra.charge.router.js'
 import voucherRouter from './cf.voucher.generate.route.js'
 
 // subadmin data  routes
-import allRouter from './all.route.js'
 
 const app=express.Router()
-
-
 
 app.use("/company",companyRouter)
 app.use("/subadmin-auth",subAdminAuthRouter)

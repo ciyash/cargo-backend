@@ -3219,7 +3219,7 @@ const allCollectionReport = async (req, res) => {
         creditAmount: b.creditAmount,
         cancelAmount: b.cancelAmount,
         toPayDeliveredAmount,
-        netAmount: b.paidAmount + b.creditAmount + toPayDeliveredAmount - b.cancelAmount,
+        netAmount: b.paidAmount  + toPayDeliveredAmount,
       };
     });
 
@@ -3258,7 +3258,7 @@ const allCollectionReport = async (req, res) => {
 };
 
 
-
+  
 
 
 
