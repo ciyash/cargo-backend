@@ -284,6 +284,7 @@ const createParcelUnloading = async (req, res) => {
         $set: {
           bookingStatus: 2,
           unloadingDate: currentDate,
+          unloadingBranch: req.user.branchId || '',
           unloadingBranchname: req.user?.branchName || '',
           unloadingByemp: req.user?.name || req.user?.username || '',
         },

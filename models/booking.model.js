@@ -98,14 +98,15 @@ const bookingSchema = new mongoose.Schema(
     // unloading data
     unloadingDate: { type: Date, default: null },
     unloadingBranchname: { type: String, default: null },
+    unloadingBranch:{type:String,default:null},
     unloadingByemp: { type: String, default: null },
 
     // deleivery data
     deliveryDate: { type: Date, default: null },
     deliveryEmployee: { type: String, default: null },
     deliveryBranchName: { type: String, default: null },
-    // deliveryAmount: { type: Number, default: 0 },
-    
+    deliveryBranch: { type: String, default: null },
+
     //last transactions
     ltDate: { type: Date, default: () => new Date() },
     ltCity: { type: String, default: null },
