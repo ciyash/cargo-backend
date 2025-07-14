@@ -3156,8 +3156,9 @@ const allCollectionReport = async (req, res) => {
       bookingDate: { $gte: start, $lte: end },
       companyId: new mongoose.Types.ObjectId(companyId),
     };
+
     if (fromCity) filter.fromCity = fromCity;
-    if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+    if (pickUpBranch) filter.dropBranch = pickUpBranch; // ✅ Changed from pickUpBranch to dropBranch
     if (bookedBy) filter.bookedBy = new mongoose.Types.ObjectId(bookedBy);
 
     // Step 1: Aggregate Booking Data (include toPayDeliveredAmount)
@@ -3165,7 +3166,7 @@ const allCollectionReport = async (req, res) => {
       { $match: filter },
       {
         $group: {
-          _id: "$pickUpBranchname",
+          _id: "$dropBranchname", // ✅ Grouping by dropBranchname
           paidAmount: {
             $sum: {
               $cond: [
@@ -3207,9 +3208,9 @@ const allCollectionReport = async (req, res) => {
       },
     ]);
 
-    // Step 2: Merge data (use toPayDeliveredAmount as deliveryAmount in response)
+    // Step 2: Format report data
     const reportData = bookingData.map((b) => {
-      const deliveryAmount = b.toPayDeliveredAmount || 0;
+      const toPayDeliveredAmount = b.toPayDeliveredAmount || 0;
 
       return {
         branchName: b._id,
@@ -3217,8 +3218,8 @@ const allCollectionReport = async (req, res) => {
         toPayAmount: b.toPayAmount,
         creditAmount: b.creditAmount,
         cancelAmount: b.cancelAmount,
-        deliveryAmount, // Keep this name for frontend
-        netAmount: b.paidAmount + b.creditAmount + deliveryAmount - b.cancelAmount,
+        toPayDeliveredAmount,
+        netAmount: b.paidAmount + b.creditAmount + toPayDeliveredAmount - b.cancelAmount,
       };
     });
 
@@ -3226,12 +3227,12 @@ const allCollectionReport = async (req, res) => {
       return res.status(404).json({ message: "No bookings found." });
     }
 
-    // Step 3: Summary
+    // Step 3: Calculate Summary
     const summary = reportData.reduce((acc, curr) => {
       acc.finalPaidAmount += curr.paidAmount;
       acc.finalToPayAmount += curr.toPayAmount;
       acc.finalCreditAmount += curr.creditAmount;
-      acc.finalDeliveryAmount += curr.deliveryAmount;
+      acc.finalToPayDeliveredAmount += curr.toPayDeliveredAmount;
       acc.finalCancelAmount += curr.cancelAmount;
       acc.finalNetAmount += curr.netAmount;
       return acc;
@@ -3239,11 +3240,12 @@ const allCollectionReport = async (req, res) => {
       finalPaidAmount: 0,
       finalToPayAmount: 0,
       finalCreditAmount: 0,
-      finalDeliveryAmount: 0, // Keep this name for frontend
+      finalToPayDeliveredAmount: 0,
       finalCancelAmount: 0,
       finalNetAmount: 0,
     });
 
+    // Step 4: Send response
     res.status(200).json({
       branches: reportData,
       ...summary,
@@ -3254,6 +3256,10 @@ const allCollectionReport = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
+
+
 
 
 
