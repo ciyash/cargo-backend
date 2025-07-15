@@ -3249,7 +3249,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     const from = new Date(fromDate + 'T00:00:00+05:30');
     const to = new Date(toDate + 'T23:59:59+05:30');
 
-    // Booking Side Query
+    // Booking Side Match
     const matchStage = {
       bookingDate: { $gte: from, $lte: to },
       companyId: new mongoose.Types.ObjectId(companyId)
@@ -3273,8 +3273,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
             bookingStatus: "$bookingStatus",
             bookingType: "$bookingType"
           },
-          grandTotal: { $sum: "$grandTotal" },
-          toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
+          grandTotal: { $sum: "$grandTotal" }
         }
       }
     ]);
@@ -3286,8 +3285,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       finalCreditAmount: 0,
       finalCancelAmount: 0,
       finalBookingTotal: 0,
-      finalTotal: 0,
-      finalToPayDeliveredAmount: 0 // will be removed before sending if needed
+      finalTotal: 0
     };
 
     for (const record of bookingData) {
@@ -3324,19 +3322,9 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         entry.toPayAmount += record.grandTotal;
         totals.finalToPayAmount += record.grandTotal;
       }
-
-      // Only update final total; don't store per-branch deliveredAmount
-      totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
     }
 
-    for (const entry of Object.values(branchMap)) {
-      entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
-      entry.total = entry.paidAmount; // exclude toPayDeliveredAmount from total
-      totals.finalBookingTotal += entry.bookingTotal;
-      totals.finalTotal += entry.total;
-    }
-
-    // Delivery Side Query
+    // DELIVERY SIDE: Match with deliveryDate & deliveryBranch === userBranchId
     const deliveryMatch = {
       deliveryDate: { $gte: from, $lte: to },
       companyId: new mongoose.Types.ObjectId(companyId),
@@ -3361,10 +3349,19 @@ const parcelBranchConsolidatedReport = async (req, res) => {
 
     const hasBookingData = Object.keys(branchMap).length > 0;
     const hasDeliveryData = deliverySideResult.finalToPayDeliveredAmount > 0;
+    const deliveryAmount = deliverySideResult.finalToPayDeliveredAmount;
 
-    // Final Response Logic
+    // Now calculate totals correctly
+    for (const entry of Object.values(branchMap)) {
+      entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
+      entry.total = entry.paidAmount + deliveryAmount; // ✅ new calculation
+      totals.finalBookingTotal += entry.bookingTotal;
+    }
+
+    totals.finalTotal = totals.finalPaidAmount + deliveryAmount; // ✅ new calculation
+
+    // Final Response Conditions
     if (hasBookingData && hasDeliveryData) {
-      delete totals.finalToPayDeliveredAmount; // remove from main totals
       return res.status(200).json({
         data: Object.values(branchMap),
         ...totals,
@@ -3373,7 +3370,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     }
 
     if (hasBookingData) {
-      delete totals.finalToPayDeliveredAmount; // remove from main totals
       return res.status(200).json({
         data: Object.values(branchMap),
         ...totals
@@ -3393,6 +3389,8 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
+
 
 
 
