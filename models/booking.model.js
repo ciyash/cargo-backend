@@ -103,10 +103,11 @@ const bookingSchema = new mongoose.Schema(
 
     // deleivery data
     deliveryDate: { type: Date, default: null },
-    deliveryEmployee: { type: String, default: null },
-    deliveryBranchName: { type: String, default: null },
     deliveryBranch: { type: String, default: null },
     deliveryCity:{type:String,default:null},
+    deliveryEmployee: { type: String, default: null },
+    deliveryBranchName: { type: String, default: null },
+    
     //last transactions
     ltDate: { type: Date, default: () => new Date() },
     ltCity: { type: String, default: null },
@@ -157,6 +158,8 @@ const deliverySchema = new mongoose.Schema({
    receiverMobile: { type: String, required: true },
    toPayDeliveredAmount:{type:Number,required:true},
    deliveryDate: { type: Date, required: true },
+   deliveryCity: { type: String, required: true },
+   deliveryBranch:{type:String,required:true},
    deliveryEmployee: { type: String, default: null },
    deliveryBranchName: { type: String, default: null },
 });

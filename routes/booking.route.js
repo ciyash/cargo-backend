@@ -57,7 +57,7 @@ router.post("/updateAllGrnNumbers",auth,bookingController.updateAllGrnNumbers)
 
 //   
 
-router.post("/receivedBooking",auth,bookingController.receivedBooking)
+router.post("/delivery-booking",auth,bookingController.deliveryBooking)
 
 router.get("/get-deliveries",auth,bookingController.getAllDeliveries)
 
