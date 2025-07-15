@@ -3235,165 +3235,6 @@ const bookingTypeWiseCollection = async (req, res) => {
 //.......................................................................................
 
 
-
-
-
-
-// const parcelBranchConsolidatedReport = async (req, res) => {
-//   try {
-//     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
-//     const companyId = req.user?.companyId;
-
-//     if (!companyId) {
-//       return res.status(401).json({ message: "Unauthorized: companyId missing" });
-//     }
-
-//     const from = new Date(fromDate + 'T00:00:00+05:30');
-//     const to = new Date(toDate + 'T23:59:59+05:30');
-
-//     const matchStage = {
-//       bookingDate: { $gte: from, $lte: to },
-//       companyId: new mongoose.Types.ObjectId(companyId)
-//     };
-
-//     if (pickUpBranch) {
-//       matchStage.pickUpBranch = pickUpBranch;
-//     }
-
-//     if (fromCity) {
-//       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
-//     }
-
-//     // Bookings Side
-//     const bookingData = await Booking.aggregate([
-//       { $match: matchStage },
-//       {
-//         $group: {
-//           _id: {
-//             branchCode: "$pickUpBranch",
-//             branchName: "$pickUpBranchname",
-//             bookingStatus: "$bookingStatus",
-//             bookingType: "$bookingType"
-//           },
-//           grandTotal: { $sum: "$grandTotal" },
-//           toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
-//         }
-//       }
-//     ]);
-
-//     const branchMap = {};
-//     const totals = {
-//       finalPaidAmount: 0,
-//       finalToPayAmount: 0,
-//       finalCreditAmount: 0,
-//       finalCancelAmount: 0,
-//       finalBookingTotal: 0,
-//       finalTotal: 0,
-//       finalToPayDeliveredAmount: 0
-//     };
-
-//     for (const record of bookingData) {
-//       const { branchCode, branchName, bookingStatus, bookingType } = record._id;
-
-//       if (!branchMap[branchCode]) {
-//         branchMap[branchCode] = {
-//           branchCode,
-//           branchName,
-//           paidAmount: 0,
-//           toPayAmount: 0,
-//           creditAmount: 0,
-//           toPayDeliveredAmount: 0,
-//           cancelAmount: 0,
-//           bookingTotal: 0,
-//           total: 0
-//         };
-//       }
-
-//       const entry = branchMap[branchCode];
-
-//       if (bookingType === "paid") {
-//         entry.paidAmount += record.grandTotal;
-//         totals.finalPaidAmount += record.grandTotal;
-//       }
-//       if (bookingType === "credit") {
-//         entry.creditAmount += record.grandTotal;
-//         totals.finalCreditAmount += record.grandTotal;
-//       }
-//       if (bookingStatus === 5) {
-//         entry.cancelAmount += record.grandTotal;
-//         totals.finalCancelAmount += record.grandTotal;
-//       }
-//       if (bookingType === "toPay") {
-//         entry.toPayAmount += record.grandTotal;
-//         totals.finalToPayAmount += record.grandTotal;
-//       }
-
-//       entry.toPayDeliveredAmount += record.toPayDeliveredAmount;
-//       totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
-//     }
-
-//     // ✅ Proper Delivery Side Filtering (using variable construction)
-//     const deliveryMatch = {
-//       bookingDate: { $gte: from, $lte: to },
-//       companyId: new mongoose.Types.ObjectId(companyId),
-//       bookingType: "toPay",
-//       toPayDeliveredAmount: { $gt: 0 }
-//     };
-
-//     if (pickUpBranch) {
-//       deliveryMatch.pickUpBranch = pickUpBranch;
-//     }
-
-//     const deliveryData = await Booking.aggregate([
-//       { $match: deliveryMatch },
-//       {
-//         $group: {
-//           _id: "$deliveryBranchName",
-//           toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
-//         }
-//       }
-//     ]);
-
-//     for (const record of deliveryData) {
-//       const branchName = record._id;
-//       let found = false;
-
-//       for (const entry of Object.values(branchMap)) {
-//         if (entry.branchName === branchName) {
-//           entry.toPayDeliveredAmount += record.toPayDeliveredAmount;
-//           totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
-//           found = true;
-//           break;
-//         }
-//       }
-
-//       if (!found && branchName) {
-//         // ❌ This block will no longer run for branches not part of pickUpBranch
-//         // So "Auto Nagar" won't appear
-//         continue;
-//       }
-//     }
-
-//     for (const entry of Object.values(branchMap)) {
-//       entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
-//       entry.total = entry.paidAmount + entry.toPayDeliveredAmount;
-//       totals.finalBookingTotal += entry.bookingTotal;
-//       totals.finalTotal += entry.total;
-//     }
-
-//     return res.status(200).json({
-//       data: Object.values(branchMap),
-//       ...totals
-//     });
-
-//   } catch (err) {
-//     console.error("Error in parcelBranchConsolidatedReport:", err);
-//     return res.status(500).json({ message: "Server Error", error: err.message });
-//   }
-// };
-
-
-
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
@@ -3434,9 +3275,9 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           grandTotal: { $sum: "$grandTotal" },
           toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
         }
-      } 
+      }
     ]);
- 
+
     const branchMap = {};
     const totals = {
       finalPaidAmount: 0,
@@ -3495,6 +3336,13 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       totals.finalTotal += entry.total;
     }
 
+    // 🧹 Clean up: remove toPayDeliveredAmount if it's 0
+    for (const entry of Object.values(branchMap)) {
+      if (entry.toPayDeliveredAmount === 0) {
+        delete entry.toPayDeliveredAmount;
+      }
+    }
+
     // 🅱️ Delivery Fallback Match
     const deliveryMatch = {
       deliveryDate: { $gte: from, $lte: to },
@@ -3517,12 +3365,11 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       }
     }
 
-    // 🧠 Final Conditional Response:
+    // ✅ Final Response Based on conditions
     const hasBookingData = Object.keys(branchMap).length > 0;
     const hasDeliveryData = deliverySideResult.finalToPayDeliveredAmount > 0;
 
     if (hasBookingData && hasDeliveryData) {
-      // Show both
       return res.status(200).json({
         data: Object.values(branchMap),
         ...totals,
@@ -3531,7 +3378,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     }
 
     if (hasBookingData) {
-      // Only booking data
       return res.status(200).json({
         data: Object.values(branchMap),
         ...totals
@@ -3539,13 +3385,11 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     }
 
     if (hasDeliveryData) {
-      // Only delivery side
       return res.status(200).json({
         deliverySide: deliverySideResult
       });
     }
 
-    // No data at all
     return res.status(200).json({ message: "No data found", data: [] });
 
   } catch (err) {
@@ -3553,6 +3397,168 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
+
+
+// const parcelBranchConsolidatedReport = async (req, res) => {
+//   try {
+//     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
+//     const companyId = req.user?.companyId;
+//     const userBranchId = req.user?.branchId;
+
+//     if (!companyId) {
+//       return res.status(401).json({ message: "Unauthorized: companyId missing" });
+//     }
+
+//     const from = new Date(fromDate + 'T00:00:00+05:30');
+//     const to = new Date(toDate + 'T23:59:59+05:30');
+
+//     // 🅰️ Booking Data Match
+//     const matchStage = {
+//       bookingDate: { $gte: from, $lte: to },
+//       companyId: new mongoose.Types.ObjectId(companyId)
+//     };
+
+//     if (pickUpBranch) {
+//       matchStage.pickUpBranch = pickUpBranch;
+//     }
+
+//     if (fromCity) {
+//       matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
+//     }
+
+//     const bookingData = await Booking.aggregate([
+//       { $match: matchStage },
+//       {
+//         $group: {
+//           _id: {
+//             branchCode: "$pickUpBranch",
+//             branchName: "$pickUpBranchname",
+//             bookingStatus: "$bookingStatus",
+//             bookingType: "$bookingType"
+//           },
+//           grandTotal: { $sum: "$grandTotal" },
+//           toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
+//         }
+//       } 
+//     ]);
+ 
+//     const branchMap = {};
+//     const totals = {
+//       finalPaidAmount: 0,
+//       finalToPayAmount: 0,
+//       finalCreditAmount: 0,
+//       finalCancelAmount: 0,
+//       finalBookingTotal: 0,
+//       finalTotal: 0,
+//       finalToPayDeliveredAmount: 0
+//     };
+
+//     for (const record of bookingData) {
+//       const { branchCode, branchName, bookingStatus, bookingType } = record._id;
+
+//       if (!branchMap[branchCode]) {
+//         branchMap[branchCode] = {
+//           branchCode,
+//           branchName,
+//           paidAmount: 0,
+//           toPayAmount: 0,
+//           creditAmount: 0,
+//           toPayDeliveredAmount: 0,
+//           cancelAmount: 0,
+//           bookingTotal: 0,
+//           total: 0
+//         };
+//       }
+
+//       const entry = branchMap[branchCode];
+
+//       if (bookingType === "paid") {
+//         entry.paidAmount += record.grandTotal;
+//         totals.finalPaidAmount += record.grandTotal;
+//       }
+//       if (bookingType === "credit") {
+//         entry.creditAmount += record.grandTotal;
+//         totals.finalCreditAmount += record.grandTotal;
+//       }
+//       if (bookingStatus === 5) {
+//         entry.cancelAmount += record.grandTotal;
+//         totals.finalCancelAmount += record.grandTotal;
+//       }
+//       if (bookingType === "toPay") {
+//         entry.toPayAmount += record.grandTotal;
+//         totals.finalToPayAmount += record.grandTotal;
+//       }
+
+//       entry.toPayDeliveredAmount += record.toPayDeliveredAmount;
+//       totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
+//     }
+
+//     for (const entry of Object.values(branchMap)) {
+//       entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
+//       entry.total = entry.paidAmount + entry.toPayDeliveredAmount;
+//       totals.finalBookingTotal += entry.bookingTotal;
+//       totals.finalTotal += entry.total;
+//     }
+
+//     // 🅱️ Delivery Fallback Match
+//     const deliveryMatch = {
+//       deliveryDate: { $gte: from, $lte: to },
+//       companyId: new mongoose.Types.ObjectId(companyId),
+//       bookingType: "toPay",
+//       toPayDeliveredAmount: { $gt: 0 }
+//     };
+
+//     const deliverySideData = await Booking.find(deliveryMatch);
+
+//     const deliverySideResult = {
+//       toPayDeliveredAmount: 0,
+//       finalToPayDeliveredAmount: 0
+//     };
+
+//     for (const delivery of deliverySideData) {
+//       if (delivery.deliveryBranch === userBranchId) {
+//         deliverySideResult.toPayDeliveredAmount += delivery.toPayDeliveredAmount || 0;
+//         deliverySideResult.finalToPayDeliveredAmount += delivery.toPayDeliveredAmount || 0;
+//       }
+//     }
+
+//     // 🧠 Final Conditional Response:
+//     const hasBookingData = Object.keys(branchMap).length > 0;
+//     const hasDeliveryData = deliverySideResult.finalToPayDeliveredAmount > 0;
+
+//     if (hasBookingData && hasDeliveryData) {
+//       // Show both
+//       return res.status(200).json({
+//         data: Object.values(branchMap),
+//         ...totals,
+//         deliverySide: deliverySideResult
+//       });
+//     }
+
+//     if (hasBookingData) {
+//       // Only booking data
+//       return res.status(200).json({
+//         data: Object.values(branchMap),
+//         ...totals
+//       });
+//     }
+
+//     if (hasDeliveryData) {
+//       // Only delivery side
+//       return res.status(200).json({
+//         deliverySide: deliverySideResult
+//       });
+//     }
+
+//     // No data at all
+//     return res.status(200).json({ message: "No data found", data: [] });
+
+//   } catch (err) {
+//     console.error("Error in parcelBranchConsolidatedReport:", err);
+//     return res.status(500).json({ message: "Server Error", error: err.message });
+//   }
+// };
 
 
 
