@@ -23,12 +23,12 @@ mongoose.connect(process.env.MONGO_URI)
 app.listen(PORT, () => console.log(`server running on port ${PORT}`));
 
 // --- Cron job setup here ---
-cron.schedule("0 0 * * *", async () => {
-  console.log("🕛 Running daily branch snapshot job at midnight");
-  try {
-    await branchReportController.createDailyBranchSnapshot();
-    console.log("✅ Daily snapshot created successfully");
-  } catch (error) {
-    console.error("❌ Error running cron job:", error.message);
-  }
-});
+// cron.schedule("0 0 * * *", async () => {
+//   console.log("🕛 Running daily branch snapshot job at midnight");
+//   try {
+//     await branchReportController.createDailyBranchSnapshot();
+//     console.log("✅ Daily snapshot created successfully");
+//   } catch (error) {
+//     console.error("❌ Error running cron job:", error.message);
+//   }
+// });

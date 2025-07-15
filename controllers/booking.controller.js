@@ -3393,11 +3393,12 @@ const bookingTypeWiseCollection = async (req, res) => {
 // };
 
 
+
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
     const companyId = req.user?.companyId;
-    const deliveryBranch = req.user?.branchId;
+    const userBranchId = req.user?.branchId;
 
     if (!companyId) {
       return res.status(401).json({ message: "Unauthorized: companyId missing" });
@@ -3406,52 +3407,36 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     const from = new Date(fromDate + 'T00:00:00+05:30');
     const to = new Date(toDate + 'T23:59:59+05:30');
 
-    // Helper function to get aggregated data
-    const getBookingData = async (branchToUse) => {
-      const matchStage = {
-        bookingDate: { $gte: from, $lte: to },
-        companyId: new mongoose.Types.ObjectId(companyId)
-      };
-
-      if (branchToUse) {
-        matchStage.pickUpBranch = branchToUse;
-      }
-
-      if (fromCity) {
-        matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
-      }
-
-      return Booking.aggregate([
-        { $match: matchStage },
-        {
-          $group: {
-            _id: {
-              branchCode: "$pickUpBranch",
-              branchName: "$pickUpBranchname",
-              bookingStatus: "$bookingStatus",
-              bookingType: "$bookingType"
-            },
-            grandTotal: { $sum: "$grandTotal" },
-            toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
-          }
-        }
-      ]);
+    // 🅰️ Booking Data Match
+    const matchStage = {
+      bookingDate: { $gte: from, $lte: to },
+      companyId: new mongoose.Types.ObjectId(companyId)
     };
 
-    let bookingData = await getBookingData(pickUpBranch);
-
-    // 🔁 Try again with deliveryBranch if no data and pickUp === deliveryBranch
-    if (bookingData.length === 0 && pickUpBranch === deliveryBranch) {
-      bookingData = await getBookingData(deliveryBranch);
-      if (bookingData.length === 0) {
-        return res.status(200).json({ message: "No data found", data: [] });
-      }
+    if (pickUpBranch) {
+      matchStage.pickUpBranch = pickUpBranch;
     }
 
-    if (bookingData.length === 0) {
-      return res.status(200).json({ message: "No data found", data: [] });
+    if (fromCity) {
+      matchStage.fromCity = new RegExp(`^${fromCity}$`, 'i');
     }
 
+    const bookingData = await Booking.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: {
+            branchCode: "$pickUpBranch",
+            branchName: "$pickUpBranchname",
+            bookingStatus: "$bookingStatus",
+            bookingType: "$bookingType"
+          },
+          grandTotal: { $sum: "$grandTotal" },
+          toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
+        }
+      } 
+    ]);
+ 
     const branchMap = {};
     const totals = {
       finalPaidAmount: 0,
@@ -3503,42 +3488,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
     }
 
-    // Delivery Side Aggregation
-    const deliveryData = await Booking.aggregate([
-      {
-        $match: {
-          bookingDate: { $gte: from, $lte: to },
-          companyId: new mongoose.Types.ObjectId(companyId),
-          bookingType: "toPay",
-          toPayDeliveredAmount: { $gt: 0 }
-        }
-      },
-      {
-        $group: {
-          _id: "$deliveryBranchName",
-          toPayDeliveredAmount: { $sum: "$toPayDeliveredAmount" }
-        }
-      }
-    ]);
-
-    for (const record of deliveryData) {
-      const branchName = record._id;
-      let found = false;
-
-      for (const entry of Object.values(branchMap)) {
-        if (entry.branchName === branchName) {
-          entry.toPayDeliveredAmount += record.toPayDeliveredAmount;
-          totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
-          found = true;
-          break;
-        }
-      }
-
-      if (!found && branchName) {
-        continue;
-      }
-    }
-
     for (const entry of Object.values(branchMap)) {
       entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
       entry.total = entry.paidAmount + entry.toPayDeliveredAmount;
@@ -3546,16 +3495,65 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       totals.finalTotal += entry.total;
     }
 
-    return res.status(200).json({
-      data: Object.values(branchMap),
-      ...totals
-    });
+    // 🅱️ Delivery Fallback Match
+    const deliveryMatch = {
+      deliveryDate: { $gte: from, $lte: to },
+      companyId: new mongoose.Types.ObjectId(companyId),
+      bookingType: "toPay",
+      toPayDeliveredAmount: { $gt: 0 }
+    };
+
+    const deliverySideData = await Booking.find(deliveryMatch);
+
+    const deliverySideResult = {
+      toPayDeliveredAmount: 0,
+      finalToPayDeliveredAmount: 0
+    };
+
+    for (const delivery of deliverySideData) {
+      if (delivery.deliveryBranch === userBranchId) {
+        deliverySideResult.toPayDeliveredAmount += delivery.toPayDeliveredAmount || 0;
+        deliverySideResult.finalToPayDeliveredAmount += delivery.toPayDeliveredAmount || 0;
+      }
+    }
+
+    // 🧠 Final Conditional Response:
+    const hasBookingData = Object.keys(branchMap).length > 0;
+    const hasDeliveryData = deliverySideResult.finalToPayDeliveredAmount > 0;
+
+    if (hasBookingData && hasDeliveryData) {
+      // Show both
+      return res.status(200).json({
+        data: Object.values(branchMap),
+        ...totals,
+        deliverySide: deliverySideResult
+      });
+    }
+
+    if (hasBookingData) {
+      // Only booking data
+      return res.status(200).json({
+        data: Object.values(branchMap),
+        ...totals
+      });
+    }
+
+    if (hasDeliveryData) {
+      // Only delivery side
+      return res.status(200).json({
+        deliverySide: deliverySideResult
+      });
+    }
+
+    // No data at all
+    return res.status(200).json({ message: "No data found", data: [] });
 
   } catch (err) {
     console.error("Error in parcelBranchConsolidatedReport:", err);
     return res.status(500).json({ message: "Server Error", error: err.message });
   }
-};   
+};
+
 
 
 const consolidatedReportBranch = async (req, res) => {
