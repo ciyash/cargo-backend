@@ -3235,6 +3235,7 @@ const bookingTypeWiseCollection = async (req, res) => {
 //.......................................................................................
 
 
+
 const parcelBranchConsolidatedReport = async (req, res) => {
   try {
     const { fromDate, toDate, fromCity, pickUpBranch } = req.body;
@@ -3248,7 +3249,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     const from = new Date(fromDate + 'T00:00:00+05:30');
     const to = new Date(toDate + 'T23:59:59+05:30');
 
-    // 🅰️ Booking Data Match
+    // Booking Side Query
     const matchStage = {
       bookingDate: { $gte: from, $lte: to },
       companyId: new mongoose.Types.ObjectId(companyId)
@@ -3286,7 +3287,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       finalCancelAmount: 0,
       finalBookingTotal: 0,
       finalTotal: 0,
-      finalToPayDeliveredAmount: 0
+      finalToPayDeliveredAmount: 0 // will be removed before sending if needed
     };
 
     for (const record of bookingData) {
@@ -3299,7 +3300,6 @@ const parcelBranchConsolidatedReport = async (req, res) => {
           paidAmount: 0,
           toPayAmount: 0,
           creditAmount: 0,
-          toPayDeliveredAmount: 0,
           cancelAmount: 0,
           bookingTotal: 0,
           total: 0
@@ -3325,25 +3325,18 @@ const parcelBranchConsolidatedReport = async (req, res) => {
         totals.finalToPayAmount += record.grandTotal;
       }
 
-      entry.toPayDeliveredAmount += record.toPayDeliveredAmount;
+      // Only update final total; don't store per-branch deliveredAmount
       totals.finalToPayDeliveredAmount += record.toPayDeliveredAmount;
     }
 
     for (const entry of Object.values(branchMap)) {
       entry.bookingTotal = entry.paidAmount + entry.toPayAmount + entry.creditAmount;
-      entry.total = entry.paidAmount + entry.toPayDeliveredAmount;
+      entry.total = entry.paidAmount; // exclude toPayDeliveredAmount from total
       totals.finalBookingTotal += entry.bookingTotal;
       totals.finalTotal += entry.total;
     }
 
-    // 🧹 Clean up: remove toPayDeliveredAmount if it's 0
-    for (const entry of Object.values(branchMap)) {
-      if (entry.toPayDeliveredAmount === 0) {
-        delete entry.toPayDeliveredAmount;
-      }
-    }
-
-    // 🅱️ Delivery Fallback Match
+    // Delivery Side Query
     const deliveryMatch = {
       deliveryDate: { $gte: from, $lte: to },
       companyId: new mongoose.Types.ObjectId(companyId),
@@ -3360,16 +3353,18 @@ const parcelBranchConsolidatedReport = async (req, res) => {
 
     for (const delivery of deliverySideData) {
       if (delivery.deliveryBranch === userBranchId) {
-        deliverySideResult.toPayDeliveredAmount += delivery.toPayDeliveredAmount || 0;
-        deliverySideResult.finalToPayDeliveredAmount += delivery.toPayDeliveredAmount || 0;
+        const amt = delivery.toPayDeliveredAmount || 0;
+        deliverySideResult.toPayDeliveredAmount += amt;
+        deliverySideResult.finalToPayDeliveredAmount += amt;
       }
     }
 
-    // ✅ Final Response Based on conditions
     const hasBookingData = Object.keys(branchMap).length > 0;
     const hasDeliveryData = deliverySideResult.finalToPayDeliveredAmount > 0;
 
+    // Final Response Logic
     if (hasBookingData && hasDeliveryData) {
+      delete totals.finalToPayDeliveredAmount; // remove from main totals
       return res.status(200).json({
         data: Object.values(branchMap),
         ...totals,
@@ -3378,6 +3373,7 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     }
 
     if (hasBookingData) {
+      delete totals.finalToPayDeliveredAmount; // remove from main totals
       return res.status(200).json({
         data: Object.values(branchMap),
         ...totals
@@ -3397,6 +3393,9 @@ const parcelBranchConsolidatedReport = async (req, res) => {
     return res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
+
+
+
 
 
 
