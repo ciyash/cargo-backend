@@ -106,7 +106,7 @@ const bookingSchema = new mongoose.Schema(
     deliveryEmployee: { type: String, default: null },
     deliveryBranchName: { type: String, default: null },
     deliveryBranch: { type: String, default: null },
-
+    deliveryCity:{type:String,default:null},
     //last transactions
     ltDate: { type: Date, default: () => new Date() },
     ltCity: { type: String, default: null },
