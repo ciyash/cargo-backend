@@ -67,6 +67,7 @@ router.post("/cancelBooking/:grnNo",auth,bookingController.cancelBooking)
 
 router.post("/markParcelAsMissing/:grnNo", auth, bookingController.markParcelAsMissing) // Mark parcel as missing
 
+router.post("/delivery-report", auth, bookingController.deliveryReport) // Delivery report
 // reports
 
 router.post("/parcel-booking-report",auth,bookingController.parcelBookingReports)

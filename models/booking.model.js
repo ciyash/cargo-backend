@@ -153,10 +153,19 @@ const deliverySchema = new mongoose.Schema({
     ref: "Company",
     required: true,
   },
+   bookingId: {   
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Booking",
+    required: true
+  },
    grnNo: { type: Number, required: true }, // auto generate
    receiverName: { type: String, required: true },
    receiverMobile: { type: String, required: true },
    toPayDeliveredAmount:{type:Number,required:true},
+   bookingType: {
+    type: String,
+    enum: ["paid", "toPay", "credit", "FOC"],
+},
    deliveryDate: { type: Date, required: true },
    deliveryCity: { type: String, required: true },
    deliveryBranch:{type:String,required:true},
