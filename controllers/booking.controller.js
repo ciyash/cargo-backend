@@ -3193,6 +3193,7 @@ const allCollectionReport = async (req, res) => {
     const deliveryFilter = {
       companyId: new mongoose.Types.ObjectId(companyId),
       deliveryDate: { $gte: start, $lte: end },
+      bookingType:"toPay",
       toPayDeliveredAmount: { $gt: 0 }
     };
 
