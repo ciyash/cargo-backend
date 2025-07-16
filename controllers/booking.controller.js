@@ -4673,7 +4673,6 @@ const parcelReceivedStockReport = async (req, res) => {
       .select("grnNo -_id")
       .lean();
 
-    // FIX: grnNo is an array, so we flatten it
     const grnNos = unloadingGrns
       .flatMap(item => item.grnNo)
       .map(grn => Number(grn))
@@ -4686,7 +4685,7 @@ const parcelReceivedStockReport = async (req, res) => {
       });
     }
 
-    // Step 2: Build Booking Query with companyId
+    // Step 2: Build Booking Query
     const query = {
       companyId,
       grnNo: { $in: grnNos },
@@ -4700,7 +4699,7 @@ const parcelReceivedStockReport = async (req, res) => {
 
     const bookings = await Booking.find(query)
       .select(
-        "grnNo lrNumber deliveryDate unloadingDate senderName senderMobile bookingType bookingStatus receiverName fromCity pickUpBranch packages"
+        "grnNo lrNumber deliveryDate unloadingDate senderName senderMobile bookingType bookingStatus receiverName fromCity pickUpBranch packages grandTotal"
       )
       .lean();
 
@@ -4732,10 +4731,9 @@ const parcelReceivedStockReport = async (req, res) => {
     let finalTotalPaid = 0;
 
     for (const delivery of bookings) {
-      const grandTotal =
-        delivery.packages?.reduce((sum, pkg) => sum + (pkg.totalPrice || 0), 0) || 0;
-
+      const grandTotal = delivery.grandTotal || 0; // ✅ FIXED
       const totalPackages = delivery.packages?.length || 0;
+
       totalGrandTotal += grandTotal;
       grandTotalPackages += totalPackages;
 
@@ -4770,16 +4768,15 @@ const parcelReceivedStockReport = async (req, res) => {
       if (type === "paid") finalTotalPaid += grandTotal;
     }
 
-    return res.status(200).json({      
-      
-        data: updatedDeliveries,
-        totalGrandTotal,
-        grandTotalPackages,
-        bookingTypeSummary,
-        finalTotalToPay,
-        finalTotalPaid,
-      
+    return res.status(200).json({
+      data: updatedDeliveries,
+      totalGrandTotal,
+      grandTotalPackages,
+      bookingTypeSummary,
+      finalTotalToPay,
+      finalTotalPaid,
     });
+
   } catch (error) {
     console.error("Error in parcelReceivedStockReport:", error);
     return res.status(500).json({
@@ -4789,6 +4786,7 @@ const parcelReceivedStockReport = async (req, res) => {
     });
   }
 };
+
 
 
 
