@@ -4874,7 +4874,7 @@ const deliveredStockReport = async (req, res) => {
       const otherCharges = serviceCharges + hamaliCharges + doorPickupCharges;
 
       // ✅ Net amount includes Paid + ToPayDeliveredAmount + ToPayDeliveryAmount
-      const netAmount = grandTotal + toPayDeliveredAmount + toPayDeliveryAmount;
+      const netAmount = grandTotal
 
       totalPackagesSum += pkgCount;
       totalFreight += freight;
