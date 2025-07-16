@@ -2987,6 +2987,153 @@ const collectionReportToPay = async (req, res) => {
 };
 
 
+// const allCollectionReport = async (req, res) => {
+//   try {
+//     const companyId = req.user?.companyId;
+//     if (!companyId) {
+//       return res.status(401).json({ success: false, message: "Unauthorized: Company ID missing" });
+//     }
+
+//     const { fromDate, toDate, fromCity, pickUpBranch, bookedBy } = req.body;
+
+//     if (!fromDate || !toDate) {
+//       return res.status(400).json({ error: "fromDate and toDate are required" });
+//     }
+
+//     const start = new Date(fromDate);
+//     const end = new Date(toDate);
+//     end.setHours(23, 59, 59, 999);
+
+//     if (isNaN(start) || isNaN(end)) {
+//       return res.status(400).json({ error: "Invalid date format" });
+//     }
+
+//     const filter = {
+//       bookingDate: { $gte: start, $lte: end },
+//       companyId: new mongoose.Types.ObjectId(companyId),
+//     };
+//     if (fromCity) filter.fromCity = fromCity;
+//     if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
+//     if (bookedBy) filter.bookedBy = new mongoose.Types.ObjectId(bookedBy);
+
+//     // Step 1: Aggregate Booking Data
+//     const bookingData = await Booking.aggregate([
+//       { $match: filter },
+//       {
+//         $group: {
+//           _id: "$pickUpBranchname",
+//           paidAmount: {
+//             $sum: {
+//               $cond: [
+//                 { $and: [{ $eq: ["$bookingType", "paid"] }, { $ne: ["$bookingStatus", 5] }] },
+//                 "$grandTotal",
+//                 0,
+//               ],
+//             },
+//           },
+//           toPayAmount: {
+//             $sum: {
+//               $cond: [
+//                 { $and: [{ $eq: ["$bookingType", "toPay"] }, { $ne: ["$bookingStatus", 5] }] },
+//                 "$grandTotal",
+//                 0,
+//               ],
+//             },
+//           },
+//           creditAmount: {
+//             $sum: {
+//               $cond: [
+//                 { $and: [{ $eq: ["$bookingType", "credit"] }, { $ne: ["$bookingStatus", 5] }] },
+//                 "$grandTotal",
+//                 0,
+//               ],
+//             },
+//           },
+//           cancelAmount: {
+//             $sum: {
+//               $cond: [
+//                 { $eq: ["$bookingStatus", 5] },
+//                 "$grandTotal",
+//                 0,
+//               ],
+//             },
+//           },
+//         },
+//       },
+//     ]);
+
+//     // Step 2: Get delivery amounts by branch
+//     const deliveryData = await Delivery.aggregate([
+//       {
+//         $match: {
+//           companyId: new mongoose.Types.ObjectId(companyId),
+//           deliveryDate: { $gte: start, $lte: end },
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: "$deliveryBranchName",
+//           deliveryAmount: {
+//             $sum: {
+//               $toDouble: "$deliveryAmount", // In case stored as string
+//             },
+//           },
+//         },
+//       },
+//     ]);
+
+//     const deliveryMap = {};
+//     for (const d of deliveryData) {
+//       deliveryMap[d._id] = d.deliveryAmount;
+//     }
+
+//     // Step 3: Merge Booking + Delivery
+//     const reportData = bookingData.map((b) => {
+//       const toPayDeliveredAmount = deliveryMap[b._id] || 0;
+//       return {
+//         branchName: b._id,
+//         paidAmount: b.paidAmount,
+//         toPayAmount: b.toPayAmount,
+//         creditAmount: b.creditAmount,
+//         cancelAmount: b.cancelAmount,
+//         toPayDeliveredAmount,
+//         netAmount: b.paidAmount + toPayDeliveredAmount,
+//       };
+//     });
+
+//     if (!reportData.length) {
+//       return res.status(404).json({ message: "No bookings found." });
+//     }
+
+//     // Step 4: Summary
+//     const summary = reportData.reduce((acc, curr) => {
+//       acc.finalPaidAmount += curr.paidAmount;
+//       acc.finalToPayAmount += curr.toPayAmount;
+//       acc.finalCreditAmount += curr.creditAmount;
+//       acc.finalToPayDeliveredAmount += curr.toPayDeliveredAmount;
+//       acc.finalCancelAmount += curr.cancelAmount;
+//       acc.finalNetAmount += curr.netAmount;
+//       return acc;
+//     }, {
+//       finalPaidAmount: 0,
+//       finalToPayAmount: 0,
+//       finalCreditAmount: 0,
+//       finalToPayDeliveredAmount: 0,
+//       finalCancelAmount: 0,
+//       finalNetAmount: 0,
+//     });
+
+//     res.status(200).json({
+//       branches: reportData,
+//       ...summary,
+//     });
+
+//   } catch (err) {
+//     console.error("Error generating report:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
 const allCollectionReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -3016,7 +3163,7 @@ const allCollectionReport = async (req, res) => {
     if (pickUpBranch) filter.pickUpBranch = pickUpBranch;
     if (bookedBy) filter.bookedBy = new mongoose.Types.ObjectId(bookedBy);
 
-    // Step 1: Aggregate Booking Data
+    // === Step 1: Booking Aggregation ===
     const bookingData = await Booking.aggregate([
       { $match: filter },
       {
@@ -3062,20 +3209,28 @@ const allCollectionReport = async (req, res) => {
       },
     ]);
 
-    // Step 2: Get delivery amounts by branch
+    // === Step 2: toPayDeliveredAmount from Delivery model ===
+    const deliveryFilter = {
+      companyId: new mongoose.Types.ObjectId(companyId),
+      deliveryDate: { $gte: start, $lte: end },
+      toPayDeliveredAmount: { $gt: 0 }
+    };
+
+    if (fromCity) deliveryFilter.deliveryCity = fromCity;
+    if (pickUpBranch) deliveryFilter.deliveryBranch = pickUpBranch;
+
     const deliveryData = await Delivery.aggregate([
-      {
-        $match: {
-          companyId: new mongoose.Types.ObjectId(companyId),
-          deliveryDate: { $gte: start, $lte: end },
-        },
-      },
+      { $match: deliveryFilter },
       {
         $group: {
           _id: "$deliveryBranchName",
-          deliveryAmount: {
+          toPayDeliveredAmount: {
             $sum: {
-              $toDouble: "$deliveryAmount", // In case stored as string
+              $cond: [
+                { $gt: ["$toPayDeliveredAmount", 0] },
+                "$toPayDeliveredAmount",
+                0
+              ]
             },
           },
         },
@@ -3084,10 +3239,10 @@ const allCollectionReport = async (req, res) => {
 
     const deliveryMap = {};
     for (const d of deliveryData) {
-      deliveryMap[d._id] = d.deliveryAmount;
+      deliveryMap[d._id] = d.toPayDeliveredAmount;
     }
 
-    // Step 3: Merge Booking + Delivery
+    // === Step 3: Merge both sources ===
     const reportData = bookingData.map((b) => {
       const toPayDeliveredAmount = deliveryMap[b._id] || 0;
       return {
@@ -3101,11 +3256,23 @@ const allCollectionReport = async (req, res) => {
       };
     });
 
-    if (!reportData.length) {
-      return res.status(404).json({ message: "No bookings found." });
+    // Add missing delivery branches not in booking
+    for (const branchName in deliveryMap) {
+      const alreadyInReport = reportData.find(item => item.branchName === branchName);
+      if (!alreadyInReport) {
+        reportData.push({
+          branchName,
+          paidAmount: 0,
+          toPayAmount: 0,
+          creditAmount: 0,
+          cancelAmount: 0,
+          toPayDeliveredAmount: deliveryMap[branchName],
+          netAmount: deliveryMap[branchName],
+        });
+      }
     }
 
-    // Step 4: Summary
+    // === Step 4: Summary ===
     const summary = reportData.reduce((acc, curr) => {
       acc.finalPaidAmount += curr.paidAmount;
       acc.finalToPayAmount += curr.toPayAmount;
@@ -3129,11 +3296,10 @@ const allCollectionReport = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Error generating report:", err);
+    console.error("Error generating allCollectionReport:", err);
     res.status(500).json({ error: err.message });
   }
 };
-
 
 
 
