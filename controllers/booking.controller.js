@@ -3395,6 +3395,14 @@ const parcelBranchConsolidatedReport = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized: companyId missing" });
     }
 
+     if(req.user?.role==="subadmin"  &&  !fromCity){
+      return res.status(400).json({message:"your Subadmin fromCity required"})
+    }
+
+     if(req.user?.role==="employee" && !pickUpBranch){
+      return res.status(400).json({message:"pickUpBranch required"})
+    }
+
     const from = new Date(fromDate + 'T00:00:00+05:30');
     const to = new Date(toDate + 'T23:59:59+05:30');
 
