@@ -515,6 +515,7 @@ const getUnloadingReport = async (req, res) => {
   }
 };
 
+
 const parcelBranchToBranchUnloading = async (req, res) => {
   try {
     const { fromDate, toDate, fromBranch, toBranch } = req.body;
@@ -537,21 +538,24 @@ const parcelBranchToBranchUnloading = async (req, res) => {
     const from = new Date(fromDate + 'T00:00:00.000Z');
     const to = new Date(toDate + 'T23:59:59.999Z');
 
-    const matchStage = {   
-      companyId: new mongoose.Types.ObjectId(companyId),    
+    const matchStage = {
+      companyId: new mongoose.Types.ObjectId(companyId),
       bookingStatus: 1,
       loadingDate: { $gte: from, $lte: to },
     };
 
-    if (fromBranch) {
+    // Support multiple pickup branches
+    if (fromBranch && Array.isArray(fromBranch) && fromBranch.length > 0) {
+      matchStage.pickUpBranch = { $in: fromBranch };
+    } else if (fromBranch) {
       matchStage.pickUpBranch = fromBranch;
     }
 
     if (toBranch) {
-      matchStage.dropBranch = toBranch; 
-    } 
+      matchStage.dropBranch = toBranch;
+    }
 
-    const parcels = await Booking.aggregate([        
+    const parcels = await Booking.aggregate([   
       { $match: matchStage },
       { $sort: { loadingDate: -1 } },
     ]);
@@ -559,7 +563,6 @@ const parcelBranchToBranchUnloading = async (req, res) => {
     res.status(200).json(parcels);
 
   } catch (error) {
-    
     res.status(500).json({
       message: "Internal server error",
       error: error.message,
