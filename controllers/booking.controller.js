@@ -3117,6 +3117,7 @@ const collectionReportToPay = async (req, res) => {
 const allCollectionReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
+  
     if (!companyId) {
       return res.status(401).json({ success: false, message: "Unauthorized: Company ID missing" });
     }
@@ -3125,6 +3126,14 @@ const allCollectionReport = async (req, res) => {
 
     if (!fromDate || !toDate) {
       return res.status(400).json({ error: "fromDate and toDate are required" });
+    }
+
+    if(req.user?.role==="subadmin"  &&  !fromCity){
+      return res.status(400).json({message:"your Subadmin fromCity required"})
+    }
+
+     if(req.user?.role==="employee" && !pickUpBranch){
+      return res.status(400).json({message:"pickUpBranch required"})
     }
 
     const start = new Date(fromDate);
