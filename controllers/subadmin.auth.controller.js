@@ -429,6 +429,7 @@ const deleteSubadmin = async (req, res) => {
 };
 
 
+
 const updateSubadmin = async (req, res) => {
   try {
     const id = req.user?.id;
@@ -439,25 +440,18 @@ const updateSubadmin = async (req, res) => {
     const { email, phone, name } = req.body;
     const updateData = {};
 
-    if (email) {
-      const existingEmail = await Subadmin.findOne({ email, _id: { $ne: id } });
-      if (existingEmail) return res.status(400).json({ message: "Email already registered" });
-      updateData.email = email;
-    }
-
-    if (phone) {
-      const existingPhone = await Subadmin.findOne({ phone, _id: { $ne: id } });
-      if (existingPhone) return res.status(400).json({ message: "Phone already registered" });
-      updateData.phone = phone;
-    }
-
+    // Prevent password update directly
     if (req.body.password) {
       return res.status(400).json({ message: "Use change password feature to update password" });
     }
 
+    // Allow updating fields directly
+    if (email) updateData.email = email;
+    if (phone) updateData.phone = phone;
     if (name) updateData.name = name;
 
     const updatedSubadmin = await Subadmin.findByIdAndUpdate(id, updateData, { new: true });
+
     if (!updatedSubadmin) {
       return res.status(404).json({ message: "Subadmin not found" });
     }
@@ -471,6 +465,7 @@ const updateSubadmin = async (req, res) => {
     return res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
  
 const deletePersons = async (req, res) => {
