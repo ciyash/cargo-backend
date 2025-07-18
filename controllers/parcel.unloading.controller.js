@@ -649,5 +649,5 @@ export default {
     getUnloadingReport,
     getParcelsLoading,
     parcelBranchToBranchUnloading,
-    parcelBranchToBranchUnloadingPost
+    parcelBranchToBranchUnloadingPost 
 }      
