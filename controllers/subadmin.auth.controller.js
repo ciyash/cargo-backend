@@ -428,45 +428,43 @@ const deleteSubadmin = async (req, res) => {
   }
 };
 
+
 const updateSubadmin = async (req, res) => {
   try {
     const id = req.user?.id;
-    const updateData = req.body;
-
     if (!id) {
       return res.status(400).json({ message: "Subadmin ID is required" });
     }
 
-    // Avoid updating email/phone to ones already in use by another subadmin
-    // if (updateData.email) {
-    //   const existingEmail = await Subadmin.findOne({ email: updateData.email, _id: { $ne: id } });
-    //   if (existingEmail) {
-    //     return res.status(400).json({ message: "Email already registered" });
-    //   }
-    // }
+    const { email, phone, name } = req.body;
+    const updateData = {};
 
-    // if (updateData.phone) {
-    //   const existingPhone = await Subadmin.findOne({ phone: updateData.phone, _id: { $ne: id } });
-    //   if (existingPhone) {
-    //     return res.status(400).json({ message: "Phone already registered" });
-    //   }
-    // }
+    if (email) {
+      const existingEmail = await Subadmin.findOne({ email, _id: { $ne: id } });
+      if (existingEmail) return res.status(400).json({ message: "Email already registered" });
+      updateData.email = email;
+    }
 
-    const subadmin = await Subadmin.findById(id);
-    if (!subadmin) {
+    if (phone) {
+      const existingPhone = await Subadmin.findOne({ phone, _id: { $ne: id } });
+      if (existingPhone) return res.status(400).json({ message: "Phone already registered" });
+      updateData.phone = phone;
+    }
+
+    if (req.body.password) {
+      return res.status(400).json({ message: "Use change password feature to update password" });
+    }
+
+    if (name) updateData.name = name;
+
+    const updatedSubadmin = await Subadmin.findByIdAndUpdate(id, updateData, { new: true });
+    if (!updatedSubadmin) {
       return res.status(404).json({ message: "Subadmin not found" });
     }
 
-    // Optional: Prevent password updates here (recommended security practice)
-    // if (updateData.password) {
-    //   return res.status(400).json({ message: "Use change password feature to update password" });
-    // }
-
-    const updatedSubadmin = await Subadmin.findByIdAndUpdate(id, updateData, { new: true });
-
-    return res.status(200).json({
+    res.status(200).json({
       message: "Subadmin updated successfully",
-      subadmin: updatedSubadmin
+      subadmin: updatedSubadmin,
     });
 
   } catch (error) {
