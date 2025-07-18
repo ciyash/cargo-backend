@@ -4367,138 +4367,6 @@ const pendingDeliveryStockReport = async (req, res) => {
 
 
 
-
-// const pendingDeliveryLuggageReport = async (req, res) => {
-//   try {
-//     const companyId = req.user?.companyId;
-//     if (!companyId) {
-//       return res.status(401).json({ success: false, message: "Unauthorized: Company ID missing" });
-//     }
-
-//     const {
-//       fromDate,
-//       toDate,
-//       fromCity,
-//       toCity,
-//       pickUpBranch,
-//       dropBranch,
-//       bookingType,
-//     } = req.body;
-
-//     if (!fromDate || !toDate) {
-//       return res.status(400).json({ success: false, message: "fromDate and toDate are required" });
-//     }
-
-//     const start = new Date(fromDate);
-//     const end = new Date(toDate);
-//     end.setHours(23, 59, 59, 999);
-
-//     const query = {
-//       companyId,
-//       bookingDate: { $gte: start, $lte: end },
-//       bookingStatus: 2,
-//     };
-
-//     if (fromCity) query.fromCity = fromCity;
-//     if (toCity) query.toCity = toCity;
-//     if (pickUpBranch) query.pickUpBranch = pickUpBranch;
-//     if (dropBranch) query.dropBranch = dropBranch;
-//     if (bookingType) query.bookingType = bookingType;
-
-//     const pendingDeliveries = await Booking.find(query)
-//       .select(
-//         "grnNo unloadingDate fromCity toCity senderName senderMobile receiverName bookingType packages bookingDate"
-//       )
-//       .lean();
-
-//     if (!pendingDeliveries.length) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "No pending deliveries found for the given criteria",
-//       });
-//     }
-
-//     let serial = 1;
-//     let grandTotalQuantity = 0;
-//     let grandTotalAmount = 0;
-
-//     const formattedDeliveries = pendingDeliveries.map((delivery) => {
-//       const {
-//         grnNo,
-//         unloadingDate,
-//         fromCity,
-//         toCity,
-//         senderName,
-//         senderMobile,
-//         receiverName,
-//         bookingType,
-//         packages,
-//         bookingDate,
-//       } = delivery;
-
-//       let totalQuantity = 0;
-//       let totalAmount = 0;
-//       let itemNameFields = {};
-
-//       if (Array.isArray(packages)) {
-//         packages.forEach((pkg, index) => {
-//           const quantity = pkg.quantity || 0;
-//           const amount = pkg.totalPrice || 0;
-
-//           totalQuantity += quantity;
-//           totalAmount += amount;
-
-//           const fieldName = `itemName${index + 1}`;
-//           itemNameFields[fieldName] = `${pkg.packageType} (${quantity})`;
-//         });
-//       }
-
-//       grandTotalQuantity += totalQuantity;
-//       grandTotalAmount += totalAmount;
-
-//       // Calculate days difference from bookingDate to today
-//       const dayDiff = bookingDate
-//         ? Math.floor((new Date() - new Date(bookingDate)) / (1000 * 60 * 60 * 24))
-//         : 0;
-
-//       return {
-//         srNo: serial++,
-//         grnNo,
-//         receiverDate: unloadingDate
-//           ? new Date(unloadingDate).toLocaleDateString("en-GB")
-//           : "NA",
-//         source: fromCity,
-//         destination: toCity,
-//         consignor: senderName,
-//         consignee: receiverName,
-//         consigneeNo: senderMobile,
-//         bookingType,
-//         dayDiff,
-//         ...itemNameFields,
-//         quantity: totalQuantity,
-//         amount: totalAmount,
-//       };
-//     });
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Pending delivery luggage report generated successfully",
-//       data: {
-//         formattedDeliveries,
-//         grandTotalQuantity,
-//         grandTotalAmount,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Error generating pending delivery report:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Internal server error",
-//       error: error.message,
-//     });
-//   }
-// };
-
 const pendingDeliveryLuggageReport = async (req, res) => {
   try {
     const companyId = req.user?.companyId;
@@ -4787,7 +4655,7 @@ const parcelReceivedStockReport = async (req, res) => {
   }
 };
 
-
+  
 
 
 const deliveredStockReport = async (req, res) => {

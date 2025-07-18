@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import router from "./routes/index.js";
 import cors from "cors";
-import cron from "node-cron";
+// import cron from "node-cron";
 import branchReportController from "./controllers/branch.report.controller.js";
 
 dotenv.config();
@@ -13,6 +13,8 @@ const PORT = process.env.PORT || 4000;
 const app = express();
 
 app.use(express.json({ limit: "40mb" }));
+app.use(express.urlencoded({extended:true}))
+
 app.use(cors());
 app.use("/", router);
 
