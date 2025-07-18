@@ -445,7 +445,7 @@ const updateSubadmin = async (req, res) => {
       return res.status(400).json({ message: "Use change password feature to update password" });
     }
 
-    // Allow updating fields directly
+    // Allow updating fields directly  //
     if (email) updateData.email = email;
     if (phone) updateData.phone = phone;
     if (name) updateData.name = name;
