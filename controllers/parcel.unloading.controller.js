@@ -518,7 +518,7 @@ const getUnloadingReport = async (req, res) => {
 
 const parcelBranchToBranchUnloading = async (req, res) => {
   try {
-    const { fromDate, toDate, fromBranch, toBranch } = req.body;
+    const { fromDate, toDate, fromCity, toBranch } = req.body;
     const companyId = req.user?.companyId;
 
     if (!companyId) {
@@ -545,10 +545,10 @@ const parcelBranchToBranchUnloading = async (req, res) => {
     };
 
     // Support multiple pickup branches
-    if (fromBranch && Array.isArray(fromBranch) && fromBranch.length > 0) {
-      matchStage.pickUpBranch = { $in: fromBranch };
-    } else if (fromBranch) {
-      matchStage.pickUpBranch = fromBranch;
+    if (fromCity && Array.isArray(fromCity) && fromCity.length > 0) {
+      matchStage.fromCity = { $in: fromCity };
+    } else if (fromCity) {
+      matchStage.fromCity = fromCity;
     }
 
     if (toBranch) {
@@ -569,9 +569,6 @@ const parcelBranchToBranchUnloading = async (req, res) => {
     });
   }
 };
-
-
-
  
 
 const parcelBranchToBranchUnloadingPost = async (req, res) => {
@@ -638,9 +635,7 @@ const parcelBranchToBranchUnloadingPost = async (req, res) => {
     return res.status(500).json({ success: false, error: error.message });
   }
 };
-
-
-  
+ 
 
 export default {
     createParcelUnloading,
@@ -655,4 +650,4 @@ export default {
     getParcelsLoading,
     parcelBranchToBranchUnloading,
     parcelBranchToBranchUnloadingPost
-}
+}      
