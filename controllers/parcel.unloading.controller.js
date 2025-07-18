@@ -1,7 +1,7 @@
 import ParcelUnloading from '../models/parcel.unloading.model.js'
 import ParcelLoading from '../models/pracel.loading.model.js'
 import {Booking} from '../models/booking.model.js'
-
+import mongoose from 'mongoose';
 
 const getParcelsLoading = async (req, res) => {
   try {
@@ -11,8 +11,8 @@ const getParcelsLoading = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Unauthorized: Company ID missing",
-      });
-    }
+      }); 
+    } 
 
     const { fromDate, toDate, fromCity, toCity,branch, bookingType, bookingStatus } = req.body;
 
@@ -515,10 +515,9 @@ const getUnloadingReport = async (req, res) => {
   }
 };
 
-
 const parcelBranchToBranchUnloading = async (req, res) => {
   try {
-    const { fromLoadingDate, toLoadingDate, fromBranch, toBranch } = req.body;
+    const { fromDate, toDate, fromBranch, toBranch } = req.body;
     const companyId = req.user?.companyId;
 
     if (!companyId) {
@@ -528,68 +527,40 @@ const parcelBranchToBranchUnloading = async (req, res) => {
       });
     }
 
-    if (!fromLoadingDate || !toLoadingDate) {
+    if (!fromDate || !toDate) {
       return res.status(400).json({
         success: false,
-        message: "fromLoadingDate and toLoadingDate are required",
+        message: "fromDate and toDate are required",
       });
     }
 
-    const fromDate = new Date(fromLoadingDate + "T00:00:00.000Z");
-    const toDate = new Date(toLoadingDate + "T23:59:59.999Z");
+    const from = new Date(fromDate + 'T00:00:00.000Z');
+    const to = new Date(toDate + 'T23:59:59.999Z');
 
-    // Build ParcelLoading filter
-    const parcelFilter = {
-      companyId,
-      loadingType: "branchLoad",
-      loadingDate: { $gte: fromDate, $lte: toDate },
+    const matchStage = {   
+      companyId: new mongoose.Types.ObjectId(companyId),    
+      bookingStatus: 1,
+      loadingDate: { $gte: from, $lte: to },
     };
 
-    if (fromBranch) parcelFilter.fromBranch = fromBranch;
-    if (toBranch) parcelFilter.toCity = { $in: [toBranch] };
-
-    const parcels = await ParcelLoading.find(parcelFilter);
-
-    if (!parcels.length) {
-      return res.status(200).json({
-        success: true,
-        message: "No parcel loadings found for given date range and conditions.",
-      
-      });
+    if (fromBranch) {
+      matchStage.pickUpBranch = fromBranch;
     }
 
-    const grnNos = parcels.flatMap(p => Array.isArray(p.grnNo) ? p.grnNo : []);
+    if (toBranch) {
+      matchStage.dropBranch = toBranch; 
+    } 
 
-    if (!grnNos.length) {
-      return res.status(200).json({
-        success: true,
-        message: "No GRNs found in matched parcel loadings.",
-      
-      });
-    }
+    const parcels = await Booking.aggregate([        
+      { $match: matchStage },
+      { $sort: { loadingDate: -1 } },
+    ]);
 
-    // Build Booking filter
-    const bookingFilter = {
-      companyId,
-      grnNo: { $in: grnNos },
-      bookingStatus: 2,
-    };
-
-    if (fromBranch) bookingFilter.pickUpBranch = fromBranch;
-    if (toBranch) bookingFilter.dropBranch = toBranch;
-
-    const bookings = await Booking.find(bookingFilter);
-
-    return res.status(200).json({
-      success: true,
-      message: bookings.length ? "Bookings fetched successfully" : "No bookings found",
-      data: bookings,
-    });
+    res.status(200).json(parcels);
 
   } catch (error) {
-    console.error("Error in parcelBranchToBranchUnloading:", error);
-    return res.status(500).json({
-      success: false,
+    
+    res.status(500).json({
       message: "Internal server error",
       error: error.message,
     });
@@ -598,6 +569,7 @@ const parcelBranchToBranchUnloading = async (req, res) => {
 
 
 
+ 
 
 const parcelBranchToBranchUnloadingPost = async (req, res) => {
   try {
