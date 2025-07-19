@@ -430,7 +430,7 @@ const deleteSubadmin = async (req, res) => {
 
 
 
-const bcrypt = require("bcryptjs"); // Make sure bcrypt is imported
+
 
 const updateSubadmin = async (req, res) => {
   try {
@@ -480,6 +480,50 @@ const updateSubadmin = async (req, res) => {
   }
 };
 
+const updateAdmin = async (req, res) => {
+  try {
+    const id = req.user?.id;
+    const role = req.user?.role;
+
+    if (role !== "admin") {
+      return res.status(403).json({ message: "Forbidden: Only admin can update their profile" });
+    }
+
+    if (!id) {
+      return res.status(400).json({ message: "Admin ID is missing" });
+    }
+
+    const { email, phone, name, location, address, password } = req.body;
+
+    const updateData = {};
+    if (email) updateData.email = email;
+    if (phone) updateData.phone = phone;
+    if (name) updateData.name = name;
+    if (location) updateData.location = location;
+    if (address) updateData.address = address;
+
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
+    }
+
+    const updatedAdmin = await Admin.findByIdAndUpdate(id, updateData, { new: true });
+
+    if (!updatedAdmin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    res.status(200).json({
+      message: "Admin profile updated successfully",
+      admin: updatedAdmin,
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
 
 
  
@@ -508,6 +552,7 @@ export default {
   getAllSubadmins,
   getSubadminById,
   deleteSubadmin,
+  updateAdmin,
   updateSubadmin,
   getSubadminsByBranchName,
   getAllEmployees,
