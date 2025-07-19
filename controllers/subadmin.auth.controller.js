@@ -433,21 +433,26 @@ const deleteSubadmin = async (req, res) => {
 const updateSubadmin = async (req, res) => {
   try {
     const id = req.user?.id;
-    if (!id) {
+    const role = req.user?.role;
+
+    // Only admin can update subadmin
+    if (role !== "admin") {
+      return res.status(403).json({ message: "Forbidden: Only admin can update subadmin details" });
+    }
+
+    const subadminId = req.params?.subadminId;
+    if (!subadminId) {
       return res.status(400).json({ message: "Subadmin ID is required" });
     }
 
-    const { email, phone, name } = req.body;
-    const updateData = {};
+    // Exclude restricted fields
+    const { password, role: updatedRole, ...rest } = req.body;
 
-    // Prevent password update directly
-
-    // Allow updating fields directly  //
-    if (email) updateData.email = email;
-    if (phone) updateData.phone = phone;
-    if (name) updateData.name = name;
-
-    const updatedSubadmin = await Subadmin.findByIdAndUpdate(id, updateData, { new: true });
+    const updatedSubadmin = await Subadmin.findByIdAndUpdate(
+      subadminId,
+      { $set: rest },
+      { new: true }
+    );
 
     if (!updatedSubadmin) {
       return res.status(404).json({ message: "Subadmin not found" });
@@ -459,7 +464,7 @@ const updateSubadmin = async (req, res) => {
     });
 
   } catch (error) {
-    return res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
