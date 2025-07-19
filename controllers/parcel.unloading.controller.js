@@ -573,7 +573,7 @@ const parcelBranchToBranchUnloading = async (req, res) => {
 
 const parcelBranchToBranchUnloadingPost = async (req, res) => {
   try {
-    const { fromBranch, lrNumber, grnNo, unloadBranch, remarks } = req.body;
+    const { lrNumber, grnNo, unloadBranch, remarks } = req.body;
 
     if (!req.user || !req.user.id || !req.user.companyId) {
       return res.status(401).json({
@@ -582,7 +582,7 @@ const parcelBranchToBranchUnloadingPost = async (req, res) => {
       });
     }
 
-    if (!fromBranch || !lrNumber || !unloadBranch) {
+    if (!lrNumber || !unloadBranch) {
       return res.status(400).json({
         success: false,
         message: "fromBranch, lrNumber, and unloadBranch are required fields",
@@ -614,7 +614,6 @@ const parcelBranchToBranchUnloadingPost = async (req, res) => {
     const parcel = new ParcelUnloading({
       unLoadingVoucher: generateUnloadingVoucher(),
       unLoadingBy,
-      fromBranch,
       lrNumber,
       grnNo,
       unloadBranch,
