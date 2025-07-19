@@ -496,7 +496,7 @@ const updateAdmin = async (req, res) => {
       return res.status(400).json({ message: "Admin ID is missing" });
     }
 
-    const { email, phone, name, location, address, password, documents } = req.body;
+    const { email, phone, name, location,branchId, address, password, documents } = req.body;
 
     const updateData = {};
     if (email) updateData.email = email;
@@ -504,6 +504,7 @@ const updateAdmin = async (req, res) => {
     if (name) updateData.name = name;
     if (location) updateData.location = location;
     if (address) updateData.address = address;
+    if(branchId)updateData.branchId=branchId
     if (documents) updateData.documents = documents;
 
     if (password) {
