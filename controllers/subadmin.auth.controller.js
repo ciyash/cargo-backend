@@ -480,11 +480,14 @@ const updateSubadmin = async (req, res) => {
   }
 };
 
+
+
 const updateAdmin = async (req, res) => {
   try {
     const id = req.user?.id;
     const role = req.user?.role;
 
+    // ✅ Only allow users with role 'admin' to update their own profile
     if (role !== "admin") {
       return res.status(403).json({ message: "Forbidden: Only admin can update their profile" });
     }
@@ -493,7 +496,7 @@ const updateAdmin = async (req, res) => {
       return res.status(400).json({ message: "Admin ID is missing" });
     }
 
-    const { email, phone, name, location, address, password } = req.body;
+    const { email, phone, name, location, address, password, documents } = req.body;
 
     const updateData = {};
     if (email) updateData.email = email;
@@ -501,28 +504,31 @@ const updateAdmin = async (req, res) => {
     if (name) updateData.name = name;
     if (location) updateData.location = location;
     if (address) updateData.address = address;
+    if (documents) updateData.documents = documents;
 
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
       updateData.password = hashedPassword;
     }
 
-    const updatedAdmin = await Admin.findByIdAndUpdate(id, updateData, { new: true });
+    const updatedAdmin = await Subadmin.findOneAndUpdate(
+      { _id: id, role: "admin" }, // Ensure only admins update their own profile
+      updateData,
+      { new: true }
+    );
 
     if (!updatedAdmin) {
-      return res.status(404).json({ message: "Admin not found" });
+      return res.status(404).json({ message: "Admin not found or not authorized" });
     }
 
     res.status(200).json({
       message: "Admin profile updated successfully",
       admin: updatedAdmin,
     });
-
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 
 
