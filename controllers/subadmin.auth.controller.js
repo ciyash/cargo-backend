@@ -430,29 +430,41 @@ const deleteSubadmin = async (req, res) => {
 
 
 
+const bcrypt = require("bcryptjs"); // Make sure bcrypt is imported
+
 const updateSubadmin = async (req, res) => {
   try {
-    const id = req.user?.id;
-    const role = req.user?.role;
+    const { id } = req.params;
+    const role = req.user?.role; 
 
-    // Only admin can update subadmin
+    if (!id) {
+      return res.status(400).json({ message: "Subadmin ID is required" });
+    }
+
+    // ✅ Only allow admin to perform this update
     if (role !== "admin") {
       return res.status(403).json({ message: "Forbidden: Only admin can update subadmin details" });
     }
 
-    const subadminId = req.params?.subadminId;
-    if (!subadminId) {
-      return res.status(400).json({ message: "Subadmin ID is required" });
+    // ✅ Destructure all allowed fields from req.body
+    const { email, phone, name, location, documents, address, password } = req.body;
+
+    const updateData = {};
+
+    if (email) updateData.email = email;
+    if (phone) updateData.phone = phone;
+    if (name) updateData.name = name;
+    if (location) updateData.location = location;
+    if (documents) updateData.documents = documents;
+    if (address) updateData.address = address;
+
+    // ✅ Securely hash password if provided
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
     }
 
-    // Exclude restricted fields
-    const { password, role: updatedRole, ...rest } = req.body;
-
-    const updatedSubadmin = await Subadmin.findByIdAndUpdate(
-      subadminId,
-      { $set: rest },
-      { new: true }
-    );
+    const updatedSubadmin = await Subadmin.findByIdAndUpdate(id, updateData, { new: true });
 
     if (!updatedSubadmin) {
       return res.status(404).json({ message: "Subadmin not found" });
@@ -464,9 +476,10 @@ const updateSubadmin = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    return res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
 
 
  

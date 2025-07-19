@@ -20,7 +20,7 @@ router.get("/employees", auth, subAdminAuthController.getAllEmployees);
 
 router.get("/profile", auth, subAdminAuthController.getSubadminById)
 
-router.patch("/update-profile", auth, subAdminAuthController.updateSubadmin)
+router.patch("/update-profile/:id", auth, subAdminAuthController.updateSubadmin)
 
 router.post("/change-password", auth, subAdminAuthController.changeSubadminPassword)
 
