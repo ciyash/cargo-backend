@@ -30,7 +30,7 @@ router.post("/reset-password", auth, subAdminAuthController.resetPassword)
 
 router.post("/forgot-password", auth, subAdminAuthController.forgotPassword)
 
-router.delete("/delete-subadmin", auth, subAdminAuthController.deleteSubadmin);
+router.delete("/delete-subadmin", auth, subAdminAuthController.deleteSubadmin);   
 
 router.get("/branch-wise/:branchName", auth, subAdminAuthController.getSubadminsByBranchName);
 
