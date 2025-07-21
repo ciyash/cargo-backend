@@ -1,5 +1,5 @@
 import express from "express";
-import cfVoucherController from "../controllers/cf.voucher.controller.js";
+import cfVoucherController from "../controllers/cf.voucher.controller.js";  
 import auth from "../config/auth.middleware.js";
 const router = express.Router();
 
@@ -19,7 +19,5 @@ router.delete("/:id", auth, cfVoucherController.deleteCFVoucher);
 router.post("/voucher-details",  auth, cfVoucherController.voucherDetails);
 
 router.post("/voucher-details-print",  auth, cfVoucherController.voucherDetailsPrint);
-
-router.post("/voucher-unload",auth,cfVoucherController.createCFVoucherUnload)
 
 export default router;

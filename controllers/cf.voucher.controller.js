@@ -1,8 +1,8 @@
 import CFVoucher from '../models/cf.voucher.generate.model.js';
 import { Booking } from '../models/booking.model.js';
-import CFVoucherUnload from "../models/cf.voucher.unload.model.js"
 
-// Generate the next voucher number
+
+// Generate the next voucher number  
 const generateVoucher = async () => {
   const lastVoucher = await CFVoucher.findOne().sort({ voucherNo: -1 });
   return lastVoucher ? lastVoucher.voucherNo + 1 : 100;
@@ -64,52 +64,138 @@ const creditForVoucherGenerate = async (req, res) => {
 
 
 // Create new voucher and update booking statuses
+// const createCFVoucher = async (req, res) => {
+//   try {
+  
+//     const companyId = req.user?.companyId;
+//     if (!companyId) return res.status(401).json({ message: "Unauthorized" });
+
+//     const {
+//       grnNo,
+//       lrNumber,
+//       creditForAgent,
+//       fromBranch,
+//       toBranch,
+//       consignor,
+//       bookingStatus,
+//       charge
+//     } = req.body;
+
+//     const voucherNo = await generateVoucher();
+
+//     const newVoucher = new CFVoucher({
+//       companyId,
+//       voucherNo,
+//       grnNo,
+//       lrNumber,
+//       creditForAgent,
+//       fromBranch,
+//       toBranch,
+//       consignor,
+//       bookingStatus,
+//       charge
+//     });
+
+//     await newVoucher.save();
+
+//     const grnList = Array.isArray(grnNo) ? grnNo.map(Number) : [Number(grnNo)];
+
+//     await Booking.updateMany(
+//       { grnNo: { $in: grnList }, companyId },
+//       { $set: { bookingStatus: 1, status: true } }
+//     );
+
+//     res.status(201).json({ message: "CF Voucher created", newVoucher });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+
 const createCFVoucher = async (req, res) => {
   try {
-  
     const companyId = req.user?.companyId;
     if (!companyId) return res.status(401).json({ message: "Unauthorized" });
 
-    const {
-      grnNo,
-      lrNumber,
-      creditForAgent,
-      fromBranch,
-      toBranch,
-      consignor,
-      bookingStatus,
-      charge
-    } = req.body;
+    const { grnNo } = req.body;
 
-    const voucherNo = await generateVoucher();
-
-    const newVoucher = new CFVoucher({
-      companyId,
-      voucherNo,
-      grnNo,
-      lrNumber,
-      creditForAgent,
-      fromBranch,
-      toBranch,
-      consignor,
-      bookingStatus,
-      charge
-    });
-
-    await newVoucher.save();
+    if (!grnNo || grnNo.length === 0) {
+      return res.status(400).json({ message: "GRNs are required" });
+    }
 
     const grnList = Array.isArray(grnNo) ? grnNo.map(Number) : [Number(grnNo)];
 
-    await Booking.updateMany(
-      { grnNo: { $in: grnList }, companyId },
-      { $set: { bookingStatus: 1, status: true } }
-    );
+    // Step 1: Fetch bookings for the GRNs
+    const bookings = await Booking.find({ grnNo: { $in: grnList }, companyId });
 
-    res.status(201).json({ message: "CF Voucher created", newVoucher });
+    if (!bookings.length) {
+      return res.status(404).json({ message: "No bookings found for the given GRNs" });
+    }
+
+    // Step 2: Group bookings by agent
+    const groupedByAgent = {};
+
+    for (const booking of bookings) {
+      const agent = booking.agent;
+      if (!groupedByAgent[agent]) {
+        groupedByAgent[agent] = [];
+      }
+      groupedByAgent[agent].push(booking);
+    }
+
+    const createdVouchers = [];
+
+    // Step 3: Loop each agent group and create voucher
+    for (const agent in groupedByAgent) {
+      const agentBookings = groupedByAgent[agent];
+
+      const grns = agentBookings.map(b => b.grnNo);
+      const lrs = agentBookings.map(b => b.lrNumber);
+      const fromBranch = agentBookings[0].pickUpBranchname;
+      const toBranch = agentBookings[0].dropBranchname;
+      const consignor = agentBookings[0].senderName;
+
+      const totalCharge = agentBookings.reduce((sum, b) => sum + (b.grandTotal || 0), 0);
+
+      const voucherNo = await generateVoucher();
+
+      const newVoucher = new CFVoucher({
+        companyId,
+        voucherNo,
+        grnNo: grns,
+        lrNumber: lrs,
+        creditForAgent: agent,
+        fromBranch,
+        toBranch,
+        consignor,
+        bookingStatus: 1,
+        charge: totalCharge
+      });
+
+      await newVoucher.save();
+
+      // Update booking statuses
+      await Booking.updateMany(
+        { grnNo: { $in: grns }, companyId },
+        { $set: { bookingStatus: 1, status: true } }
+      );
+
+      createdVouchers.push(newVoucher);
+    }
+
+    res.status(201).json({
+      message: "CF Voucher(s) created successfully",
+      count: createdVouchers.length,
+      vouchers: createdVouchers
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Error creating CF Voucher:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
 
 // Get all vouchers for current company
 const getAllCFVouchers = async (req, res) => {
@@ -223,14 +309,36 @@ const voucherDetails = async (req, res) => {
   }
 };
 
-// Print detailed voucher info by sender
+
+
 // const voucherDetailsPrint = async (req, res) => {
 //   try {
-//     const { senderName } = req.body;
+//     const {voucherNo, creditForAgent } = req.body;
 //     const companyId = req.user?.companyId;
-//     if (!senderName || !companyId) return res.status(400).json({ message: "Missing required fields" });
+//     const role = req.user?.role;
 
-//     const bookings = await Booking.find({ senderName, companyId }).select(
+//       if (!voucherNo || !creditForAgent) {
+//       return res.status(400).json({ message: "voucherNo and creditForAgent Missing fields" });
+//     }
+
+
+//     if (!companyId) {
+//       return res.status(400).json({ message: "companyId missing" });
+//     }
+
+//     const query = {
+//       senderName,
+//       companyId
+//     };
+
+//     if (role === "employee") {
+//       query.pickUpBranch = req.user.branchId;
+//     } else if (role === "subadmin") {
+//       query.fromCity = req.user.branchCity;
+//     }
+//     // admin → no additional filters
+
+//     const bookings = await Booking.find(query).select(
 //       "grnNo bookingDate agent senderName senderAddress fromCity toCity packages parcelGstAmount grandTotal"
 //     );
 
@@ -268,22 +376,41 @@ const voucherDetails = async (req, res) => {
 //     });
 
 //   } catch (error) {
+//     console.error("Error in voucherDetailsPrint:", error);
 //     res.status(500).json({ message: "Server error", error: error.message });
 //   }
 // };
 
 const voucherDetailsPrint = async (req, res) => {
   try {
-    const { senderName } = req.body;
+    const { voucherNo, creditForAgent } = req.body;
     const companyId = req.user?.companyId;
     const role = req.user?.role;
 
-    if (!senderName || !companyId) {
-      return res.status(400).json({ message: "Missing required fields" });
+    if (!voucherNo || !creditForAgent) {
+      return res.status(400).json({ message: "voucherNo and creditForAgent are required" });
     }
 
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId missing" });
+    }
+
+    // Step 1: Fetch voucher and extract GRNs
+    const voucher = await CFVoucher.findOne({
+      companyId,
+      voucherNo,
+      creditForAgent
+    });
+
+    if (!voucher) {
+      return res.status(404).json({ message: "Voucher not found" });
+    }
+
+    const grnNos = voucher.grnNo || [];
+
+    // Step 2: Prepare Booking query with role-based filters
     const query = {
-      senderName,
+      grnNo: { $in: grnNos },
       companyId
     };
 
@@ -292,13 +419,18 @@ const voucherDetailsPrint = async (req, res) => {
     } else if (role === "subadmin") {
       query.fromCity = req.user.branchCity;
     }
-    // admin → no additional filters
 
+    // Step 3: Fetch bookings
     const bookings = await Booking.find(query).select(
       "grnNo bookingDate agent senderName senderAddress fromCity toCity packages parcelGstAmount grandTotal"
     );
 
+    if (!bookings.length) {
+      return res.status(404).json({ message: "No bookings found for this voucher" });
+    }
+
     let allGrandTotal = 0;
+
     const data = bookings.map(b => {
       const totalWeight = b.packages.reduce((sum, pkg) => sum + (pkg.weight || 0), 0);
       const totalPackages = b.packages.length;
@@ -320,10 +452,14 @@ const voucherDetailsPrint = async (req, res) => {
       };
     });
 
-    const senderAddress = bookings.length > 0 ? bookings[0].senderAddress : "";
+    const senderName = bookings[0].senderName || "";
+    const senderAddress = bookings[0].senderAddress || "";
 
+    // Final response
     res.status(200).json({
       success: true,
+      voucherNo,
+      creditForAgent,
       senderName,
       senderAddress,
       totalRecords: bookings.length,
@@ -339,56 +475,6 @@ const voucherDetailsPrint = async (req, res) => {
 
 
 
-// Generate the next unLoadVoucher number
-const generateVoucherNumber = async () => {
-  const lastVoucher = await CFVoucherUnload.findOne().sort({ unLoadVoucher: -1 });
-  return lastVoucher ? lastVoucher.unLoadVoucher + 1 : 1000; // Start from 1000
-};
-
- const createCFVoucherUnload = async (req, res) => {
-  try {
-    const {
-      companyId,
-      grnNo,
-      lrNumber,
-      unloadBranch,
-      unLaodingDate, // Optional override
-      remarks,
-    } = req.body;
-
-    // Validate required fields
-    if (!companyId || !grnNo || !lrNumber || !unloadBranch) {
-      return res.status(400).json({ success: false, message: "Missing required fields" });
-    }
-
-    const unLoadVoucher = await generateVoucherNumber();
-
-    const newVoucher = new CFVoucherUnload({
-      companyId,
-      unLoadVoucher,
-      grnNo,
-      lrNumber,
-      unloadBranch,
-      bookingStatus: 2,  
-      unLaodingDate: unLaodingDate || new Date(),
-      remarks,
-    });
-
-    await newVoucher.save();
-
-    await Booking.updateMany(
-  { grnNo: { $in: grnNo } },
-  { $set: { bookingStatus: 2 } }
-);
-
-    return res.status(201).json({ success: true, message: "CF Voucher created", data: newVoucher });
-  } catch (error) {
-    console.error("Error creating CF voucher:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-
 export default {
   creditForVoucherGenerate,
   createCFVoucher,
@@ -398,5 +484,4 @@ export default {
   deleteCFVoucher,
   voucherDetails,
   voucherDetailsPrint,
-  createCFVoucherUnload
 };
