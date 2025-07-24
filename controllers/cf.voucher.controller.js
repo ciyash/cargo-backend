@@ -177,7 +177,7 @@ const createCFVoucher = async (req, res) => {
       // Update booking statuses
       await Booking.updateMany(
         { grnNo: { $in: grns }, companyId },
-        { $set: { bookingStatus: 1, status: true } }
+        { $set: {status: true } }
       );
 
       createdVouchers.push(newVoucher);
