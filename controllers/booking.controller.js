@@ -4013,7 +4013,7 @@ const consolidatedReportBranch = async (req, res) => {
       {
         $match: {
           ...matchStage,
-          bookingType: { $in: ["paid", "toPay"] }
+        bookingType: { $in: ["paid", "toPay", "credit"] }
         }
       },
       {
@@ -4034,6 +4034,8 @@ const consolidatedReportBranch = async (req, res) => {
     const categoryDetails = {
       paid: { noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0 },
       toPay: { noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0 },
+      credit: {noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0 },
+
       toPayDeliveredAmount: { noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0, toPayDeliveredAmount: 0 }
     };
 
