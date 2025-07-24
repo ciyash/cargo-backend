@@ -3736,18 +3736,21 @@ const consolidatedReportBranch = async (req, res) => {
       ...matchStage,
       bookingType: "paid"
     }).select(
-      "grnNo bookingDate bookedBy toCity senderName receiverName packages serviceCharges doorPickupCharges otherCharges grandTotal"
-    );
+      "grnNo bookingDate bookedBy toCity senderName receiverName packages totalCharge serviceCharges doorPickupCharges otherCharges grandTotal"
+    )
+    .populate("bookedBy", "name email phone") // populate only required fields
+     .lean();
 
     const paidData = paidDetails.map((item) => ({
       grnNo: item.grnNo,
       bookingDate: item.bookingDate,
-      bookedBy: item.bookedBy,
+      // bookedBy: item.bookedBy,
+        bookedBy: item.bookedBy?.name || "N/A",
       toCity: item.toCity,
       senderName: item.senderName,
       receiverName: item.receiverName,
       toTalPackages: item.packages?.length || 0,
-      totalCharge: item.serviceCharges || 0,
+      totalCharge: item.totalCharge || 0,
       doorPickupCharges: item.doorPickupCharges || 0,
       otherCharges: item.otherCharges || 0,
       grandTotal: item.grandTotal || 0
@@ -3758,18 +3761,19 @@ const consolidatedReportBranch = async (req, res) => {
       ...matchStage,
       bookingType: "toPay"
     }).select(
-      "grnNo bookingDate bookedBy toCity senderName receiverName packages serviceCharges doorPickupCharges otherCharges grandTotal"
-    );
-
-    const toPayData = toPayDetails.map((item) => ({
+      "grnNo bookingDate bookedBy toCity senderName totalCharge receiverName packages serviceCharges doorPickupCharges otherCharges grandTotal"
+    )
+    .populate("bookedBy", "name email phone") // populate only required fields
+     .lean();
+      const toPayData = toPayDetails.map((item) => ({
       grnNo: item.grnNo,
       bookingDate: item.bookingDate,
-      bookedBy: item.bookedBy,
+       bookedBy: item.bookedBy?.name || "N/A",
       toCity: item.toCity,
       senderName: item.senderName,
       receiverName: item.receiverName,
       toTalPackages: item.packages?.length || 0,
-      totalCharge: item.serviceCharges || 0,
+      totalCharge: item.totalCharge || 0,
       doorPickupCharges: item.doorPickupCharges || 0,
       otherCharges: item.otherCharges || 0,
       grandTotal: item.grandTotal || 0
@@ -3794,7 +3798,7 @@ const consolidatedReportBranch = async (req, res) => {
       grnNo: { $in: grnNos },
       bookingType: "toPay",
       companyId: companyObjectId
-    }).select("grnNo toCity senderName receiverName packages doorDeliveryCharges otherCharges grandTotal");
+    }).select("grnNo toCity senderName receiverName totalCharge packages doorDeliveryCharges otherCharges grandTotal");
 
     const deliveredToPayData = deliveredToPayRaw.map(delivery => {
       const booking = matchingBookings.find(b => b.grnNo === delivery.grnNo);
@@ -3816,7 +3820,7 @@ const consolidatedReportBranch = async (req, res) => {
     }).filter(Boolean);
 
     // --- Branch-wise Booking Summary ---
-    const branchWiseSummary = await Booking.aggregate([
+    const branchWiseSummary = await Booking.aggregate([ 
       { $match: { ...matchStage } },
       {
         $group: {
