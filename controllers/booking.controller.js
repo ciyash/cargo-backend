@@ -1,4 +1,4 @@
-import { User, Booking ,Delivery} from "../models/booking.model.js";
+import { User, Booking ,Delivery} from "../models/booking.model.js"; 
 import CFMaster from "../models/cf.master.model.js";
 import Company from "../models/company.model.js";
 import ParcelLoading from "../models/pracel.loading.model.js";
@@ -3957,7 +3957,7 @@ const consolidatedReportBranch = async (req, res) => {
     const toPayDetails = await Booking.find({ ...matchStage, bookingType: "toPay" })
       .select("grnNo bookingDate bookedBy toCity senderName totalCharge receiverName packages serviceCharges doorPickupCharges otherCharges grandTotal")
       .populate("bookedBy", "name email phone")
-      .lean();
+      .lean();  
 
     const toPayData = toPayDetails.map(item => ({
       grnNo: item.grnNo,

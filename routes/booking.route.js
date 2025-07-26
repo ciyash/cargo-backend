@@ -77,7 +77,7 @@ router.post('/parcel-cancel-report',auth,bookingController.parcelCancelReport)
 router.post("/parcel-booking-summary-report",auth,bookingController.parcelBookingSummaryReport)
 router.post("/parcel-booking-mobileNumber",auth,bookingController.parcelBookingMobileNumber)
 router.post("/regular-customer-booking",auth,bookingController.regularCustomerBooking)
-
+  
 router.post("/branch-Wise-collection-report",auth,bookingController.branchWiseCollectionReport)
 router.post("/collection-summary-report",auth,bookingController.collectionforSummaryReport)
 router.post("/collection-toPay-report",auth,bookingController.collectionReportToPay)
