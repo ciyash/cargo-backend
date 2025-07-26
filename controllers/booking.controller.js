@@ -3703,6 +3703,7 @@ const deliveryReport = async (req, res) => {
   }
 };
 
+
 // const consolidatedReportBranch = async (req, res) => {
 //   try {
 //     const { fromDate, toDate, fromCity, pickUpBranch, deliveryCity, deliveryBranch } = req.body;
@@ -3767,11 +3768,13 @@ const deliveryReport = async (req, res) => {
 //       grandTotal: item.grandTotal || 0
 //     }));
 
+//     const totalPaidAmount = paidData.reduce((sum, item) => sum + (item.grandTotal || 0), 0);
+
 //     // --- ToPay Bookings ---
 //     const toPayDetails = await Booking.find({ ...matchStage, bookingType: "toPay" })
 //       .select("grnNo bookingDate bookedBy toCity senderName totalCharge receiverName packages serviceCharges doorPickupCharges otherCharges grandTotal")
 //       .populate("bookedBy", "name email phone")
-//       .lean();
+//       .lean();  
 
 //     const toPayData = toPayDetails.map(item => ({
 //       grnNo: item.grnNo,
@@ -3786,6 +3789,8 @@ const deliveryReport = async (req, res) => {
 //       otherCharges: item.otherCharges || 0,
 //       grandTotal: item.grandTotal || 0
 //     }));
+
+//     const toPayDetailsAmount = toPayData.reduce((sum, item) => sum + (item.grandTotal || 0), 0);
 
 //     // --- Delivered ToPay Details ---
 //     const deliveredToPayRaw = await Delivery.find(deliveryMatch).select("grnNo toPayDeliveredAmount deliveryDate deliveryEmployee hamaliCharges");
@@ -3818,12 +3823,14 @@ const deliveryReport = async (req, res) => {
 //       };
 //     }).filter(Boolean);
 
+//     const deliveredToPayDetailsTotalAmount = deliveredToPayData.reduce((sum, item) => sum + (item.grandTotal || 0), 0);
+
 //     // --- Category Wise Booking Summary ---
 //     const categoryWise = await Booking.aggregate([
 //       {
 //         $match: {
 //           ...matchStage,
-//           bookingType: { $in: ["paid", "toPay"] }
+//         bookingType: { $in: ["paid", "toPay", "credit"] }
 //         }
 //       },
 //       {
@@ -3844,6 +3851,8 @@ const deliveryReport = async (req, res) => {
 //     const categoryDetails = {
 //       paid: { noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0 },
 //       toPay: { noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0 },
+//       credit: {noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0 },
+
 //       toPayDeliveredAmount: { noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0, toPayDeliveredAmount: 0 }
 //     };
 
@@ -3875,17 +3884,30 @@ const deliveryReport = async (req, res) => {
 //     }
 
 //     // --- Response ---
-//     res.status(200).json({
-//       paidDetails: paidData,
-//       toPayDetails: toPayData,
-//       deliveredToPayDetails: deliveredToPayData,
-//       categoryWiseBookingDetails: categoryDetails
-//     });
+//   res.status(200).json({
+//   paidDetails: {
+//     data: paidData,
+//     totalPaidAmount: paidData.reduce((sum, d) => sum + d.grandTotal, 0)
+//   },
+//   toPayDetails: {
+//     data: toPayData,
+//     totalToPayAmount: toPayData.reduce((sum, d) => sum + d.grandTotal, 0)
+//   },
+//   deliveredToPayDetails: {
+//     data: deliveredToPayData,
+//     totalDeliveryAmount: deliveredToPayData.reduce((sum, d) => sum + d.grandTotal, 0)
+//   },
+//   categoryWiseBookingDetails: categoryDetails
+// });
+
 //   } catch (err) {
 //     console.error("Report Error:", err);
 //     res.status(500).json({ error: err.message });
 //   }
-// }; 
+// };
+
+
+
 
 const consolidatedReportBranch = async (req, res) => {
   try {
@@ -3898,9 +3920,7 @@ const consolidatedReportBranch = async (req, res) => {
 
     const companyObjectId = new mongoose.Types.ObjectId(companyId);
 
-    // --- Delivery Match for toPayDeliveredAmount block ---
     const deliveryMatch = { companyId: companyObjectId };
-
     if (fromDate && toDate) {
       const from = new Date(fromDate);
       from.setHours(0, 0, 0, 0);
@@ -3911,16 +3931,10 @@ const consolidatedReportBranch = async (req, res) => {
     if (deliveryCity) deliveryMatch.deliveryCity = deliveryCity;
     if (deliveryBranch) deliveryMatch.deliveryBranch = deliveryBranch;
 
-    // --- Get Delivery grnNos for filtering toPay delivered bookings ---
     const deliveryGrnNos = await Delivery.find(deliveryMatch).select("grnNo toPayDeliveredAmount hamaliCharges").lean();
     const grnList = deliveryGrnNos.map(d => d.grnNo);
 
-    // --- Booking Match ---
-    const matchStage = {
-      bookingDate: { $ne: null },
-      companyId: companyObjectId
-    };
-
+    const matchStage = { bookingDate: { $ne: null }, companyId: companyObjectId };
     if (fromDate && toDate) {
       const from = new Date(fromDate);
       from.setHours(0, 0, 0, 0);
@@ -3931,7 +3945,6 @@ const consolidatedReportBranch = async (req, res) => {
     if (fromCity) matchStage.fromCity = fromCity;
     if (pickUpBranch) matchStage.pickUpBranch = pickUpBranch;
 
-    // --- Paid Bookings ---
     const paidDetails = await Booking.find({ ...matchStage, bookingType: "paid" })
       .select("grnNo bookingDate bookedBy toCity senderName receiverName packages totalCharge serviceCharges doorPickupCharges otherCharges grandTotal")
       .populate("bookedBy", "name email phone")
@@ -3951,13 +3964,10 @@ const consolidatedReportBranch = async (req, res) => {
       grandTotal: item.grandTotal || 0
     }));
 
-    const totalPaidAmount = paidData.reduce((sum, item) => sum + (item.grandTotal || 0), 0);
-
-    // --- ToPay Bookings ---
     const toPayDetails = await Booking.find({ ...matchStage, bookingType: "toPay" })
       .select("grnNo bookingDate bookedBy toCity senderName totalCharge receiverName packages serviceCharges doorPickupCharges otherCharges grandTotal")
       .populate("bookedBy", "name email phone")
-      .lean();  
+      .lean();
 
     const toPayData = toPayDetails.map(item => ({
       grnNo: item.grnNo,
@@ -3973,9 +3983,6 @@ const consolidatedReportBranch = async (req, res) => {
       grandTotal: item.grandTotal || 0
     }));
 
-    const toPayDetailsAmount = toPayData.reduce((sum, item) => sum + (item.grandTotal || 0), 0);
-
-    // --- Delivered ToPay Details ---
     const deliveredToPayRaw = await Delivery.find(deliveryMatch).select("grnNo toPayDeliveredAmount deliveryDate deliveryEmployee hamaliCharges");
     const grnNos = deliveredToPayRaw.map(d => d.grnNo);
 
@@ -3988,7 +3995,6 @@ const consolidatedReportBranch = async (req, res) => {
     const deliveredToPayData = deliveredToPayRaw.map(delivery => {
       const booking = matchingBookings.find(b => b.grnNo === delivery.grnNo);
       if (!booking) return null;
-
       return {
         grnNo: delivery.grnNo,
         deliveryDate: delivery.deliveryDate,
@@ -4006,15 +4012,9 @@ const consolidatedReportBranch = async (req, res) => {
       };
     }).filter(Boolean);
 
-    const deliveredToPayDetailsTotalAmount = deliveredToPayData.reduce((sum, item) => sum + (item.grandTotal || 0), 0);
-
-    // --- Category Wise Booking Summary ---
     const categoryWise = await Booking.aggregate([
       {
-        $match: {
-          ...matchStage,
-        bookingType: { $in: ["paid", "toPay", "credit"] }
-        }
+        $match: { ...matchStage, bookingType: { $in: ["paid", "toPay", "credit"] } }
       },
       {
         $group: {
@@ -4032,62 +4032,83 @@ const consolidatedReportBranch = async (req, res) => {
     ]);
 
     const categoryDetails = {
-      paid: { noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0 },
-      toPay: { noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0 },
-      credit: {noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0 },
+      paid: {}, toPay: {}, credit: {}, toPayDeliveredAmount: {}
+    };
+    categoryWise.forEach(item => categoryDetails[item._id] = item);
 
-      toPayDeliveredAmount: { noOfPackages: 0, serviceCharges: 0, hamaliCharges: 0, doorPickupCharges: 0, doorDeliveryCharges: 0, otherCharges: 0, grandTotal: 0, totalAmount: 0, toPayDeliveredAmount: 0 }
+    if (deliveredToPayData.length > 0) {
+      categoryDetails.toPayDeliveredAmount = {
+        noOfPackages: deliveredToPayData.reduce((sum, d) => sum + d.totalPackages, 0),
+        serviceCharges: 0,
+        hamaliCharges: deliveredToPayData.reduce((sum, d) => sum + d.hamaliCharges, 0),
+        doorPickupCharges: 0,
+        doorDeliveryCharges: deliveredToPayData.reduce((sum, d) => sum + d.doorDeliveryCharges, 0),
+        otherCharges: deliveredToPayData.reduce((sum, d) => sum + d.otherCharges, 0),
+        grandTotal: deliveredToPayData.reduce((sum, d) => sum + d.grandTotal, 0),
+        totalAmount: deliveredToPayData.reduce((sum, d) => sum + d.totalAmount, 0),
+        toPayDeliveredAmount: deliveredToPayData.reduce((sum, d) => sum + d.toPayDeliveredAmount, 0)
+      };
+    }
+
+    const finalSummary = {
+      finalTotalPackages: 0,
+      finalTotalCharge: 0,
+      finalDoorPickupCharges: 0,
+      finalHamaliCharges: 0,
+      finalDoorDeliveryCharges: 0,
+      finalOtherCharges: 0,
+      finalGrandTotal: 0,
+      finalToPayDeliveredAmount: 0
     };
 
-    for (const item of categoryWise) {
-      const key = item._id;
-      if (categoryDetails[key]) {
-        categoryDetails[key].noOfPackages = item.noOfPackages;
-        categoryDetails[key].serviceCharges = item.serviceCharges;
-        categoryDetails[key].hamaliCharges = item.hamaliCharges;
-        categoryDetails[key].doorPickupCharges = item.doorPickupCharges;
-        categoryDetails[key].doorDeliveryCharges = item.doorDeliveryCharges;
-        categoryDetails[key].otherCharges = item.otherCharges;
-        categoryDetails[key].grandTotal = item.grandTotal;
-        categoryDetails[key].totalAmount = item.totalAmount;
+    ["paid", "toPay", "credit", "toPayDeliveredAmount"].forEach(key => {
+      const d = categoryDetails[key];
+      if (d) {
+        finalSummary.finalTotalPackages += d.noOfPackages || 0;
+        finalSummary.finalTotalCharge += d.totalAmount || 0;
+        finalSummary.finalDoorPickupCharges += d.doorPickupCharges || 0;
+        finalSummary.finalHamaliCharges += d.hamaliCharges || 0;
+        finalSummary.finalDoorDeliveryCharges += d.doorDeliveryCharges || 0;
+        finalSummary.finalOtherCharges += d.otherCharges || 0;
+        finalSummary.finalGrandTotal += d.grandTotal || 0;
+        finalSummary.finalToPayDeliveredAmount += d.toPayDeliveredAmount || 0;
       }
-    }
+    });
 
-    // --- Delivered ToPay Summary for Category ---
-    if (deliveredToPayData.length > 0) {
-      categoryDetails.toPayDeliveredAmount.noOfPackages = deliveredToPayData.reduce((sum, d) => sum + d.totalPackages, 0);
-      categoryDetails.toPayDeliveredAmount.serviceCharges = deliveredToPayData.reduce((sum, d) => sum + (d.serviceCharges || 0), 0);
-      categoryDetails.toPayDeliveredAmount.hamaliCharges = deliveredToPayData.reduce((sum, d) => sum + (d.hamaliCharges || 0), 0);
-      categoryDetails.toPayDeliveredAmount.doorPickupCharges = deliveredToPayData.reduce((sum, d) => sum + (d.doorPickupCharges || 0), 0);
-      categoryDetails.toPayDeliveredAmount.doorDeliveryCharges = deliveredToPayData.reduce((sum, d) => sum + (d.doorDeliveryCharges || 0), 0);
-      categoryDetails.toPayDeliveredAmount.otherCharges = deliveredToPayData.reduce((sum, d) => sum + (d.otherCharges || 0), 0);
-      categoryDetails.toPayDeliveredAmount.grandTotal = deliveredToPayData.reduce((sum, d) => sum + (d.grandTotal || 0), 0);
-      categoryDetails.toPayDeliveredAmount.totalAmount = deliveredToPayData.reduce((sum, d) => sum + (d.totalAmount || 0), 0);
-      categoryDetails.toPayDeliveredAmount.toPayDeliveredAmount = deliveredToPayData.reduce((sum, d) => sum + (d.toPayDeliveredAmount || 0), 0);
-    }
+    const categoryWiseBookingDetails = {
+      ...categoryDetails,
+      ...finalSummary
+    };
 
-    // --- Response ---
-  res.status(200).json({
-  paidDetails: {
-    data: paidData,
-    totalPaidAmount: paidData.reduce((sum, d) => sum + d.grandTotal, 0)
-  },
-  toPayDetails: {
-    data: toPayData,
-    totalToPayAmount: toPayData.reduce((sum, d) => sum + d.grandTotal, 0)
-  },
-  deliveredToPayDetails: {
-    data: deliveredToPayData,
-    totalDeliveryAmount: deliveredToPayData.reduce((sum, d) => sum + d.grandTotal, 0)
-  },
-  categoryWiseBookingDetails: categoryDetails
-});
+    res.status(200).json({
+      paidDetails: {
+        data: paidData,
+        finalTotalPaidPackages: paidData.reduce((sum, d) => sum + d.toTalPackages, 0),
+        finalTotalPaidCharge: paidData.reduce((sum, d) => sum + d.totalCharge, 0),
+        finalDoorPaidPickupCharges: paidData.reduce((sum, d) => sum + d.doorPickupCharges, 0),
+        finalOtherCharges: paidData.reduce((sum, d) => sum + d.otherCharges, 0),
+        finalGrandTotal: paidData.reduce((sum, d) => sum + d.grandTotal, 0)
+      },
+      toPayDetails: {
+        data: toPayData,
+        totalToPayAmount: toPayData.reduce((sum, d) => sum + d.grandTotal, 0)
+      },
+      deliveredToPayDetails: {
+        data: deliveredToPayData,
+        finalTotalPackages: deliveredToPayData.reduce((sum, d) => sum + d.totalPackages, 0),
+        finalDeliveryAmount: deliveredToPayData.reduce((sum, d) => sum + d.grandTotal, 0)
+      },
+      categoryWiseBookingDetails: categoryWiseBookingDetails
+    });
 
   } catch (err) {
     console.error("Report Error:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
+
+
 
 
 const parcelBranchWiseGSTReport = async (req, res) => {  
